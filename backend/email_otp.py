@@ -72,13 +72,19 @@ def _send_email(to_email: str, subject: str, html_body: str, plain_body: str) ->
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+            server.ehlo()
             server.starttls()
+            server.ehlo()
             server.login(SENDER_EMAIL, APP_PASSWORD)
             server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
+        print(f"[trovee] Email sent OK to {to_email}: {subject}")
         return True
+    except smtplib.SMTPAuthenticationError as exc:
+        print(f"[trovee] SMTP AUTH ERROR — check TROVEE_GMAIL_APP_PASSWORD env var. Details: {exc}")
+        return False
     except Exception as exc:
-        print(f"[trovee] ERROR sending email to {to_email}: {exc}")
+        print(f"[trovee] ERROR sending email to {to_email}: {type(exc).__name__}: {exc}")
         return False
 
 
