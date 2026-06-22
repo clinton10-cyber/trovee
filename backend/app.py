@@ -5,7 +5,7 @@ import datetime
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, g, redirect, send_from_directory
 
-from db import get_db, init_db
+from .db import get_db, init_db
 from security import hash_password, verify_password
 from email_otp import (
     generate_otp, hash_otp, verify_otp_code, otp_expiry_timestamp,
