@@ -5,17 +5,17 @@ import datetime
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, g, redirect, send_from_directory
 
-from .db import get_db, init_db
-from security import hash_password, verify_password
-from email_otp import (
+# Change these imports
+from backend.db import get_db, init_db
+from backend.security import hash_password, verify_password
+from backend.email_otp import (
     generate_otp, hash_otp, verify_otp_code, otp_expiry_timestamp,
     send_otp_email, send_support_ticket_email, OTP_MAX_ATTEMPTS,
 )
-from geo_currency import (
+from backend.geo_currency import (
     get_currency_for_country, convert_usd_cents, get_withdrawal_methods,
     COUNTRY_CURRENCY, USD_EXCHANGE_RATES,
 )
-
 APP_SECRET = os.environ.get("TROVEE_APP_SECRET", "trovee-dev-secret-change-me-in-prod")
 WITHDRAWAL_MINIMUM_USD_CENTS = 500000      # $5,000.00 minimum withdrawal
 ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
