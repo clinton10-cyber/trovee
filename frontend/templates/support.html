@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trovee — Support</title>
+<link rel="icon" href="/static/img/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/trovee.css">
+<style>
+  .ticket-card { padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--surface); margin-bottom: 10px; }
+  .ticket-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .ticket-subject { font-size: 14px; font-weight: 600; }
+  .ticket-date { font-size: 12px; color: var(--slate-soft); }
+  .ticket-msg { font-size: 13.5px; color: var(--slate-soft); line-height: 1.5; }
+  textarea#message { width: 100%; background: var(--ink-soft); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 13px 14px; color: var(--paper); font-size: 15px; min-height: 110px; resize: vertical; font-family: var(--font-body); }
+  textarea#message:focus { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="top-bar">
+    <h1 class="page-title">Support</h1>
+    <span></span>
+  </div>
+  <p class="page-sub" style="padding:0 20px;">Send us a message and we'll get back to you. You'll never need to leave the app.</p>
+
+  <div class="section" style="padding-top:0;">
+    <div class="card">
+      <div class="field">
+        <label for="subject">Subject</label>
+        <input type="text" id="subject" placeholder="What's this about?">
+      </div>
+      <div class="field">
+        <label for="message">Message</label>
+        <textarea id="message" placeholder="Describe your issue or question..."></textarea>
+      </div>
+      <div class="field-error" id="support-error" style="display:none;"></div>
+      <button class="btn btn-primary" id="send-btn">
+        <span id="send-label">Send message</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-heading">
+      <h2>Your messages</h2>
+    </div>
+    <div id="ticket-list">
+      <div class="empty-state small">Loading...</div>
+    </div>
+  </div>
+
+    <nav class="bottom-nav">
+    <a href="/dashboard" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
+      Home
+    </a>
+    <a href="/trading" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      Trade
+    </a>
+    <a href="/shares" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+      Shares
+    </a>
+    <a href="/deposit" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Deposit
+    </a>
+    <a href="/withdraw" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
+      Withdraw
+    </a>
+    <a href="/support" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21c5-3 8-6.5 8-11a8 8 0 1 0-16 0c0 4.5 3 8 8 11Z"/><path d="M12 8v4m0 3h.01"/></svg>
+      Support
+    </a>
+  </nav>
+</div>
+
+<script src="/static/js/trovee.js"></script>
+<script>
+  Trovee.requireAuth();
+
+  document.getElementById("send-btn").addEventListener("click", async () => {
+    const errorEl = document.getElementById("support-error");
+    errorEl.style.display = "none";
+    const subject = document.getElementById("subject").value.trim();
+    const message = document.getElementById("message").value.trim();
+    if (!subject || !message) {
+      errorEl.textContent = "Enter a subject and message.";
+      errorEl.style.display = "block";
+      return;
+    }
+
+    const btn = document.getElementById("send-btn");
+    const label = document.getElementById("send-label");
+    btn.disabled = true;
+    label.innerHTML = '<span class="spinner"></span>';
+    try {
+      await Trovee.api("/api/support/send", { method: "POST", body: { subject, message } });
+      document.getElementById("subject").value = "";
+      document.getElementById("message").value = "";
+      Trovee.showToast("Message sent. We'll get back to you soon.");
+      loadTickets();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = "block";
+    } finally {
+      btn.disabled = false;
+      label.textContent = "Send message";
+    }
+  });
+
+  async function loadTickets() {
+    try {
+      const data = await Trovee.api("/api/support/history");
+      const list = document.getElementById("ticket-list");
+      if (!data.tickets.length) {
+        list.innerHTML = '<div class="empty-state small">No messages yet.</div>';
+        return;
+      }
+      list.innerHTML = data.tickets.map(t => `
+        <div class="ticket-card">
+          <div class="ticket-top">
+            <span class="ticket-subject">${escapeHtml(t.subject)}</span>
+            <span class="pill pill-${t.status === 'open' ? 'pending' : 'approved'}">${t.status}</span>
+          </div>
+          <div class="ticket-msg">${escapeHtml(t.message)}</div>
+          <div class="ticket-date mt-8">${new Date(t.created_at).toLocaleString()}</div>
+        </div>
+      `).join("");
+    } catch (err) {
+      Trovee.showToast(err.message, "error");
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  loadTickets();
+</script>
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trovee — Trade</title>
+<link rel="icon" href="/static/img/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/trovee.css">
+<style>
+  .trade-header { display:flex; align-items:center; justify-content:space-between; padding:14px 20px 0; }
+  .asset-selector { display:flex; align-items:center; gap:6px; background:var(--surface-raised); border-radius:10px; padding:8px 14px; cursor:pointer; border:1px solid var(--line-strong); }
+  .asset-name { font-weight:700; font-size:15px; }
+  .asset-price { font-family:var(--font-mono); font-size:19px; font-weight:700; color:#E8604C; }
+  .price-change { font-size:12px; color:#E8604C; display:flex; align-items:center; gap:3px; }
+  .price-change.up { color:#2DD4BF; }
+
+  /* Gauge */
+  .gauge-wrap { display:flex; flex-direction:column; align-items:center; padding:18px 20px 10px; }
+  .gauge-svg { width:172px; height:96px; }
+  .gauge-bg { fill:none; stroke:var(--surface-raised); stroke-width:18; stroke-linecap:round; }
+  .gauge-fill { fill:none; stroke:#4ade80; stroke-width:18; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
+  .gauge-center { font-family:var(--font-mono); font-size:27px; font-weight:700; fill:#4ade80; text-anchor:middle; }
+  .gauge-label { font-size:11px; fill:var(--slate-soft); text-anchor:middle; }
+
+  /* Trade form */
+  .trade-form { padding:0 16px; display:flex; flex-direction:column; gap:12px; }
+  .direction-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .dir-btn { padding:11px; border-radius:var(--radius-md); border:2px solid var(--line-strong); background:var(--surface-raised); color:var(--paper); font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all .15s; }
+  .dir-btn.up.active { background:#16a34a; border-color:#4ade80; color:#fff; }
+  .dir-btn.down.active { background:#b91c1c; border-color:#f87171; color:#fff; }
+  .dir-btn:not(.active):hover { border-color:var(--accent); }
+
+  .duration-row { display:flex; gap:7px; flex-wrap:wrap; }
+  .dur-chip { padding:6px 11px; border-radius:999px; border:1px solid var(--line-strong); font-size:12px; color:var(--slate-soft); cursor:pointer; background:var(--surface-raised); }
+  .dur-chip.active { background:#4ade80; color:#0B1220; border-color:#4ade80; font-weight:600; }
+
+  .form-row { display:flex; flex-direction:column; gap:5px; }
+  .form-label { font-size:12px; color:var(--slate-soft); text-transform:uppercase; letter-spacing:.06em; }
+  .amount-input-wrap { display:flex; align-items:center; background:var(--surface-raised); border:1px solid var(--line-strong); border-radius:var(--radius-sm); overflow:hidden; }
+  .amount-input-wrap input { flex:1; background:transparent; border:none; color:var(--paper); font-family:var(--font-mono); font-size:18px; padding:10px 13px; outline:none; }
+  .amount-all { padding:0 14px; font-size:12px; color:#4ade80; cursor:pointer; font-weight:600; white-space:nowrap; }
+
+  .return-bar { display:flex; justify-content:space-between; align-items:center; background:var(--surface-raised); border-radius:var(--radius-sm); padding:12px 16px; border:1px solid var(--line-strong); }
+  .return-label { font-size:13px; color:var(--slate-soft); }
+  .return-val { font-family:var(--font-mono); color:#4ade80; font-size:14px; font-weight:700; }
+
+  .trade-btn { width:100%; padding:14px; border-radius:var(--radius-md); border:none; font-size:15px; font-weight:700; cursor:pointer; transition:all .15s; }
+  .trade-btn.up-btn { background:#16a34a; color:#fff; }
+  .trade-btn.down-btn { background:#b91c1c; color:#fff; }
+  .trade-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* Live trade modal */
+  .trade-modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.82); display:none; align-items:center; justify-content:center; z-index:9999; padding:20px; }
+  .trade-modal.show { display:flex; }
+  .trade-modal-card { background:var(--surface); border-radius:var(--radius-lg); padding:28px 24px; max-width:360px; width:100%; border:1px solid var(--line-strong); }
+  .trade-modal-asset { font-size:26px; font-weight:700; text-align:center; margin-bottom:4px; }
+  .trade-modal-prices { display:flex; align-items:center; justify-content:center; gap:12px; font-family:var(--font-mono); font-size:14px; color:var(--slate-soft); margin-bottom:20px; }
+  .trade-modal-prices .live { color:#4ade80; font-weight:600; }
+  .trade-modal-rows { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+  .trade-modal-row { display:flex; justify-content:space-between; font-size:14px; }
+  .trade-modal-row .label { color:var(--slate-soft); }
+  .trade-modal-row .val { font-family:var(--font-mono); }
+  .trade-modal-row .val.profit { color:#4ade80; }
+  .trade-modal-row .val.direction-down { color:#f87171; font-weight:600; }
+  .trade-modal-row .val.direction-up { color:#4ade80; font-weight:600; }
+
+  /* History */
+  .trade-history { padding:0 16px 100px; }
+  .trade-hist-title { font-size:13px; color:var(--slate-soft); text-transform:uppercase; letter-spacing:.06em; margin:18px 0 10px; }
+  .hist-item { background:var(--surface-raised); border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+  .hist-left { display:flex; flex-direction:column; gap:3px; }
+  .hist-asset { font-size:14px; font-weight:600; }
+  .hist-meta { font-size:12px; color:var(--slate-soft); }
+  .hist-right { text-align:right; }
+  .hist-amount { font-family:var(--font-mono); font-size:14px; font-weight:700; }
+  .hist-amount.win { color:#4ade80; }
+  .hist-amount.loss { color:#f87171; }
+  .hist-result { font-size:11px; color:var(--slate-soft); margin-top:2px; }
+  .hist-badge { font-size:11px; padding:2px 8px; border-radius:999px; font-weight:600; }
+  .hist-badge.up { background:rgba(74,222,128,.15); color:#4ade80; }
+  .hist-badge.down { background:rgba(248,113,113,.15); color:#f87171; }
+
+  /* Asset dropdown overlay */
+  .asset-dropdown { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.7); display:none; z-index:8888; }
+  .asset-dropdown.show { display:flex; align-items:flex-end; justify-content:center; }
+  .asset-list { background:var(--surface); border-radius:var(--radius-lg) var(--radius-lg) 0 0; width:100%; max-width:480px; padding:20px; max-height:60vh; overflow-y:auto; }
+  .asset-list-title { font-size:16px; font-weight:700; margin-bottom:14px; }
+  .asset-option { display:flex; justify-content:space-between; align-items:center; padding:13px 14px; border-radius:var(--radius-sm); cursor:pointer; border:1px solid transparent; margin-bottom:6px; }
+  .asset-option:hover, .asset-option.selected { background:var(--surface-raised); border-color:var(--line-strong); }
+  .asset-opt-name { font-weight:600; font-size:14px; }
+  .asset-opt-desc { font-size:12px; color:var(--slate-soft); }
+  .asset-opt-price { font-family:var(--font-mono); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="top-bar">
+    <h1 class="page-title">Trade</h1>
+    <span id="balance-badge" class="mono" style="font-size:13px; color:var(--accent);"></span>
+  </div>
+
+  <!-- Asset + Price header -->
+  <div class="trade-header">
+    <div class="asset-selector" id="asset-selector-btn">
+      <span class="asset-name" id="asset-name-label">BTC/USD</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div style="text-align:right;">
+      <div class="asset-price" id="asset-price-display">--</div>
+      <div class="price-change" id="price-change-display">▼ 0.00%</div>
+    </div>
+  </div>
+
+  <!-- Gauge (shows countdown when trade is active, else static) -->
+  <div class="gauge-wrap">
+    <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-svg">
+      <path class="gauge-bg" d="M 20 105 A 80 80 0 0 1 180 105" />
+      <path class="gauge-fill" id="gauge-fill" d="M 20 105 A 80 80 0 0 1 180 105"
+        stroke-dasharray="251.3" stroke-dashoffset="0" />
+      <text class="gauge-center" id="gauge-num" x="100" y="98">--</text>
+      <text class="gauge-label" x="100" y="112">seconds remaining</text>
+    </svg>
+  </div>
+
+  <!-- Trade form -->
+  <div class="trade-form" id="trade-form-section">
+    <!-- Direction -->
+    <div class="form-row">
+      <div class="form-label">Direction</div>
+      <div class="direction-row">
+        <button class="dir-btn up active" id="dir-up" onclick="setDirection('up')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          Buy Up
+        </button>
+        <button class="dir-btn down" id="dir-down" onclick="setDirection('down')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+          Buy Down
+        </button>
+      </div>
+    </div>
+
+    <!-- Duration -->
+    <div class="form-row">
+      <div class="form-label">Select expiration</div>
+      <div class="duration-row" id="duration-row">
+        <div class="dur-chip active" data-sec="30">30s</div>
+        <div class="dur-chip" data-sec="60">60s</div>
+        <div class="dur-chip" data-sec="90">90s</div>
+        <div class="dur-chip" data-sec="120">120s</div>
+        <div class="dur-chip" data-sec="180">180s</div>
+        <div class="dur-chip" data-sec="360">360s</div>
+      </div>
+    </div>
+
+    <!-- Amount -->
+    <div class="form-row">
+      <div class="form-label">Amount (USD)</div>
+      <div class="amount-input-wrap">
+        <input type="number" id="trade-amount" placeholder="0" min="10" step="1" value="">
+        <span class="amount-all" onclick="setAll()">All</span>
+      </div>
+    </div>
+
+    <!-- Expected return -->
+    <div class="return-bar">
+      <span class="return-label">Expected return (20%)</span>
+      <span class="return-val" id="expected-return">+$0.00</span>
+    </div>
+
+    <!-- Balance -->
+    <div style="text-align:center; font-size:12px; color:var(--slate-soft);">
+      Balance: <span class="mono" id="balance-display">$0.00</span>
+    </div>
+
+    <!-- Trade button -->
+    <button class="trade-btn up-btn" id="trade-btn" onclick="placeTrade()">Buy Up</button>
+  </div>
+
+  <!-- Trade history -->
+  <div class="trade-history">
+    <div class="trade-hist-title">Recent Trades</div>
+    <div id="trade-history-list"><div class="empty-state small">No trades yet. Place your first trade above.</div></div>
+  </div>
+
+    <nav class="bottom-nav">
+    <a href="/dashboard" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
+      Home
+    </a>
+    <a href="/trading" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      Trade
+    </a>
+    <a href="/shares" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+      Shares
+    </a>
+    <a href="/deposit" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Deposit
+    </a>
+    <a href="/withdraw" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
+      Withdraw
+    </a>
+    <a href="/support" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21c5-3 8-6.5 8-11a8 8 0 1 0-16 0c0 4.5 3 8 8 11Z"/><path d="M12 8v4m0 3h.01"/></svg>
+      Support
+    </a>
+  </nav>
+</div>
+
+<!-- Live Trade Modal -->
+<div class="trade-modal" id="live-trade-modal">
+  <div class="trade-modal-card">
+    <div class="trade-modal-asset" id="modal-asset">BTC/USD</div>
+    <div class="trade-modal-prices">
+      <span id="modal-entry-price">Entry: --</span>
+      <span>→</span>
+      <span class="live" id="modal-live-price">Live: --</span>
+    </div>
+    <div class="trade-modal-rows">
+      <div class="trade-modal-row"><span class="label">Direction</span><span class="val" id="modal-direction">--</span></div>
+      <div class="trade-modal-row"><span class="label">Amount</span><span class="val" id="modal-amount">--</span></div>
+      <div class="trade-modal-row"><span class="label">Expected profit</span><span class="val profit" id="modal-profit">--</span></div>
+      <div class="trade-modal-row"><span class="label">Duration</span><span class="val" id="modal-duration">--</span></div>
+      <div class="trade-modal-row"><span class="label">Opened</span><span class="val" id="modal-opened">--</span></div>
+    </div>
+    <div class="gauge-wrap" style="padding:0 0 10px;">
+      <svg class="gauge-svg" viewBox="0 0 200 115" style="width:160px;height:88px;">
+        <path class="gauge-bg" d="M 20 105 A 80 80 0 0 1 180 105" />
+        <path class="gauge-fill" id="modal-gauge" d="M 20 105 A 80 80 0 0 1 180 105"
+          stroke-dasharray="251.3" stroke-dashoffset="0" />
+        <text class="gauge-center" id="modal-timer-num" x="100" y="98" style="font-size:30px;">--</text>
+        <text class="gauge-label" x="100" y="112">seconds remaining</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- Asset Dropdown -->
+<div class="asset-dropdown" id="asset-dropdown" onclick="closeAssetDropdown(event)">
+  <div class="asset-list">
+    <div class="asset-list-title">Select Asset</div>
+    <div id="asset-option-list"></div>
+  </div>
+</div>
+
+<script src="/static/js/trovee.js"></script>
+<script>
+Trovee.requireAuth();
+
+const ASSETS = [
+  { key:"BTC/USD", label:"Bitcoin", base:97000, vol:0.0018 },
+  { key:"ETH/USD", label:"Ethereum", base:3400, vol:0.0022 },
+  { key:"XAU/USD", label:"Gold", base:3320, vol:0.0008 },
+  { key:"EUR/USD", label:"Euro", base:1.0850, vol:0.0003 },
+  { key:"BNB/USD", label:"BNB", base:620, vol:0.002 },
+];
+
+let prices = {};
+let openTimes = {};
+let currentAsset = "BTC/USD";
+let direction = "up";
+let durationSec = 30;
+let userBalance = 0;
+let activeTrade = null;
+let tradeInterval = null;
+let priceInterval = null;
+
+// Simulate price movements
+function initPrices() {
+  ASSETS.forEach(a => {
+    prices[a.key] = a.base + (Math.random() - 0.5) * a.base * 0.002;
+    openTimes[a.key] = prices[a.key];
+  });
+}
+
+function tickPrices() {
+  ASSETS.forEach(a => {
+    const change = (Math.random() - 0.49) * a.base * a.vol;
+    prices[a.key] = Math.max(prices[a.key] + change, a.base * 0.8);
+  });
+  updatePriceDisplay();
+  if (activeTrade) {
+    const lp = prices[activeTrade.asset];
+    document.getElementById("modal-live-price").textContent = "Live: " + formatPrice(activeTrade.asset, lp);
+  }
+}
+
+function formatPrice(asset, p) {
+  if (asset === "EUR/USD") return p.toFixed(4);
+  if (p >= 100) return p.toFixed(2);
+  return p.toFixed(4);
+}
+
+function updatePriceDisplay() {
+  const p = prices[currentAsset];
+  const open = openTimes[currentAsset];
+  const pct = ((p - open) / open) * 100;
+  document.getElementById("asset-price-display").textContent = formatPrice(currentAsset, p);
+  const changeEl = document.getElementById("price-change-display");
+  const sign = pct >= 0 ? "▲" : "▼";
+  changeEl.textContent = sign + " " + Math.abs(pct).toFixed(2) + "%";
+  changeEl.className = "price-change " + (pct >= 0 ? "up" : "");
+  document.getElementById("asset-price-display").style.color = pct >= 0 ? "#2DD4BF" : "#E8604C";
+}
+
+function setDirection(d) {
+  direction = d;
+  document.getElementById("dir-up").className = "dir-btn up" + (d==="up" ? " active" : "");
+  document.getElementById("dir-down").className = "dir-btn down" + (d==="down" ? " active" : "");
+  const btn = document.getElementById("trade-btn");
+  if (d === "up") { btn.className = "trade-btn up-btn"; btn.textContent = "Buy Up"; }
+  else { btn.className = "trade-btn down-btn"; btn.textContent = "Buy Down"; }
+}
+
+document.querySelectorAll(".dur-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll(".dur-chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    durationSec = parseInt(chip.dataset.sec);
+    updateGauge(durationSec, durationSec);
+  });
+});
+
+document.getElementById("trade-amount").addEventListener("input", updateReturn);
+
+function updateReturn() {
+  const amt = parseFloat(document.getElementById("trade-amount").value) || 0;
+  document.getElementById("expected-return").textContent = "+$" + (amt * 0.20).toFixed(2);
+}
+
+function setAll() {
+  document.getElementById("trade-amount").value = Math.floor(userBalance).toString();
+  updateReturn();
+}
+
+// Gauge helpers
+const GAUGE_LEN = 251.3;
+function updateGauge(remaining, total) {
+  const pct = total > 0 ? remaining / total : 1;
+  const offset = GAUGE_LEN * (1 - pct);
+  document.getElementById("gauge-fill").style.strokeDashoffset = offset;
+  document.getElementById("gauge-num").textContent = remaining;
+  // Color: green → yellow → red
+  const color = remaining > total * 0.5 ? "#4ade80" : remaining > total * 0.25 ? "#facc15" : "#f87171";
+  document.getElementById("gauge-fill").style.stroke = color;
+  document.getElementById("gauge-num").style.fill = color;
+}
+
+async function loadBalance() {
+  try {
+    const me = await Trovee.api("/api/auth/me");
+    userBalance = me.balance_usd_cents / 100;
+    document.getElementById("balance-display").textContent = "$" + userBalance.toFixed(2);
+    document.getElementById("balance-badge").textContent = "$" + userBalance.toFixed(2);
+  } catch(e) {}
+}
+
+async function loadHistory() {
+  try {
+    const data = await Trovee.api("/api/trades/history");
+    renderHistory(data.trades || []);
+  } catch(e) {}
+}
+
+function renderHistory(trades) {
+  const el = document.getElementById("trade-history-list");
+  if (!trades.length) {
+    el.innerHTML = '<div class="empty-state small">No trades yet. Place your first trade above.</div>';
+    return;
+  }
+  el.innerHTML = trades.slice(0, 15).map(t => {
+    const won = t.outcome === "win";
+    const dirLabel = t.direction === "up" ? "Buy Up" : "Buy Down";
+    const dirClass = t.direction === "up" ? "up" : "down";
+    const amtNum = t.amount_usd_cents / 100;
+    const profitNum = t.profit_usd_cents / 100;
+    const dt = new Date(t.closed_at).toLocaleString();
+    return `
+      <div class="hist-item">
+        <div class="hist-left">
+          <div class="hist-asset">${t.asset} <span class="hist-badge ${dirClass}">${dirLabel}</span></div>
+          <div class="hist-meta">${t.duration_sec}s · ${dt}</div>
+        </div>
+        <div class="hist-right">
+          <div class="hist-amount ${won ? 'win' : 'loss'}">${won ? '+' : '-'}$${Math.abs(won ? profitNum : amtNum).toFixed(2)}</div>
+          <div class="hist-result">${won ? 'Won' : 'Lost'} · $${amtNum.toFixed(2)}</div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function placeTrade() {
+  if (activeTrade) { Trovee.showToast("A trade is already in progress.", "error"); return; }
+  const amount = parseFloat(document.getElementById("trade-amount").value);
+  if (!amount || amount < 10) { Trovee.showToast("Minimum trade amount is $10.", "error"); return; }
+  if (amount > userBalance) { Trovee.showToast("Insufficient balance. Please deposit funds.", "error"); return; }
+
+  const entryPrice = prices[currentAsset];
+  try {
+    const res = await Trovee.api("/api/trades/place", {
+      method: "POST",
+      body: JSON.stringify({ asset: currentAsset, direction, duration_sec: durationSec, amount_usd_cents: Math.round(amount * 100), entry_price: entryPrice })
+    });
+    activeTrade = { id: res.trade_id, asset: currentAsset, direction, durationSec, amount, entryPrice };
+    startCountdown(res.trade_id, entryPrice, durationSec);
+  } catch(err) {
+    Trovee.showToast(err.message, "error");
+  }
+}
+
+function startCountdown(tradeId, entryPrice, total) {
+  const modal = document.getElementById("live-trade-modal");
+  document.getElementById("modal-asset").textContent = currentAsset;
+  document.getElementById("modal-entry-price").textContent = "Entry: " + formatPrice(currentAsset, entryPrice);
+  document.getElementById("modal-direction").textContent = direction === "up" ? "Buy Up ▲" : "Buy Down ▼";
+  document.getElementById("modal-direction").className = "val direction-" + direction;
+  document.getElementById("modal-amount").textContent = "$" + activeTrade.amount.toFixed(2);
+  document.getElementById("modal-profit").textContent = "+$" + (activeTrade.amount * 0.2).toFixed(2);
+  document.getElementById("modal-duration").textContent = total + "s";
+  document.getElementById("modal-opened").textContent = new Date().toLocaleTimeString();
+  modal.classList.add("show");
+
+  let remaining = total;
+  const modalGauge = document.getElementById("modal-gauge");
+  const modalNum = document.getElementById("modal-timer-num");
+
+  function tick() {
+    remaining--;
+    const pct = remaining / total;
+    const offset = GAUGE_LEN * (1 - pct);
+    modalGauge.style.strokeDashoffset = offset;
+    modalNum.textContent = remaining;
+    const color = remaining > total * 0.5 ? "#4ade80" : remaining > total * 0.25 ? "#facc15" : "#f87171";
+    modalGauge.style.stroke = color;
+    modalNum.style.fill = color;
+    updateGauge(remaining, total);
+
+    if (remaining <= 0) {
+      clearInterval(tradeInterval);
+      tradeInterval = null;
+      closeTrade(tradeId);
+    }
+  }
+
+  updateGauge(total, total);
+  tradeInterval = setInterval(tick, 1000);
+}
+
+async function closeTrade(tradeId) {
+  const exitPrice = prices[activeTrade.asset];
+  try {
+    const res = await Trovee.api("/api/trades/close", {
+      method: "POST",
+      body: JSON.stringify({ trade_id: tradeId, exit_price: exitPrice })
+    });
+    document.getElementById("live-trade-modal").classList.remove("show");
+    activeTrade = null;
+    userBalance = res.new_balance_usd_cents / 100;
+    document.getElementById("balance-display").textContent = "$" + userBalance.toFixed(2);
+    document.getElementById("balance-badge").textContent = "$" + userBalance.toFixed(2);
+    if (res.outcome === "win") {
+      Trovee.showToast("Trade won! +" + "$" + (res.profit_usd_cents/100).toFixed(2));
+    } else {
+      Trovee.showToast("Trade lost. Better luck next time!", "error");
+    }
+    loadHistory();
+  } catch(e) {
+    document.getElementById("live-trade-modal").classList.remove("show");
+    activeTrade = null;
+    Trovee.showToast("Error closing trade.", "error");
+  }
+}
+
+// Asset selector
+document.getElementById("asset-selector-btn").addEventListener("click", () => {
+  const listEl = document.getElementById("asset-option-list");
+  listEl.innerHTML = ASSETS.map(a => `
+    <div class="asset-option ${a.key === currentAsset ? 'selected' : ''}" onclick="selectAsset('${a.key}')">
+      <div><div class="asset-opt-name">${a.key}</div><div class="asset-opt-desc">${a.label}</div></div>
+      <div class="asset-opt-price">${formatPrice(a.key, prices[a.key] || a.base)}</div>
+    </div>`).join("");
+  document.getElementById("asset-dropdown").classList.add("show");
+});
+
+function closeAssetDropdown(e) {
+  if (e.target === document.getElementById("asset-dropdown")) {
+    document.getElementById("asset-dropdown").classList.remove("show");
+  }
+}
+
+function selectAsset(key) {
+  currentAsset = key;
+  document.getElementById("asset-name-label").textContent = key;
+  document.getElementById("asset-dropdown").classList.remove("show");
+  updatePriceDisplay();
+}
+
+// Init
+initPrices();
+updateGauge(durationSec, durationSec);
+loadBalance();
+loadHistory();
+priceInterval = setInterval(tickPrices, 1200);
+updatePriceDisplay();
+</script>
+</body>
+</html>

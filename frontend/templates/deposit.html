@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trovee — Deposit</title>
+<link rel="icon" href="/static/img/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/trovee.css">
+<style>
+  .method-tabs { display:flex; gap:0; margin:16px 20px 0; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--line-strong); }
+  .method-tab { flex:1; padding:12px; text-align:center; font-size:14px; font-weight:600; cursor:pointer; background:var(--surface-raised); color:var(--slate-soft); border:none; transition:all .15s; }
+  .method-tab.active { background:#4ade80; color:#0B1220; }
+
+  .deposit-section { padding:0 20px; }
+  .section-card { background:var(--surface-raised); border-radius:var(--radius-lg); padding:22px; margin-top:16px; border:1px solid var(--line-strong); }
+
+  /* BTC */
+  .wallet-label { font-size:12px; color:var(--slate-soft); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+  .wallet-address { font-family:var(--font-mono); font-size:13px; background:var(--ink); border-radius:var(--radius-sm); padding:14px; word-break:break-all; line-height:1.6; border:1px solid var(--line-strong); color:var(--paper); position:relative; }
+  .copy-btn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-top:12px; padding:12px; border-radius:var(--radius-sm); background:var(--surface); border:1px solid var(--line-strong); color:var(--paper); font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  .notice-box { background:rgba(10, 132, 255,.08); border:1px solid rgba(10, 132, 255,.2); border-radius:var(--radius-sm); padding:12px 14px; font-size:13px; color:var(--paper-dim); line-height:1.6; margin-top:14px; }
+  .notice-box strong { color:var(--accent); }
+
+  .network-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.2); border-radius:999px; padding:4px 12px; font-size:12px; color:#4ade80; font-weight:600; margin-bottom:14px; }
+
+  /* Gift card */
+  .gc-logo-row { display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .gc-logo { padding:10px 16px; border-radius:var(--radius-sm); background:var(--ink); border:2px solid var(--line-strong); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; color:var(--slate-soft); }
+  .gc-logo.selected { border-color:#4ade80; color:#4ade80; background:rgba(74,222,128,.07); }
+
+  .input-field { width:100%; background:var(--ink); border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:13px 14px; color:var(--paper); font-family:var(--font-mono); font-size:16px; outline:none; box-sizing:border-box; transition:border-color .15s; }
+  .input-field:focus { border-color:#4ade80; }
+  .input-label { font-size:12px; color:var(--slate-soft); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; margin-top:14px; display:block; }
+  .submit-btn { width:100%; padding:15px; border-radius:var(--radius-md); border:none; background:#16a34a; color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:18px; transition:all .15s; }
+  .submit-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* History */
+  .dep-hist { padding:0 20px 100px; }
+  .dep-hist-title { font-size:13px; color:var(--slate-soft); text-transform:uppercase; letter-spacing:.06em; margin:20px 0 10px; }
+  .dep-item { background:var(--surface-raised); border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+  .dep-left { display:flex; flex-direction:column; gap:3px; }
+  .dep-type { font-size:13px; font-weight:600; }
+  .dep-meta { font-size:12px; color:var(--slate-soft); }
+  .dep-right { text-align:right; }
+  .dep-amount { font-family:var(--font-mono); font-size:14px; font-weight:700; color:#4ade80; }
+  .dep-status { font-size:11px; color:var(--slate-soft); margin-top:2px; }
+  .status-pending { color:var(--accent); }
+  .status-confirmed { color:#4ade80; }
+  .status-rejected { color:#f87171; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="top-bar">
+    <h1 class="page-title">Deposit</h1>
+    <span></span>
+  </div>
+
+  <div style="padding:0 20px; margin-top:4px;">
+    <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds to your trading account using Bitcoin or a gift card.</p>
+  </div>
+
+  <!-- Method tabs -->
+  <div class="method-tabs">
+    <button class="method-tab active" id="tab-btc" onclick="switchTab('btc')">
+      ₿ Bitcoin (BTC)
+    </button>
+    <button class="method-tab" id="tab-giftcard" onclick="switchTab('giftcard')">
+      Gift Card
+    </button>
+  </div>
+
+  <!-- BTC Section -->
+  <div class="deposit-section" id="section-btc">
+    <div class="section-card">
+      <div class="network-badge">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="#4ade80"><circle cx="5" cy="5" r="5"/></svg>
+        BTC Network · Bitcoin
+      </div>
+      <div class="wallet-label">Your deposit address</div>
+      <div class="wallet-address" id="btc-wallet-address">Loading...</div>
+      <button class="copy-btn" onclick="copyWallet()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy Address
+      </button>
+      <div class="notice-box">
+        <strong>Important:</strong> Only send Bitcoin (BTC) to this address. Sending any other cryptocurrency will result in permanent loss. Deposits are credited after 2 network confirmations (approx. 20–30 min).
+      </div>
+    </div>
+  </div>
+
+  <!-- Gift Card Section -->
+  <div class="deposit-section" id="section-giftcard" style="display:none;">
+    <div class="section-card">
+      <div class="wallet-label">Select gift card type</div>
+      <div class="gc-logo-row">
+        <div class="gc-logo selected" data-type="Amazon" onclick="selectGC(this)">Amazon</div>
+        <div class="gc-logo" data-type="Google Play" onclick="selectGC(this)">Google Play</div>
+        <div class="gc-logo" data-type="Apple iTunes" onclick="selectGC(this)">Apple iTunes</div>
+        <div class="gc-logo" data-type="Steam" onclick="selectGC(this)">Steam</div>
+        <div class="gc-logo" data-type="Vanilla Visa" onclick="selectGC(this)">Vanilla Visa</div>
+      </div>
+
+      <label class="input-label">Gift card code</label>
+      <input class="input-field" type="text" id="gc-code" placeholder="e.g. XXXX-XXXX-XXXX-XXXX" autocomplete="off">
+
+      <label class="input-label">Card value (USD)</label>
+      <input class="input-field" type="number" id="gc-value" placeholder="e.g. 500" min="500" step="1">
+
+      <button class="submit-btn" id="gc-submit-btn" onclick="submitGiftCard()">Submit Gift Card</button>
+      <div class="notice-box" style="margin-top:14px;">
+        <strong>Note:</strong> Gift card deposits are manually reviewed. Once verified, funds are credited to your account within 1–4 hours. Make sure the card has not been used and the full value is available.
+      </div>
+    </div>
+  </div>
+
+  <!-- Deposit History -->
+  <div class="dep-hist">
+    <div class="dep-hist-title">Deposit History</div>
+    <div id="deposit-history-list"><div class="empty-state small">No deposits yet.</div></div>
+  </div>
+
+    <nav class="bottom-nav">
+    <a href="/dashboard" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
+      Home
+    </a>
+    <a href="/trading" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      Trade
+    </a>
+    <a href="/shares" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+      Shares
+    </a>
+    <a href="/deposit" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Deposit
+    </a>
+    <a href="/withdraw" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
+      Withdraw
+    </a>
+    <a href="/support" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21c5-3 8-6.5 8-11a8 8 0 1 0-16 0c0 4.5 3 8 8 11Z"/><path d="M12 8v4m0 3h.01"/></svg>
+      Support
+    </a>
+  </nav>
+</div>
+
+<script src="/static/js/trovee.js"></script>
+<script>
+Trovee.requireAuth();
+
+let activeTab = "btc";
+let selectedGCType = "Amazon";
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById("tab-btc").className = "method-tab" + (tab === "btc" ? " active" : "");
+  document.getElementById("tab-giftcard").className = "method-tab" + (tab === "giftcard" ? " active" : "");
+  document.getElementById("section-btc").style.display = tab === "btc" ? "" : "none";
+  document.getElementById("section-giftcard").style.display = tab === "giftcard" ? "" : "none";
+}
+
+function selectGC(el) {
+  document.querySelectorAll(".gc-logo").forEach(e => e.classList.remove("selected"));
+  el.classList.add("selected");
+  selectedGCType = el.dataset.type;
+}
+
+async function loadWalletAddress() {
+  try {
+    const data = await Trovee.api("/api/deposit/btc-address");
+    document.getElementById("btc-wallet-address").textContent = data.address || "Address not configured. Contact support.";
+  } catch(e) {
+    document.getElementById("btc-wallet-address").textContent = "Unable to load address. Please try again.";
+  }
+}
+
+function copyWallet() {
+  const addr = document.getElementById("btc-wallet-address").textContent;
+  if (addr && addr !== "Loading..." && !addr.startsWith("Unable")) {
+    navigator.clipboard.writeText(addr).then(() => {
+      Trovee.showToast("Address copied to clipboard!");
+    }).catch(() => {
+      Trovee.showToast("Copy failed — please copy manually.", "error");
+    });
+  }
+}
+
+async function submitGiftCard() {
+  const code = document.getElementById("gc-code").value.trim();
+  const value = parseFloat(document.getElementById("gc-value").value);
+  if (!code) { Trovee.showToast("Please enter the gift card code.", "error"); return; }
+  if (!value || value < 500) { Trovee.showToast("Minimum deposit value is $500.", "error"); return; }
+
+  const btn = document.getElementById("gc-submit-btn");
+  btn.disabled = true;
+  btn.textContent = "Submitting...";
+
+  try {
+    await Trovee.api("/api/deposit/giftcard", {
+      method: "POST",
+      body: { card_type: selectedGCType, code, value_usd: value }
+    });
+    Trovee.showToast("Gift card submitted! We'll review and credit your account within 1–4 hours.");
+    document.getElementById("gc-code").value = "";
+    document.getElementById("gc-value").value = "";
+    loadHistory();
+  } catch(err) {
+    Trovee.showToast(err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Submit Gift Card";
+  }
+}
+
+async function loadHistory() {
+  try {
+    const data = await Trovee.api("/api/deposit/history");
+    const el = document.getElementById("deposit-history-list");
+    if (!data.deposits || !data.deposits.length) {
+      el.innerHTML = '<div class="empty-state small">No deposits yet.</div>';
+      return;
+    }
+    el.innerHTML = data.deposits.map(d => {
+      const statusClass = d.status === "confirmed" ? "status-confirmed" : d.status === "rejected" ? "status-rejected" : "status-pending";
+      const statusLabel = d.status === "confirmed" ? "Confirmed" : d.status === "rejected" ? "Rejected" : "Pending review";
+      const typeLabel = d.method === "btc" ? "₿ Bitcoin" : `Gift Card (${d.card_type || ""})`;
+      const dt = new Date(d.created_at).toLocaleString();
+      const creditedAmt = d.status === "confirmed" ? `+$${(d.credited_usd_cents/100).toFixed(2)}` : `$${d.value_usd.toFixed(2)}`;
+      return `
+        <div class="dep-item">
+          <div class="dep-left">
+            <div class="dep-type">${typeLabel}</div>
+            <div class="dep-meta">${dt}</div>
+          </div>
+          <div class="dep-right">
+            <div class="dep-amount">${creditedAmt}</div>
+            <div class="dep-status ${statusClass}">${statusLabel}</div>
+          </div>
+        </div>`;
+    }).join("");
+  } catch(e) {}
+}
+
+loadWalletAddress();
+loadHistory();
+</script>
+</body>
+</html>

@@ -1,0 +1,574 @@
+/* =========================================================================
+   TROVEE — Design tokens
+   Palette: deep ink base with a frosted-glass surface system, iOS system
+   blue accent, teal (positive/success), slate (secondary text), coral
+   (warnings/loss). Soft blurred colour blooms sit fixed behind every page
+   so glass surfaces have something to actually refract.
+   Type: Inter throughout (no serif), JetBrains Mono for monetary figures.
+   ========================================================================= */
+
+:root {
+  --ink: #06080D;
+  --ink-soft: rgba(255, 255, 255, 0.055);
+  --surface: rgba(255, 255, 255, 0.055);
+  --surface-raised: rgba(255, 255, 255, 0.09);
+  --paper: #F5F7FA;
+  --paper-dim: #C7CEDA;
+  --accent: #0A84FF;
+  --accent-bright: #409CFF;
+  --teal: #2DD4BF;
+  --slate: #5B6573;
+  --slate-soft: #8E96A6;
+  --coral: #FF6B5B;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-strong: rgba(255, 255, 255, 0.17);
+
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Courier New', monospace;
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --blur: blur(22px) saturate(160%);
+  --shadow-card: 0 10px 34px rgba(0, 0, 0, 0.38);
+  --glass-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Fixed, blurred colour blooms behind every screen — this is what the
+   frosted glass surfaces above are actually picking up tint/blur from. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -15%;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(10, 132, 255, 0.32), transparent 38%),
+    radial-gradient(circle at 88% 16%, rgba(45, 212, 191, 0.20), transparent 36%),
+    radial-gradient(circle at 25% 88%, rgba(94, 92, 230, 0.18), transparent 40%),
+    radial-gradient(circle at 92% 80%, rgba(10, 132, 255, 0.14), transparent 36%);
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+a { color: inherit; text-decoration: none; }
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.mono { font-family: var(--font-mono); }
+
+button, input, select, textarea { font-family: var(--font-body); }
+
+:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------- Layout shells ---------- */
+
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+.page-wide {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.center-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Brand header ---------- */
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+}
+
+.brand-word {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+}
+
+.brand-word .accent { color: var(--accent); }
+
+/* ---------- Cards (frosted glass) ---------- */
+
+.card {
+  background: var(--surface);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 19px;
+  box-shadow: var(--shadow-card), var(--glass-sheen);
+}
+
+.card-flat {
+  background: var(--surface);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 15px;
+  box-shadow: var(--glass-sheen);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  width: 100%;
+}
+
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(10, 132, 255, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 8px 22px rgba(10, 132, 255, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  color: var(--paper);
+  border: 1px solid var(--line-strong);
+}
+.btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+
+.btn-ghost {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  color: var(--slate-soft);
+  width: auto;
+  padding: 8px 12px;
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--coral);
+  border: 1px solid rgba(255, 107, 91, 0.35);
+}
+
+/* ---------- Form fields ---------- */
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  color: var(--slate-soft);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.field input, .field select {
+  width: 100%;
+  background: var(--ink-soft);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  color: var(--paper);
+  font-size: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field input::placeholder { color: var(--slate); }
+
+.field input:focus, .field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.16);
+  outline: none;
+}
+
+.field-error {
+  color: var(--coral);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.field-hint {
+  color: var(--slate-soft);
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+
+/* ---------- Ledger (signature element) ----------
+   Mono numerals, thin rule dividers, right-aligned amounts. Used for any
+   list of money-events: balances, trade history, withdrawal/deposit
+   history. This recurring treatment is what visually unifies the app. */
+
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ledger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ledger-row:last-child { border-bottom: none; }
+
+.ledger-label {
+  font-size: 14.5px;
+  color: var(--paper);
+}
+
+.ledger-sub {
+  font-size: 12.5px;
+  color: var(--slate-soft);
+  margin-top: 2px;
+}
+
+.ledger-amount {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ledger-amount.positive { color: var(--teal); }
+.ledger-amount.negative { color: var(--coral); }
+.ledger-amount.neutral { color: var(--slate-soft); }
+
+/* ---------- Status pills ---------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+
+.pill-pending { background: rgba(10, 132, 255, 0.16); color: var(--accent-bright); }
+.pill-approved, .pill-paid { background: rgba(45, 212, 191, 0.15); color: var(--teal); }
+.pill-rejected { background: rgba(255, 107, 91, 0.15); color: var(--coral); }
+
+/* ---------- Balance hero ---------- */
+
+.balance-hero {
+  text-align: left;
+  padding: 22px 20px;
+  background: var(--surface-raised);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card), var(--glass-sheen);
+}
+
+.balance-label {
+  font-size: 13px;
+  color: var(--slate-soft);
+  margin-bottom: 8px;
+}
+
+.balance-figure {
+  font-family: var(--font-mono);
+  font-size: 33px;
+  font-weight: 600;
+  color: var(--paper);
+  letter-spacing: -0.01em;
+}
+
+.balance-figure .cents { color: var(--slate-soft); font-size: 20px; }
+
+/* ---------- Progress bar (daily cap) ---------- */
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--ink-soft);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.progress-fill.full { background: var(--coral); }
+
+/* ---------- Bottom nav (frosted, sticky) ---------- */
+
+.bottom-nav {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  background: rgba(6, 8, 13, 0.62);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-top: 1px solid var(--line);
+  padding: 9px 4px calc(9px + env(safe-area-inset-bottom));
+  margin-top: auto;
+  z-index: 40;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  color: var(--slate-soft);
+  padding: 6px 4px;
+  border-radius: 10px;
+  transition: color 0.15s;
+}
+
+.nav-item.active { color: var(--accent-bright); }
+.nav-item svg { width: 19px; height: 19px; }
+
+/* ---------- Toast ---------- */
+
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(20, 26, 38, 0.72);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 999;
+  max-width: 90%;
+  text-align: center;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.toast.error { border-color: rgba(255, 107, 91, 0.45); }
+
+/* ---------- Top bar (frosted, sticky) ---------- */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 6px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(6, 8, 13, 0.5);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-bottom: 3px;
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--slate-soft);
+  margin-bottom: 16px;
+}
+
+.section {
+  padding: 0 18px 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-heading h2 { font-size: 16px; }
+.section-heading .see-all { font-size: 13px; color: var(--accent-bright); }
+
+/* ---------- Misc utility ---------- */
+
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.muted { color: var(--slate-soft); }
+.center-text { text-align: center; }
+.small { font-size: 12.5px; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  margin: 20px 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--slate-soft);
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.btn-secondary .spinner, .btn-ghost .spinner {
+  border: 2px solid rgba(245, 247, 250, 0.25);
+  border-top-color: var(--paper);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* =========================================================================
+   GLASS TREATMENT — page-specific surface classes
+   Each page defines its own card-like classes locally (background colour,
+   border, padding) but doesn't repeat the blur/sheen properties. This one
+   block applies the frosted-glass effect to all of them centrally so every
+   surface across the app reads consistently, without duplicating it in
+   every template's <style> block.
+   ========================================================================= */
+
+.hero-card,
+.fund-panel,
+.stat-box,
+.trade-row,
+.holding-pill,
+.asset-selector,
+.dir-btn,
+.dur-chip,
+.amount-input-wrap,
+.return-bar,
+.trade-modal-card,
+.hist-item,
+.asset-list,
+.asset-option:hover,
+.asset-option.selected,
+.balance-strip,
+.company-card,
+.company-detail-header,
+.plan-card,
+.modal-sheet,
+.portfolio-card,
+.seg-tabs,
+.method-tab,
+.section-card,
+.copy-btn,
+.dep-item,
+.method-card,
+.tabs,
+.tab.active,
+.ticket-card,
+.otp-box,
+.wallet-address,
+.gc-logo,
+.input-field {
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--glass-sheen);
+}

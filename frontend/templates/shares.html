@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trovee — Invest in Shares</title>
+<link rel="icon" href="/static/img/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/trovee.css">
+<style>
+  /* ---- View management ---- */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---- Balance strip ---- */
+  .balance-strip {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+    padding: 14px 18px; margin-bottom: 20px;
+  }
+  .balance-strip .lbl { font-size: 12px; color: var(--slate-soft); margin-bottom: 2px; }
+  .balance-strip .val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--accent); }
+
+  /* ---- Company cards ---- */
+  .company-grid { display: flex; flex-direction: column; gap: 12px; }
+  .company-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+    padding: 15px 15px 13px; cursor: pointer; transition: border-color 0.2s, transform 0.15s;
+    display: flex; align-items: center; gap: 13px;
+  }
+  .company-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .company-logo {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
+    overflow: hidden; border: 1px solid var(--line-strong);
+  }
+  .company-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .company-logo .ticker-fallback {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+  .company-info { flex: 1; min-width: 0; }
+  .company-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .company-ticker { font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: 0.06em; }
+  .company-sector { font-size: 12px; color: var(--slate-soft); margin-top: 2px; }
+  .company-plan-count {
+    font-size: 11px; background: rgba(10, 132, 255,.12); color: var(--accent);
+    padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+  }
+  .company-chevron { color: var(--slate-soft); margin-left: 4px; }
+
+  /* ---- Back button ---- */
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 6px; color: var(--accent);
+    font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 18px;
+    background: none; border: none; padding: 0;
+  }
+
+  /* ---- Company detail header ---- */
+  .company-detail-header {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 18px; margin-bottom: 18px;
+  }
+  .company-detail-logo {
+    width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+    background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
+    overflow: hidden; border: 1px solid var(--line-strong);
+  }
+  .company-detail-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .company-detail-logo .ticker-fallback { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--accent); }
+  .company-detail-info .name { font-size: 18px; font-weight: 700; }
+  .company-detail-info .meta { font-size: 12.5px; color: var(--slate-soft); margin-top: 3px; }
+  .company-detail-info .desc { font-size: 13px; color: var(--paper); margin-top: 6px; line-height: 1.5; }
+
+  /* ---- Plan cards ---- */
+  .plan-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 20px; margin-bottom: 12px; position: relative;
+    transition: border-color 0.2s;
+  }
+  .plan-card.featured { border-color: var(--accent); }
+  .plan-badge {
+    position: absolute; top: -10px; right: 18px;
+    background: var(--accent); color: var(--ink); font-size: 10px; font-weight: 700;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: 0.05em;
+  }
+  .plan-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+  .plan-name { font-size: 15px; font-weight: 700; }
+  .plan-price { font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--accent); text-align: right; }
+  .plan-price .per { font-size: 11px; color: var(--slate-soft); font-family: var(--font-body); display: block; text-align: right; }
+  .plan-stats { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .plan-stat { flex: 1; padding: 10px 8px; text-align: center; border-right: 1px solid var(--line); }
+  .plan-stat:last-child { border-right: none; }
+  .plan-stat .stat-lbl { font-size: 10px; color: var(--slate-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .plan-stat .stat-val { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--teal); }
+
+  /* ---- Confirm modal ---- */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(11,18,32,0.85);
+    z-index: 1000; align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: var(--surface-raised); border-top-left-radius: 24px; border-top-right-radius: 24px;
+    padding: 28px 24px 36px; width: 100%; max-width: 480px;
+    border: 1px solid var(--line); border-bottom: none;
+    animation: slide-up 0.25s ease;
+  }
+  @keyframes slide-up { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; text-align: center; }
+  .confirm-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .confirm-row:last-of-type { border-bottom: none; }
+  .confirm-row .label { color: var(--slate-soft); }
+  .confirm-row .value { font-weight: 600; font-family: var(--font-mono); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions .btn { flex: 1; }
+
+  /* ---- Portfolio ---- */
+  .portfolio-header { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+  .portfolio-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+    padding: 16px; margin-bottom: 10px;
+  }
+  .portfolio-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .portfolio-logo {
+    width: 38px; height: 38px; border-radius: 10px; background: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    border: 1px solid var(--line-strong); flex-shrink: 0;
+  }
+  .portfolio-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .portfolio-logo .ticker-fallback { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--accent); }
+  .portfolio-card-info { flex: 1; }
+  .portfolio-card-info .name { font-size: 14px; font-weight: 700; }
+  .portfolio-card-info .meta { font-size: 12px; color: var(--slate-soft); }
+  .portfolio-cert-id { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+  .portfolio-stats { display: flex; justify-content: space-between; font-size: 12.5px; }
+  .portfolio-stats .stat { text-align: center; }
+  .portfolio-stats .stat .sv { font-weight: 700; color: var(--teal); margin-bottom: 1px; }
+  .portfolio-stats .stat .sl { color: var(--slate-soft); }
+  .dl-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+    background: rgba(10, 132, 255,.1); border: 1px solid rgba(10, 132, 255,.3);
+    color: var(--accent); border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .dl-btn:hover { background: rgba(10, 132, 255,.2); }
+  .portfolio-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+
+  /* ---- Segment tabs ---- */
+  .seg-tabs { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 20px; gap: 4px; }
+  .seg-tab { flex: 1; text-align: center; padding: 9px 6px; border-radius: 9px; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--slate-soft); transition: background 0.15s, color 0.15s; }
+  .seg-tab.active { background: var(--surface-raised); color: var(--paper); }
+
+  .loading-shimmer {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface-raised) 50%, var(--surface) 75%);
+    background-size: 200% 100%; animation: shimmer 1.2s infinite;
+    border-radius: 12px; height: 70px; margin-bottom: 10px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="brand-row">
+      <img src="/static/img/logo.png" alt="" class="brand-mark">
+      <span class="brand-word">Tro<span class="accent">vee</span></span>
+    </div>
+    <a href="/support" class="btn-ghost" style="font-size:13px;">Support</a>
+  </div>
+
+  <!-- SEG TABS -->
+  <div style="padding: 0 20px;">
+    <div class="seg-tabs">
+      <div class="seg-tab active" data-seg="market">Market</div>
+      <div class="seg-tab" data-seg="portfolio">My Holdings</div>
+    </div>
+  </div>
+
+  <!-- MARKET VIEW -->
+  <div class="view active" id="view-market">
+
+    <!-- Company list -->
+    <div class="section" id="section-companies">
+      <div class="balance-strip">
+        <div>
+          <div class="lbl">Available Balance</div>
+          <div class="val" id="shares-balance">···</div>
+        </div>
+        <a href="/deposit" class="btn btn-secondary" style="font-size:13px; padding:10px 16px; width:auto; flex-shrink:0;">Fund Account</a>
+      </div>
+      <div class="section-heading" style="margin-bottom:14px;">
+        <h2 style="font-size:15px;">Companies</h2>
+        <span style="font-size:12px; color:var(--slate-soft);" id="company-count-label"></span>
+      </div>
+      <div class="company-grid" id="company-list">
+        <div class="loading-shimmer"></div>
+        <div class="loading-shimmer"></div>
+        <div class="loading-shimmer"></div>
+      </div>
+    </div>
+
+    <!-- Plan selection (hidden initially) -->
+    <div class="section" id="section-plans" style="display:none;">
+      <button class="back-btn" id="back-to-companies">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+        Back to Companies
+      </button>
+      <div class="company-detail-header" id="company-detail-header"></div>
+      <div id="plans-list"></div>
+    </div>
+
+  </div>
+
+  <!-- PORTFOLIO VIEW -->
+  <div class="view" id="view-portfolio">
+    <div class="section" style="padding-top:6px;">
+      <div class="balance-strip" style="margin-bottom:16px;">
+        <div>
+          <div class="lbl">Total Invested</div>
+          <div class="val" id="total-invested">$0.00</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="lbl">Holdings</div>
+          <div class="val" id="holdings-count" style="font-size:16px;">0</div>
+        </div>
+      </div>
+      <div id="portfolio-list">
+        <div class="loading-shimmer"></div>
+        <div class="loading-shimmer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+    <a href="/dashboard" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
+      Home
+    </a>
+    <a href="/trading" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      Trade
+    </a>
+    <a href="/shares" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+      Shares
+    </a>
+    <a href="/deposit" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Deposit
+    </a>
+    <a href="/withdraw" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
+      Withdraw
+    </a>
+    <a href="/support" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21c5-3 8-6.5 8-11a8 8 0 1 0-16 0c0 4.5 3 8 8 11Z"/><path d="M12 8v4m0 3h.01"/></svg>
+      Support
+    </a>
+  </nav>
+
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-sheet">
+    <div class="modal-title">Confirm Share Purchase</div>
+    <div id="modal-rows"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+      <button class="btn btn-primary" id="modal-confirm">Buy Shares</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/trovee.js"></script>
+<script>
+Trovee.requireAuth();
+
+let currentUser = null;
+let currentCompany = null;
+let pendingPurchase = null;
+
+async function init() {
+  try {
+    currentUser = await Trovee.api("/api/auth/me");
+    document.getElementById("shares-balance").textContent =
+      `${currentUser.currency_symbol}${currentUser.balance_local.toFixed(2)}`;
+    loadCompanies();
+    loadPortfolio();
+  } catch(e) {
+    if (e.status === 401) { Trovee.logout(); return; }
+  }
+}
+
+// ---- Segment tabs ----
+document.querySelectorAll(".seg-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".seg-tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(`view-${tab.dataset.seg}`).classList.add("active");
+    if (tab.dataset.seg === "market") {
+      document.getElementById("section-companies").style.display = "";
+      document.getElementById("section-plans").style.display = "none";
+    }
+  });
+});
+
+// ---- Companies ----
+async function loadCompanies() {
+  try {
+    const data = await Trovee.api("/api/shares/companies");
+    renderCompanies(data.companies || []);
+  } catch(e) {
+    document.getElementById("company-list").innerHTML = '<div class="empty-state small">Failed to load companies.</div>';
+  }
+}
+
+function renderCompanies(companies) {
+  const el = document.getElementById("company-list");
+  const countEl = document.getElementById("company-count-label");
+  countEl.textContent = `${companies.length} available`;
+  if (!companies.length) {
+    el.innerHTML = '<div class="empty-state small">No companies available yet.</div>';
+    return;
+  }
+  el.innerHTML = companies.map(c => `
+    <div class="company-card" onclick="selectCompany(${c.id})">
+      <div class="company-logo">
+        ${c.logo_url
+          ? `<img src="${escHtml(c.logo_url)}" alt="${escHtml(c.name)}" onerror="this.parentElement.innerHTML='<span class=\\'ticker-fallback\\'>${escHtml(c.ticker)}</span>'">`
+          : `<span class="ticker-fallback">${escHtml(c.ticker)}</span>`}
+      </div>
+      <div class="company-info">
+        <div class="company-name">${escHtml(c.name)}</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
+          <span class="company-ticker">${escHtml(c.ticker)}</span>
+          <span style="color:var(--line-strong);">·</span>
+          <span class="company-sector">${escHtml(c.sector || "")}</span>
+        </div>
+      </div>
+      <span class="company-plan-count">${c.plan_count} plans</span>
+      <svg class="company-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+  `).join("");
+}
+
+async function selectCompany(id) {
+  document.getElementById("section-companies").style.display = "none";
+  document.getElementById("section-plans").style.display = "";
+  document.getElementById("plans-list").innerHTML = '<div class="loading-shimmer"></div><div class="loading-shimmer"></div>';
+  document.getElementById("company-detail-header").innerHTML = "";
+
+  try {
+    const data = await Trovee.api(`/api/shares/companies/${id}/plans`);
+    currentCompany = data.company;
+    renderCompanyHeader(data.company);
+    renderPlans(data.company, data.plans || []);
+  } catch(e) {
+    document.getElementById("plans-list").innerHTML = '<div class="empty-state small">Failed to load plans.</div>';
+  }
+}
+
+function renderCompanyHeader(c) {
+  document.getElementById("company-detail-header").innerHTML = `
+    <div class="company-detail-logo">
+      ${c.logo_url
+        ? `<img src="${escHtml(c.logo_url)}" alt="${escHtml(c.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+           <span class="ticker-fallback" style="display:none;">${escHtml(c.ticker)}</span>`
+        : `<span class="ticker-fallback">${escHtml(c.ticker)}</span>`}
+    </div>
+    <div class="company-detail-info">
+      <div class="name">${escHtml(c.name)}</div>
+      <div class="meta">${escHtml(c.ticker)} · ${escHtml(c.sector || "")}</div>
+      ${c.description ? `<div class="desc">${escHtml(c.description)}</div>` : ""}
+    </div>
+  `;
+}
+
+function renderPlans(company, plans) {
+  const el = document.getElementById("plans-list");
+  if (!plans.length) {
+    el.innerHTML = '<div class="empty-state small">No plans available for this company.</div>';
+    return;
+  }
+  // Find featured (most popular = middle plan)
+  const featuredIdx = plans.length > 1 ? Math.floor(plans.length / 2) : 0;
+  el.innerHTML = plans.map((p, i) => {
+    const featured = i === featuredIdx;
+    const projectedReturn = (p.price_usd_cents / 100 * p.return_rate_pct / 100 * p.duration_months / 12);
+    return `
+    <div class="plan-card ${featured ? 'featured' : ''}">
+      ${featured ? '<div class="plan-badge">MOST POPULAR</div>' : ''}
+      <div class="plan-header">
+        <div>
+          <div class="plan-name">${escHtml(p.plan_name)}</div>
+          <div style="font-size:12px;color:var(--slate-soft);margin-top:2px;">${p.shares_count} shares</div>
+        </div>
+        <div>
+          <div class="plan-price">$${(p.price_usd_cents/100).toLocaleString("en-US",{minimumFractionDigits:2})}</div>
+          <span class="per">investment</span>
+        </div>
+      </div>
+      <div class="plan-stats">
+        <div class="plan-stat">
+          <div class="stat-lbl">Return</div>
+          <div class="stat-val">${p.return_rate_pct}%</div>
+        </div>
+        <div class="plan-stat">
+          <div class="stat-lbl">Period</div>
+          <div class="stat-val">${p.duration_months}mo</div>
+        </div>
+        <div class="plan-stat">
+          <div class="stat-lbl">Projected</div>
+          <div class="stat-val">+$${projectedReturn.toFixed(0)}</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="confirmPurchase(${company.id}, ${p.id}, '${escHtml(company.name)}', '${escHtml(p.plan_name)}', ${p.price_usd_cents}, ${p.shares_count}, ${p.return_rate_pct}, ${p.duration_months})">
+        Buy ${p.shares_count} Shares
+      </button>
+    </div>
+  `;
+  }).join("");
+}
+
+document.getElementById("back-to-companies").addEventListener("click", () => {
+  document.getElementById("section-plans").style.display = "none";
+  document.getElementById("section-companies").style.display = "";
+});
+
+// ---- Purchase modal ----
+function confirmPurchase(companyId, planId, companyName, planName, priceCents, shares, returnRate, months) {
+  const price = priceCents / 100;
+  const balance = currentUser.balance_usd_cents / 100;
+  const projected = price * returnRate / 100 * months / 12;
+
+  pendingPurchase = { companyId, planId };
+
+  document.getElementById("modal-rows").innerHTML = `
+    <div class="confirm-row"><span class="label">Company</span><span class="value" style="font-family:var(--font-body);font-size:14px;">${escHtml(companyName)}</span></div>
+    <div class="confirm-row"><span class="label">Plan</span><span class="value" style="font-family:var(--font-body);">${escHtml(planName)}</span></div>
+    <div class="confirm-row"><span class="label">Shares</span><span class="value">${shares}</span></div>
+    <div class="confirm-row"><span class="label">Investment</span><span class="value" style="color:var(--coral);">-$${price.toFixed(2)}</span></div>
+    <div class="confirm-row"><span class="label">Projected Return</span><span class="value" style="color:var(--teal);">+$${projected.toFixed(2)}</span></div>
+    <div class="confirm-row"><span class="label">Balance After</span><span class="value">$${(balance - price).toFixed(2)}</span></div>
+    <p style="font-size:11.5px;color:var(--slate-soft);margin:12px 0 0;line-height:1.5;">
+      A signed investment certificate will be generated for download after purchase.
+      Returns are projected based on the plan rate and are not guaranteed.
+    </p>
+  `;
+
+  document.getElementById("confirm-modal").classList.add("open");
+}
+
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  document.getElementById("confirm-modal").classList.remove("open");
+});
+
+document.getElementById("confirm-modal").addEventListener("click", e => {
+  if (e.target === document.getElementById("confirm-modal")) {
+    document.getElementById("confirm-modal").classList.remove("open");
+  }
+});
+
+document.getElementById("modal-confirm").addEventListener("click", async () => {
+  const btn = document.getElementById("modal-confirm");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const res = await Trovee.api("/api/shares/purchase", {
+      method: "POST",
+      body: { plan_id: pendingPurchase.planId, company_id: pendingPurchase.companyId }
+    });
+    document.getElementById("confirm-modal").classList.remove("open");
+    Trovee.showToast("Shares purchased! Downloading certificate…");
+
+    // Update balance display
+    currentUser.balance_usd_cents = res.new_balance_usd_cents;
+    const rate = currentUser.exchange_rate || 1;
+    currentUser.balance_local = res.new_balance_usd_cents / 100 * rate;
+    document.getElementById("shares-balance").textContent =
+      `${currentUser.currency_symbol}${currentUser.balance_local.toFixed(2)}`;
+
+    // Auto-download certificate
+    await downloadCert(res.certificate_id);
+
+    // Refresh portfolio
+    loadPortfolio();
+
+    // Switch to portfolio tab
+    document.querySelectorAll(".seg-tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.querySelector('[data-seg="portfolio"]').classList.add("active");
+    document.getElementById("view-portfolio").classList.add("active");
+  } catch(e) {
+    Trovee.showToast(e.message || "Purchase failed.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Buy Shares";
+  }
+});
+
+async function downloadCert(certId) {
+  const token = localStorage.getItem("trovee_token");
+  const res = await fetch(`/api/shares/certificate/${certId}`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  if (!res.ok) { Trovee.showToast("Certificate download failed.", "error"); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Trovee-Certificate-${certId}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---- Portfolio ----
+async function loadPortfolio() {
+  try {
+    const data = await Trovee.api("/api/shares/portfolio");
+    renderPortfolio(data.portfolio || []);
+  } catch(e) {}
+}
+
+function renderPortfolio(items) {
+  const el = document.getElementById("portfolio-list");
+  if (!items.length) {
+    el.innerHTML = `
+      <div class="empty-state" style="padding:48px 20px;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--slate)" stroke-width="1.3" style="margin:0 auto 12px;display:block;"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+        <div style="font-weight:600;margin-bottom:6px;">No holdings yet</div>
+        <div style="font-size:13px;">Buy your first shares from the Market tab</div>
+      </div>`;
+    document.getElementById("total-invested").textContent = "$0.00";
+    document.getElementById("holdings-count").textContent = "0";
+    return;
+  }
+
+  const totalInvested = items.reduce((s, i) => s + i.price_usd_cents, 0) / 100;
+  document.getElementById("total-invested").textContent = `$${totalInvested.toFixed(2)}`;
+  document.getElementById("holdings-count").textContent = items.length;
+
+  el.innerHTML = items.map(item => {
+    const invested = item.price_usd_cents / 100;
+    const projected = invested * item.return_rate_pct / 100 * item.duration_months / 12;
+    const date = item.purchased_at ? item.purchased_at.slice(0, 10) : "";
+    return `
+    <div class="portfolio-card">
+      <div class="portfolio-card-header">
+        <div class="portfolio-logo">
+          ${item.logo_url
+            ? `<img src="${escHtml(item.logo_url)}" alt="" onerror="this.parentElement.innerHTML='<span class=\\'ticker-fallback\\'>${escHtml(item.ticker)}</span>'">`
+            : `<span class="ticker-fallback">${escHtml(item.ticker)}</span>`}
+        </div>
+        <div class="portfolio-card-info">
+          <div class="name">${escHtml(item.company_name)}</div>
+          <div class="meta">${escHtml(item.plan_name)} Plan · ${item.shares_count} shares</div>
+        </div>
+        <div class="portfolio-cert-id">${escHtml(item.certificate_id)}</div>
+      </div>
+      <div class="portfolio-stats">
+        <div class="stat"><div class="sv">$${invested.toFixed(2)}</div><div class="sl">Invested</div></div>
+        <div class="stat"><div class="sv">${item.return_rate_pct}% p.a.</div><div class="sl">Rate</div></div>
+        <div class="stat"><div class="sv">+$${projected.toFixed(0)}</div><div class="sl">Projected</div></div>
+        <div class="stat"><div class="sv">${item.duration_months}mo</div><div class="sl">Term</div></div>
+      </div>
+      <div class="portfolio-footer">
+        <span style="font-size:11.5px;color:var(--slate-soft);">Purchased ${date}</span>
+        <button class="dl-btn" onclick="downloadCert('${escHtml(item.certificate_id)}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Certificate
+        </button>
+      </div>
+    </div>
+  `;
+  }).join("");
+}
+
+function escHtml(str) {
+  const d = document.createElement("div");
+  d.textContent = str || "";
+  return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>

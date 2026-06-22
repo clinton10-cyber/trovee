@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trovee — Admin</title>
+<link rel="icon" href="/static/img/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/trovee.css">
+<style>
+  body { background: var(--ink); }
+
+  .admin-shell { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* ── TABS ── */
+  .admin-tabs {
+    display: flex; gap: 0; margin: 20px 0 0;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .admin-tabs::-webkit-scrollbar { display: none; }
+  .admin-tab {
+    padding: 10px 14px; white-space: nowrap; font-size: 13.5px;
+    color: var(--slate-soft); cursor: pointer;
+    border-bottom: 2px solid transparent; transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .admin-tab.active { color: var(--paper); border-bottom-color: var(--accent); }
+
+  .admin-panel { display: none; padding-top: 20px; }
+  .admin-panel.active { display: block; }
+
+  /* ── SECTION HEADER ── */
+  .admin-section-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .admin-section-title { font-size: 15px; font-weight: 600; }
+
+  /* ── FORM CARD ── */
+  .admin-form-card {
+    background: var(--surface-raised); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;
+  }
+  .admin-form-card h4 {
+    font-size: 13px; font-weight: 600; color: var(--accent);
+    margin: 0 0 12px;
+  }
+
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 500px) { .form-grid-2 { grid-template-columns: 1fr; } }
+
+  .form-field { display: flex; flex-direction: column; gap: 4px; }
+  .form-field label { font-size: 11.5px; color: var(--slate-soft); font-weight: 500; }
+  .form-field input, .form-field textarea, .form-field select {
+    background: var(--ink-soft); border: 1px solid var(--line-strong);
+    border-radius: 8px; padding: 9px 11px; color: var(--paper);
+    font-size: 13px; font-family: var(--font-body); outline: none;
+    width: 100%; box-sizing: border-box; transition: border-color 0.15s;
+  }
+  .form-field input:focus, .form-field textarea:focus { border-color: var(--accent); }
+  .form-field textarea { resize: vertical; }
+
+  .form-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .form-msg { font-size: 12.5px; }
+
+  .btn-admin {
+    background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+    color: #fff; border: none; border-radius: 8px; padding: 10px 18px;
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-body);
+    transition: opacity 0.15s; white-space: nowrap;
+  }
+  .btn-admin:active { opacity: 0.85; }
+
+  .btn-sm {
+    border: none; border-radius: 6px; padding: 5px 11px;
+    font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body);
+    transition: opacity 0.15s; white-space: nowrap;
+  }
+  .btn-sm:active { opacity: 0.8; }
+  .btn-sm-blue  { background: rgba(10,132,255,.14); color: var(--accent); border: 1px solid rgba(10,132,255,.3); }
+  .btn-sm-red   { background: rgba(255,107,91,.12); color: var(--coral); border: 1px solid rgba(255,107,91,.3); }
+  .btn-sm-ghost { background: none; color: var(--slate-soft); border: 1px solid var(--line-strong); }
+
+  /* ── CARDS (mobile-friendly data display) ── */
+  .data-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px;
+  }
+  .data-card-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 8px; margin-bottom: 6px;
+  }
+  .data-card-row:last-child { margin-bottom: 0; }
+  .data-card-label { font-size: 11.5px; color: var(--slate-soft); flex-shrink: 0; }
+  .data-card-value { font-size: 13px; color: var(--paper); text-align: right; word-break: break-word; }
+  .data-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+  .data-card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  .data-card-head-title { font-size: 14px; font-weight: 600; color: var(--paper); }
+  .data-card-head-sub { font-size: 12px; color: var(--slate-soft); }
+
+  /* ── STATUS PILLS ── */
+  .status-select {
+    background: var(--ink-soft); color: var(--paper); border: 1px solid var(--line-strong);
+    border-radius: 6px; padding: 5px 8px; font-size: 12px; font-family: var(--font-body);
+  }
+
+  /* ── TICKER BADGE ── */
+  .ticker-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--ink-soft); border: 1px solid var(--line-strong);
+    font-family: var(--font-mono); font-size: 9px; color: var(--accent);
+    font-weight: 700; flex-shrink: 0;
+  }
+
+  /* ── PLANS GRID ── */
+  .plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+  @media (max-width: 420px) { .plans-grid { grid-template-columns: 1fr 1fr; } }
+  .plan-mini-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
+    padding: 12px; position: relative;
+  }
+  .plan-mini-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .plan-mini-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--slate-soft); margin-bottom: 3px; }
+  .plan-mini-row span:last-child { color: var(--paper); font-family: var(--font-mono); }
+  .plan-mini-remove { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  /* ── MOBILE OVERRIDES ── */
+  @media (max-width: 480px) {
+    .admin-shell { padding: 16px 12px 60px; }
+    .data-card { padding: 12px 13px; }
+    .data-card-head { flex-wrap: wrap; gap: 6px; }
+    .data-card-head-title { font-size: 13px; }
+    .data-card-actions { gap: 8px; }
+    .data-card-actions .btn-sm { flex: 1; text-align: center; }
+    .btn-admin { width: 100%; }
+    .form-actions { flex-direction: column; align-items: stretch; }
+    .admin-form-card { padding: 13px; }
+    .ticker-badge { width: 32px; height: 32px; font-size: 8px; }
+    .admin-tab { padding: 9px 11px; font-size: 12.5px; }
+  }
+
+  /* ── SECTION DESCRIPTION ── */
+  .section-desc { font-size: 13px; color: var(--slate-soft); margin-bottom: 16px; line-height: 1.6; }
+
+  /* ── COLLAPSIBLE ADD FORM ── */
+  .add-form-toggle {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    font-size: 13.5px; font-weight: 600; color: var(--accent);
+    padding: 10px 0; border: none; background: none; font-family: var(--font-body);
+    user-select: none;
+  }
+  .add-form-toggle .toggle-icon { font-size: 18px; line-height: 1; transition: transform 0.2s; }
+  .add-form-toggle.open .toggle-icon { transform: rotate(45deg); }
+  .add-form-body { display: none; }
+  .add-form-body.open { display: block; }
+
+  /* ── LOGIN ── */
+  #login-gate { max-width: 360px; margin: 80px auto; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-gate">
+  <div class="brand-row" style="justify-content:center;margin-bottom:24px;">
+    <img src="/static/img/logo.png" alt="" class="brand-mark">
+    <span class="brand-word">Tro<span class="accent">vee</span> <span class="muted small">Admin</span></span>
+  </div>
+  <div class="card">
+    <div class="field">
+      <label for="admin-password">Admin password</label>
+      <input type="password" id="admin-password" placeholder="••••••••">
+    </div>
+    <div class="field-error" id="admin-login-error" style="display:none;"></div>
+    <button class="btn btn-primary" id="admin-login-btn">Enter</button>
+  </div>
+</div>
+
+<!-- ADMIN CONTENT -->
+<div class="admin-shell" id="admin-content" style="display:none;">
+  <div class="brand-row">
+    <img src="/static/img/logo.png" alt="" class="brand-mark">
+    <span class="brand-word">Tro<span class="accent">vee</span> <span class="muted small">Admin</span></span>
+  </div>
+
+  <div class="admin-tabs">
+    <div class="admin-tab active" data-tab="support">Support</div>
+    <div class="admin-tab" data-tab="withdrawals">Withdrawals</div>
+    <div class="admin-tab" data-tab="deposits">Deposits</div>
+    <div class="admin-tab" data-tab="users">Users</div>
+    <div class="admin-tab" data-tab="shares">Shares</div>
+    <div class="admin-tab" data-tab="settings">Settings</div>
+  </div>
+
+  <!-- SUPPORT -->
+  <div class="admin-panel active" id="panel-support">
+    <p class="section-desc">Messages are also emailed to your Gmail inbox as they arrive.</p>
+    <div id="support-list"></div>
+  </div>
+
+  <!-- WITHDRAWALS -->
+  <div class="admin-panel" id="panel-withdrawals">
+    <div id="withdrawals-list"></div>
+  </div>
+
+  <!-- DEPOSITS -->
+  <div class="admin-panel" id="panel-deposits">
+    <p class="section-desc">Confirming a deposit credits the user's balance immediately.</p>
+    <div id="deposits-list"></div>
+  </div>
+
+  <!-- USERS -->
+  <div class="admin-panel" id="panel-users">
+    <div id="users-list"></div>
+  </div>
+
+  <!-- SHARES -->
+  <div class="admin-panel" id="panel-shares">
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto;">
+      <div class="admin-tab active" data-shares-tab="companies" style="flex-shrink:0;">Companies</div>
+      <div class="admin-tab" data-shares-tab="purchases" style="flex-shrink:0;">All Purchases</div>
+    </div>
+
+    <!-- Companies sub-panel -->
+    <div id="spanel-companies">
+      <!-- Add company -->
+      <div style="margin-bottom:20px;">
+        <button class="add-form-toggle" id="add-company-toggle" onclick="toggleAddForm('add-company-toggle','add-company-form')">
+          <span class="toggle-icon">+</span> Add New Company
+        </button>
+        <div class="add-form-body" id="add-company-form">
+          <div class="admin-form-card" style="margin-top:8px;">
+            <div class="form-grid-2" style="margin-bottom:10px;">
+              <div class="form-field">
+                <label>Company Name *</label>
+                <input type="text" id="new-company-name" placeholder="e.g. Apex Corp">
+              </div>
+              <div class="form-field">
+                <label>Ticker Symbol *</label>
+                <input type="text" id="new-company-ticker" placeholder="e.g. APX" style="text-transform:uppercase;">
+              </div>
+            </div>
+            <div class="form-grid-2" style="margin-bottom:10px;">
+              <div class="form-field">
+                <label>Sector</label>
+                <input type="text" id="new-company-sector" placeholder="e.g. Technology">
+              </div>
+              <div class="form-field">
+                <label>Logo URL</label>
+                <input type="text" id="new-company-logo" placeholder="https://...">
+              </div>
+            </div>
+            <div class="form-field" style="margin-bottom:10px;">
+              <label>Description</label>
+              <textarea id="new-company-desc" rows="2" placeholder="Short company description..."></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn-admin" onclick="addCompany()">Create Company</button>
+              <span class="form-msg" id="add-company-msg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Companies list -->
+      <div id="companies-list"></div>
+
+      <!-- Plans manager -->
+      <div id="plans-manager" style="display:none;margin-top:24px;">
+        <div class="data-card-head">
+          <div>
+            <div class="admin-section-title" id="plans-manager-title"></div>
+            <div class="data-card-head-sub">Manage investment plans</div>
+          </div>
+          <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('plans-manager').style.display='none'">Close</button>
+        </div>
+
+        <!-- Add plan form -->
+        <div class="admin-form-card">
+          <h4>Add Plan</h4>
+          <div class="form-grid-2" style="margin-bottom:10px;">
+            <div class="form-field">
+              <label>Plan Name</label>
+              <input type="text" id="np-name" placeholder="e.g. Growth">
+            </div>
+            <div class="form-field">
+              <label>Shares Count</label>
+              <input type="number" id="np-shares" placeholder="100">
+            </div>
+          </div>
+          <div class="form-grid-2" style="margin-bottom:10px;">
+            <div class="form-field">
+              <label>Price (USD)</label>
+              <input type="number" id="np-price" placeholder="500.00" step="0.01">
+            </div>
+            <div class="form-field">
+              <label>Return Rate (%)</label>
+              <input type="number" id="np-return" placeholder="12" step="0.1">
+            </div>
+          </div>
+          <div class="form-field" style="margin-bottom:10px;">
+            <label>Duration (months)</label>
+            <input type="number" id="np-duration" placeholder="12">
+          </div>
+          <div class="form-actions">
+            <button class="btn-admin" onclick="addPlan()">Add Plan</button>
+            <span class="form-msg" id="add-plan-msg"></span>
+          </div>
+        </div>
+
+        <!-- Plans list -->
+        <div class="plans-grid" id="plans-grid"></div>
+      </div>
+    </div>
+
+    <!-- Purchases sub-panel -->
+    <div id="spanel-purchases" style="display:none;">
+      <div id="purchases-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="admin-panel" id="panel-settings">
+    <div class="admin-form-card" style="max-width:480px;">
+      <h4>BTC Deposit Wallet Address</h4>
+      <p class="section-desc" style="margin-bottom:12px;">This is the Bitcoin address shown to users on the Deposit page.</p>
+      <div class="form-field" style="margin-bottom:12px;">
+        <label>Wallet Address</label>
+        <input type="text" id="wallet-input" placeholder="bc1q..." style="font-family:var(--font-mono);font-size:13px;">
+      </div>
+      <div class="form-actions">
+        <button class="btn-admin" onclick="saveWallet()">Save Address</button>
+        <span class="form-msg" id="wallet-saved-msg" style="display:none;color:#4ade80;">Saved.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/trovee.js"></script>
+<script>
+  let adminToken = sessionStorage.getItem("trovee_admin_token");
+  if (adminToken) showAdmin();
+
+  document.getElementById("admin-login-btn").addEventListener("click", async () => {
+    const pw = document.getElementById("admin-password").value;
+    const errorEl = document.getElementById("admin-login-error");
+    errorEl.style.display = "none";
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      adminToken = data.token;
+      sessionStorage.setItem("trovee_admin_token", adminToken);
+      showAdmin();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = "block";
+    }
+  });
+
+  document.getElementById("admin-password").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("admin-login-btn").click();
+  });
+
+  async function adminApi(path) {
+    const res = await fetch(path, { headers: { "X-Admin-Token": adminToken } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.status);
+    return data;
+  }
+
+  function showAdmin() {
+    document.getElementById("login-gate").style.display = "none";
+    document.getElementById("admin-content").style.display = "block";
+    loadSupport();
+    loadWithdrawals();
+    loadDeposits();
+    loadUsers();
+    loadWalletSetting();
+    loadSharesCompanies();
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement("div");
+    d.textContent = str || "";
+    return d.innerHTML;
+  }
+
+  function toggleAddForm(toggleId, formId) {
+    const btn = document.getElementById(toggleId);
+    const form = document.getElementById(formId);
+    btn.classList.toggle("open");
+    form.classList.toggle("open");
+  }
+
+  // ── TABS ──
+  document.querySelectorAll(".admin-tab[data-tab]").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".admin-tab[data-tab]").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".admin-panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById(`panel-${tab.dataset.tab}`).classList.add("active");
+    });
+  });
+
+  document.querySelectorAll("[data-shares-tab]").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("[data-shares-tab]").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      const t = tab.dataset.sharesTab;
+      document.getElementById("spanel-companies").style.display = t === "companies" ? "block" : "none";
+      document.getElementById("spanel-purchases").style.display = t === "purchases" ? "block" : "none";
+      if (t === "purchases") loadSharesPurchases();
+    });
+  });
+
+  // ── SUPPORT ──
+  async function loadSupport() {
+    try {
+      const data = await adminApi("/api/admin/support");
+      const el = document.getElementById("support-list");
+      if (!data.tickets.length) { el.innerHTML = '<p class="muted small">No support messages yet.</p>'; return; }
+      el.innerHTML = data.tickets.map(t => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(t.name)}</div>
+              <div class="data-card-head-sub">${escapeHtml(t.email)} · ${new Date(t.created_at).toLocaleDateString()}</div>
+            </div>
+            ${t.emailed_ok ? '<span class="pill pill-approved">Emailed</span>' : '<span class="pill pill-rejected">Email failed</span>'}
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Subject</span>
+            <span class="data-card-value">${escapeHtml(t.subject)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Message</span>
+            <span class="data-card-value">${escapeHtml(t.message)}</span>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadSupport", e); }
+  }
+
+  // ── WITHDRAWALS ──
+  async function loadWithdrawals() {
+    try {
+      const data = await adminApi("/api/admin/withdrawals");
+      const el = document.getElementById("withdrawals-list");
+      if (!data.withdrawals.length) { el.innerHTML = '<p class="muted small">No withdrawal requests yet.</p>'; return; }
+      el.innerHTML = data.withdrawals.map(w => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(w.username)}</div>
+              <div class="data-card-head-sub">${escapeHtml(w.email)}</div>
+            </div>
+            <span class="mono" style="font-size:15px;color:var(--paper);">$${(w.amount_usd_cents/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Method</span>
+            <span class="data-card-value">${escapeHtml(w.method)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Destination</span>
+            <span class="data-card-value">${escapeHtml(w.destination_details)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Date</span>
+            <span class="data-card-value">${new Date(w.requested_at).toLocaleDateString()}</span>
+          </div>
+          <div class="data-card-row" style="align-items:center;margin-top:6px;">
+            <span class="data-card-label">Status</span>
+            <select class="status-select" data-id="${w.id}" onchange="updateWithdrawalStatus(this)">
+              ${["pending","approved","paid","rejected"].map(s => `<option value="${s}" ${s===w.status?"selected":""}>${s}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadWithdrawals", e); }
+  }
+
+  async function updateWithdrawalStatus(sel) {
+    await fetch(`/api/admin/withdrawals/${sel.dataset.id}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+      body: JSON.stringify({ status: sel.value }),
+    });
+    Trovee.showToast("Withdrawal status updated.");
+  }
+
+  // ── DEPOSITS ──
+  async function loadDeposits() {
+    try {
+      const data = await adminApi("/api/admin/deposits");
+      const el = document.getElementById("deposits-list");
+      if (!data.deposits.length) { el.innerHTML = '<p class="muted small">No deposit requests yet.</p>'; return; }
+      el.innerHTML = data.deposits.map(d => {
+        const details = d.method === "btc" ? "Bitcoin" : `${d.card_type || ""} — Code: ${d.code || ""}`;
+        return `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(d.username)}</div>
+              <div class="data-card-head-sub">${escapeHtml(d.email)}</div>
+            </div>
+            <span class="pill ${d.status==="confirmed"?"pill-approved":d.status==="rejected"?"pill-rejected":"pill-pending"}">${d.status}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Method</span>
+            <span class="data-card-value">${d.method === "btc" ? "₿ Bitcoin" : "Gift Card"}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Value</span>
+            <span class="data-card-value mono">$${parseFloat(d.value_usd).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Details</span>
+            <span class="data-card-value">${escapeHtml(details)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Date</span>
+            <span class="data-card-value">${new Date(d.created_at).toLocaleDateString()}</span>
+          </div>
+          ${d.status === "pending" ? `
+          <div class="data-card-actions">
+            <button class="btn-sm btn-sm-blue" onclick="reviewDeposit(${d.id},'confirmed')">Confirm deposit</button>
+            <button class="btn-sm btn-sm-red" onclick="reviewDeposit(${d.id},'rejected')">Reject</button>
+          </div>` : ""}
+        </div>`;
+      }).join("");
+    } catch(e) { console.error("loadDeposits", e); }
+  }
+
+  async function reviewDeposit(id, status) {
+    await fetch(`/api/admin/deposits/${id}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+      body: JSON.stringify({ status }),
+    });
+    Trovee.showToast(`Deposit ${status}.`);
+    loadDeposits();
+  }
+
+  // ── USERS ──
+  async function loadUsers() {
+    try {
+      const data = await adminApi("/api/admin/users");
+      const el = document.getElementById("users-list");
+      if (!data.users.length) { el.innerHTML = '<p class="muted small">No users yet.</p>'; return; }
+      el.innerHTML = data.users.map(u => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(u.username)}</div>
+              <div class="data-card-head-sub">${escapeHtml(u.email)} · ${u.country_code}</div>
+            </div>
+            <span class="mono" style="font-size:15px;color:var(--teal);" id="bal-display-${u.id}">$${(u.balance_usd_cents/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Phone</span>
+            <span class="data-card-value">${escapeHtml(u.phone)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Joined</span>
+            <span class="data-card-value">${new Date(u.created_at).toLocaleDateString()}</span>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+            <div style="font-size:11.5px;color:var(--slate-soft);margin-bottom:8px;font-weight:500;">Adjust balance</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input type="number" id="bal-input-${u.id}" placeholder="Amount in USD" step="0.01"
+                style="flex:1;min-width:120px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--paper);font-size:13px;outline:none;">
+              <select id="bal-mode-${u.id}"
+                style="background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--paper);font-size:13px;outline:none;">
+                <option value="set">Set to</option>
+                <option value="adjust">Add / subtract</option>
+              </select>
+              <button class="btn-admin" onclick="updateBalance(${u.id})" style="padding:8px 14px;">Update</button>
+            </div>
+            <div id="bal-msg-${u.id}" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadUsers", e); }
+  }
+
+  async function updateBalance(userId) {
+    const input = document.getElementById(`bal-input-${userId}`);
+    const mode = document.getElementById(`bal-mode-${userId}`).value;
+    const msg = document.getElementById(`bal-msg-${userId}`);
+    const raw = parseFloat(input.value);
+
+    if (isNaN(raw)) {
+      msg.textContent = "Enter a valid amount.";
+      msg.style.color = "var(--coral)";
+      return;
+    }
+
+    const amount_usd_cents = Math.round(raw * 100);
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ amount_usd_cents, mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      const newBal = (data.new_balance_usd_cents / 100).toFixed(2);
+      document.getElementById(`bal-display-${userId}`).textContent = `$${newBal}`;
+      input.value = "";
+      msg.textContent = `Updated — new balance $${newBal}`;
+      msg.style.color = "var(--teal)";
+      setTimeout(() => msg.textContent = "", 4000);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
+    }
+  }
+
+  // ── WALLET SETTING ──
+  async function loadWalletSetting() {
+    try {
+      const data = await adminApi("/api/admin/settings/wallet");
+      document.getElementById("wallet-input").value = data.address || "";
+    } catch(e) { console.error("loadWallet", e); }
+  }
+
+  async function saveWallet() {
+    const address = document.getElementById("wallet-input").value.trim();
+    await fetch("/api/admin/settings/wallet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+      body: JSON.stringify({ address }),
+    });
+    const msg = document.getElementById("wallet-saved-msg");
+    msg.style.display = "inline";
+    setTimeout(() => msg.style.display = "none", 3000);
+  }
+
+  // ── SHARES: COMPANIES ──
+  let currentManagedCompanyId = null;
+  let currentManagedCompanyName = null;
+
+  async function loadSharesCompanies() {
+    try {
+      const data = await adminApi("/api/admin/shares/companies");
+      const el = document.getElementById("companies-list");
+      if (!data.companies.length) {
+        el.innerHTML = '<p class="muted small">No companies yet. Add one above.</p>';
+        return;
+      }
+      el.innerHTML = data.companies.map(c => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="ticker-badge">${escapeHtml(c.ticker)}</div>
+              <div>
+                <div class="data-card-head-title">${escapeHtml(c.name)}</div>
+                <div class="data-card-head-sub">${escapeHtml(c.sector || "—")}</div>
+              </div>
+            </div>
+            <span class="pill ${c.is_active?"pill-approved":"pill-rejected"}">${c.is_active?"Active":"Inactive"}</span>
+          </div>
+          ${c.description ? `<div class="data-card-row"><span class="data-card-label">About</span><span class="data-card-value">${escapeHtml(c.description)}</span></div>` : ""}
+          <div class="data-card-actions">
+            <button class="btn-sm btn-sm-blue" onclick="manageCompanyPlans(${c.id}, '${escapeHtml(c.name)}')">Manage plans</button>
+            <button class="btn-sm btn-sm-ghost" onclick="toggleCompanyActive(${c.id}, ${c.is_active})">${c.is_active?"Deactivate":"Activate"}</button>
+          </div>
+        </div>
+      `).join("");
+      return data.companies;
+    } catch(e) { console.error("loadSharesCompanies", e); }
+  }
+
+  async function addCompany() {
+    const name = document.getElementById("new-company-name").value.trim();
+    const ticker = document.getElementById("new-company-ticker").value.trim().toUpperCase();
+    const sector = document.getElementById("new-company-sector").value.trim();
+    const logo_url = document.getElementById("new-company-logo").value.trim();
+    const description = document.getElementById("new-company-desc").value.trim();
+    const msg = document.getElementById("add-company-msg");
+
+    if (!name || !ticker) {
+      msg.textContent = "Name and ticker required.";
+      msg.style.color = "var(--coral)";
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/shares/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ name, ticker, sector, logo_url, description }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+      msg.textContent = "Company created.";
+      msg.style.color = "var(--teal)";
+      ["new-company-name","new-company-ticker","new-company-sector","new-company-logo","new-company-desc"]
+        .forEach(id => document.getElementById(id).value = "");
+      loadSharesCompanies();
+      setTimeout(() => msg.textContent = "", 3000);
+    } catch(e) {
+      msg.textContent = e.message || "Failed — check your connection.";
+      msg.style.color = "var(--coral)";
+      console.error("addCompany error:", e);
+    }
+  }
+
+  async function toggleCompanyActive(id, currentlyActive) {
+    try {
+      const data = await adminApi("/api/admin/shares/companies");
+      const c = data.companies.find(x => x.id === id);
+      if (!c) return;
+      await fetch(`/api/admin/shares/companies/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ ...c, is_active: !currentlyActive }),
+      });
+      Trovee.showToast(`Company ${currentlyActive ? "deactivated" : "activated"}.`);
+      loadSharesCompanies();
+    } catch(e) { console.error("toggleCompany", e); }
+  }
+
+  async function manageCompanyPlans(companyId, companyName) {
+    currentManagedCompanyId = companyId;
+    currentManagedCompanyName = companyName;
+    document.getElementById("plans-manager").style.display = "block";
+    document.getElementById("plans-manager-title").textContent = `Plans — ${companyName}`;
+    document.getElementById("plans-manager").scrollIntoView({ behavior: "smooth", block: "start" });
+    await loadPlansGrid();
+  }
+
+  async function loadPlansGrid() {
+    try {
+      const data = await adminApi(`/api/admin/shares/companies/${currentManagedCompanyId}/plans`);
+      const el = document.getElementById("plans-grid");
+      const active = data.plans.filter(p => p.is_active);
+      if (!active.length) { el.innerHTML = '<p class="muted small">No plans yet.</p>'; return; }
+      el.innerHTML = active.map(p => `
+        <div class="plan-mini-card">
+          <div class="plan-mini-name">${escapeHtml(p.plan_name)}</div>
+          <div class="plan-mini-row"><span>Price</span><span>$${(p.price_usd_cents/100).toFixed(2)}</span></div>
+          <div class="plan-mini-row"><span>Shares</span><span>${p.shares_count}</span></div>
+          <div class="plan-mini-row"><span>Return</span><span>${p.return_rate_pct}%</span></div>
+          <div class="plan-mini-row"><span>Duration</span><span>${p.duration_months}mo</span></div>
+          <div class="plan-mini-remove">
+            <button class="btn-sm btn-sm-red" onclick="deletePlan(${p.id})">Remove</button>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadPlans", e); }
+  }
+
+  async function addPlan() {
+    const plan_name = document.getElementById("np-name").value.trim();
+    const shares_count = document.getElementById("np-shares").value;
+    const price_usd = document.getElementById("np-price").value;
+    const return_rate_pct = document.getElementById("np-return").value || 12;
+    const duration_months = document.getElementById("np-duration").value || 12;
+    const msg = document.getElementById("add-plan-msg");
+
+    if (!plan_name || !shares_count || !price_usd) {
+      msg.textContent = "Name, shares, and price required.";
+      msg.style.color = "var(--coral)";
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/shares/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({
+          company_id: currentManagedCompanyId,
+          plan_name,
+          shares_count: parseInt(shares_count),
+          price_usd: parseFloat(price_usd),
+          return_rate_pct: parseFloat(return_rate_pct),
+          duration_months: parseInt(duration_months),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      msg.textContent = "Plan added.";
+      msg.style.color = "var(--teal)";
+      ["np-name","np-shares","np-price","np-return","np-duration"]
+        .forEach(id => document.getElementById(id).value = "");
+      loadPlansGrid();
+      loadSharesCompanies();
+      setTimeout(() => msg.textContent = "", 3000);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
+    }
+  }
+
+  async function deletePlan(planId) {
+    try {
+      const res = await fetch(`/api/admin/shares/plans/${planId}`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      Trovee.showToast("Plan removed.");
+      loadPlansGrid();
+      loadSharesCompanies();
+    } catch(e) { Trovee.showToast("Failed to remove plan.", "error"); }
+  }
+
+  // ── PURCHASES ──
+  async function loadSharesPurchases() {
+    try {
+      const data = await adminApi("/api/admin/shares/purchases");
+      const el = document.getElementById("purchases-list");
+      if (!data.purchases.length) { el.innerHTML = '<p class="muted small">No purchases yet.</p>'; return; }
+      el.innerHTML = data.purchases.map(p => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(p.username)}</div>
+              <div class="data-card-head-sub">${escapeHtml(p.email)}</div>
+            </div>
+            <span class="mono" style="font-size:14px;color:var(--teal);">$${(p.price_usd_cents/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Company</span>
+            <span class="data-card-value">${escapeHtml(p.company_name)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Plan</span>
+            <span class="data-card-value">${escapeHtml(p.plan_name)} · ${p.shares_count} shares</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Certificate</span>
+            <span class="data-card-value mono" style="font-size:11px;">${escapeHtml(p.certificate_id)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Date</span>
+            <span class="data-card-value">${new Date(p.purchased_at).toLocaleDateString()}</span>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadPurchases", e); }
+  }
+</script>
+</body>
+</html>

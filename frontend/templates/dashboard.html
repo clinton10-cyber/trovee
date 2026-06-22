@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trovee — Dashboard</title>
+<link rel="icon" href="/static/img/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/trovee.css">
+<style>
+  /* ---- Hero balance card ---- */
+  .hero-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 60%, rgba(255,255,255,0.03) 100%);
+    border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 19px 18px 16px;
+    position: relative; overflow: hidden;
+  }
+  .hero-card::before {
+    content: ""; position: absolute; top: -40px; right: -40px;
+    width: 160px; height: 160px; background: radial-gradient(circle, rgba(10, 132, 255,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-label { font-size: 11px; color: var(--slate-soft); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+  .hero-amount { font-family: var(--font-mono); font-size: 30px; font-weight: 600; color: var(--paper); letter-spacing: -0.02em; margin-bottom: 4px; }
+  .hero-usd { font-size: 12px; color: var(--slate-soft); margin-bottom: 14px; }
+  .hero-actions { display: flex; gap: 10px; }
+  .hero-actions .btn { flex: 1; font-size: 12.5px; padding: 10px 8px; }
+
+  /* ---- Fund options panel ---- */
+  .fund-panel {
+    display: none; background: var(--surface-raised); border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md); margin-top: 12px; overflow: hidden;
+    animation: fade-in 0.2s ease;
+  }
+  .fund-panel.open { display: block; }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .fund-option {
+    display: flex; align-items: center; gap: 14px; padding: 13px 16px;
+    border-bottom: 1px solid var(--line); cursor: pointer; transition: background 0.15s;
+    text-decoration: none; color: inherit;
+  }
+  .fund-option:last-child { border-bottom: none; }
+  .fund-option:hover { background: var(--surface); }
+  .fund-option-icon {
+    width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .fund-option-icon.btc { background: rgba(247,147,26,0.15); color: #f7931a; }
+  .fund-option-icon.crypto { background: rgba(45,212,191,0.12); color: var(--teal); }
+  .fund-option-icon.card { background: rgba(10, 132, 255,0.12); color: var(--accent); }
+  .fund-option-title { font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
+  .fund-option-sub { font-size: 11.5px; color: var(--slate-soft); }
+  .fund-option-arrow { margin-left: auto; color: var(--slate-soft); }
+
+  /* ---- Stats row ---- */
+  .stats-row { display: flex; gap: 10px; margin-bottom: 0; }
+  .stat-box {
+    flex: 1; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 11px 10px;
+  }
+  .stat-box .sb-label { font-size: 10px; color: var(--slate-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .stat-box .sb-value { font-family: var(--font-mono); font-size: 14px; font-weight: 700; }
+  .stat-box .sb-value.positive { color: var(--teal); }
+  .stat-box .sb-value.accent { color: var(--accent); }
+
+  /* ---- Section headings ---- */
+  .sh { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+  .sh h2 { font-size: 14px; }
+  .sh a { font-size: 12px; color: var(--accent); }
+
+  /* ---- Trade row ---- */
+  .trade-row {
+    display: flex; align-items: center; gap: 10px; padding: 11px 13px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); margin-bottom: 7px;
+  }
+  .trade-row .tr-icon { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: rgba(10, 132, 255,0.1); color: var(--accent); flex-shrink: 0; }
+  .trade-row .tr-info { flex: 1; }
+  .trade-row .tr-name { font-size: 13px; font-weight: 600; }
+  .trade-row .tr-meta { font-size: 11px; color: var(--slate-soft); }
+  .trade-row .tr-pnl { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+
+  /* ---- Holdings summary ---- */
+  .holding-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 12px; margin-bottom: 7px; width: 100%;
+  }
+  .holding-pill .hp-tick { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent); width: 34px; }
+  .holding-pill .hp-name { font-size: 13px; font-weight: 600; flex: 1; }
+  .holding-pill .hp-shares { font-size: 12px; color: var(--slate-soft); }
+  .holding-pill .hp-val { font-family: var(--font-mono); font-size: 13px; color: var(--teal); }
+
+  .empty-small { font-size: 13px; color: var(--slate-soft); text-align: center; padding: 20px 0; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="brand-row">
+      <img src="/static/img/logo.png" alt="" class="brand-mark">
+      <span class="brand-word">Tro<span class="accent">vee</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="username-badge" style="font-size:13px;color:var(--slate-soft);"></span>
+      <a href="/support" class="btn-ghost" style="font-size:13px;">Support</a>
+      <button onclick="Trovee.logout()" class="btn-ghost" style="font-size:13px;padding:8px;" title="Log out" aria-label="Log out">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="section" style="padding-top:18px;">
+
+    <!-- HERO BALANCE -->
+    <div class="hero-card">
+      <div class="hero-label">Total Balance</div>
+      <div class="hero-amount" id="hero-amount">···</div>
+      <div class="hero-usd" id="hero-usd"></div>
+      <div class="hero-actions">
+        <button class="btn btn-primary" id="fund-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+          Fund Account
+        </button>
+        <a href="/shares" class="btn btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+          Invest
+        </a>
+        <a href="/trading" class="btn btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
+          Trade
+        </a>
+      </div>
+    </div>
+
+    <!-- FUND PANEL (expandable) -->
+    <div class="fund-panel" id="fund-panel">
+      <a class="fund-option" href="/deposit">
+        <div class="fund-option-icon btc">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 8h4.5a2.5 2.5 0 0 1 0 5H9V8zm0 5h5a2.5 2.5 0 0 1 0 5H9v-5z"/><path d="M12 3v2m0 14v2M6 12H4m16 0h-2"/></svg>
+        </div>
+        <div>
+          <div class="fund-option-title">Bitcoin (BTC)</div>
+          <div class="fund-option-sub">Send BTC to your deposit address</div>
+        </div>
+        <svg class="fund-option-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="fund-option" href="/deposit">
+        <div class="fund-option-icon crypto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+        </div>
+        <div>
+          <div class="fund-option-title">Gift Card</div>
+          <div class="fund-option-sub">Fund with an iTunes, Google Play or Amazon card</div>
+        </div>
+        <svg class="fund-option-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="section" style="padding-top:0;">
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="sb-label">Trade Profit</div>
+        <div class="sb-value positive" id="stat-profit">$0.00</div>
+      </div>
+      <div class="stat-box">
+        <div class="sb-label">Shares Invested</div>
+        <div class="sb-value accent" id="stat-invested">$0.00</div>
+      </div>
+      <div class="stat-box">
+        <div class="sb-label">Holdings</div>
+        <div class="sb-value accent" id="stat-holdings">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT TRADES -->
+  <div class="section">
+    <div class="sh">
+      <h2>Recent Trades</h2>
+      <a href="/trading">Trade now →</a>
+    </div>
+    <div id="recent-trades"></div>
+  </div>
+
+  <!-- SHARE HOLDINGS -->
+  <div class="section">
+    <div class="sh">
+      <h2>Share Holdings</h2>
+      <a href="/shares">View all →</a>
+    </div>
+    <div id="share-holdings"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+    <a href="/dashboard" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
+      Home
+    </a>
+    <a href="/trading" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      Trade
+    </a>
+    <a href="/shares" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+      Shares
+    </a>
+    <a href="/deposit" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Deposit
+    </a>
+    <a href="/withdraw" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
+      Withdraw
+    </a>
+    <a href="/support" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21c5-3 8-6.5 8-11a8 8 0 1 0-16 0c0 4.5 3 8 8 11Z"/><path d="M12 8v4m0 3h.01"/></svg>
+      Support
+    </a>
+  </nav>
+
+</div>
+
+<script src="/static/js/trovee.js"></script>
+<script>
+  Trovee.requireAuth();
+
+  // Fund panel toggle
+  const fundBtn = document.getElementById("fund-btn");
+  const fundPanel = document.getElementById("fund-panel");
+  fundBtn.addEventListener("click", () => {
+    fundPanel.classList.toggle("open");
+  });
+
+  async function loadDashboard() {
+    try {
+      const [me, tradeData, portfolioData] = await Promise.all([
+        Trovee.api("/api/auth/me"),
+        Trovee.api("/api/trades/history").catch(() => ({ trades: [] })),
+        Trovee.api("/api/shares/portfolio").catch(() => ({ portfolio: [] })),
+      ]);
+
+      // Balance
+      document.getElementById("username-badge").textContent = `Hi, ${me.username}`;
+      document.getElementById("hero-amount").textContent =
+        `${me.currency_symbol}${me.balance_local.toFixed(2)}`;
+      if (me.currency_code !== "USD") {
+        document.getElementById("hero-usd").textContent =
+          `≈ $${(me.balance_usd_cents / 100).toFixed(2)} USD`;
+      }
+
+      // Trade profit stat
+      const trades = tradeData.trades || [];
+      const totalProfit = trades.reduce((s, t) => s + (t.profit_usd_cents || 0), 0) / 100;
+      document.getElementById("stat-profit").textContent = `$${totalProfit.toFixed(2)}`;
+
+      // Portfolio stats
+      const portfolio = portfolioData.portfolio || [];
+      const totalInvested = portfolio.reduce((s, p) => s + p.price_usd_cents, 0) / 100;
+      document.getElementById("stat-invested").textContent = `$${totalInvested.toFixed(2)}`;
+      document.getElementById("stat-holdings").textContent = portfolio.length;
+
+      renderTrades(trades.slice(0, 3));
+      renderHoldings(portfolio.slice(0, 3));
+    } catch (err) {
+      if (err.status === 401) { Trovee.logout(); return; }
+    }
+  }
+
+  function renderTrades(trades) {
+    const el = document.getElementById("recent-trades");
+    if (!trades.length) {
+      el.innerHTML = '<div class="empty-small">No trades yet. <a href="/trading" style="color:var(--accent);">Place your first →</a></div>';
+      return;
+    }
+    el.innerHTML = trades.map(t => {
+      const won = t.outcome === "win";
+      const pnl = won ? t.profit_usd_cents / 100 : -(t.amount_usd_cents / 100);
+      return `
+      <div class="trade-row">
+        <div class="tr-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            ${t.direction === "up"
+              ? '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>'
+              : '<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>'}
+          </svg>
+        </div>
+        <div class="tr-info">
+          <div class="tr-name">${t.asset}</div>
+          <div class="tr-meta">${t.direction === "up" ? "Buy Up ▲" : "Buy Down ▼"} · ${t.duration_sec}s</div>
+        </div>
+        <div class="tr-pnl" style="color:${won ? 'var(--teal)' : 'var(--coral)'};">
+          ${pnl >= 0 ? '+' : ''}$${Math.abs(pnl).toFixed(2)}
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderHoldings(items) {
+    const el = document.getElementById("share-holdings");
+    if (!items.length) {
+      el.innerHTML = '<div class="empty-small">No holdings yet. <a href="/shares" style="color:var(--accent);">Browse shares →</a></div>';
+      return;
+    }
+    el.innerHTML = items.map(item => `
+      <div class="holding-pill">
+        <div class="hp-tick">${item.ticker}</div>
+        <div class="hp-name">${item.company_name}</div>
+        <div class="hp-shares">${item.shares_count} shares</div>
+        <div class="hp-val">$${(item.price_usd_cents/100).toFixed(2)}</div>
+      </div>
+    `).join("");
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>
