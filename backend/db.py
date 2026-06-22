@@ -1,7 +1,11 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "instance", "trovee.db")
+# In production on Render, set TROVEE_DB_PATH to the mounted disk path.
+# e.g. /var/data/trovee.db  (mount your disk at /var/data on Render)
+# Falls back to local instance/ folder for development.
+_default_db = os.path.join(os.path.dirname(__file__), "instance", "trovee.db")
+DB_PATH = os.environ.get("TROVEE_DB_PATH", _default_db)
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
 
 
