@@ -503,6 +503,7 @@ def api_admin_user_balance(user_id):
     return jsonify({"message": "Balance updated.", "new_balance_usd_cents": new_bal})
 
 
+@app.route("/api/admin/users", methods=["GET"])
 @admin_required
 def api_admin_users():
     db = get_db()
@@ -1088,7 +1089,6 @@ def api_shares_certificate(cert_id):
         as_attachment=True,
         download_name=f"Trovee-Certificate-{cert_id}.pdf"
     )
-
 
 
 # ---------------------------------------------------------------------------
