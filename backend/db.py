@@ -1,12 +1,16 @@
 import sqlite3
 import os
 
-# In production on Render, set TROVEE_DB_PATH to the mounted disk path.
-# e.g. /var/data/trovee.db  (mount your disk at /var/data on Render)
-# Falls back to local instance/ folder for development.
-_default_db = os.path.join(os.path.dirname(__file__), "instance", "trovee.db")
+# Production with persistent disk: set TROVEE_DB_PATH=/var/data/trovee.db
+# Free tier (no disk): defaults to /tmp — data resets on redeploy but always writable
+_default_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "instance", "trovee.db")
 DB_PATH = os.environ.get("TROVEE_DB_PATH", _default_db)
-SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
+
+# /tmp is always writable on Render free tier
+if not os.path.exists(os.path.dirname(DB_PATH)):
+    DB_PATH = "/tmp/trovee.db"
+
+SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
 
 
 def get_db():
