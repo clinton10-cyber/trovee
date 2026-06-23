@@ -677,6 +677,7 @@
           <div class="data-card-actions">
             <button class="btn-sm btn-sm-blue" onclick="manageCompanyPlans(${c.id}, '${escapeHtml(c.name)}')">Manage plans</button>
             <button class="btn-sm btn-sm-ghost" onclick="toggleCompanyActive(${c.id}, ${c.is_active})">${c.is_active?"Deactivate":"Activate"}</button>
+            <button class="btn-sm btn-sm-red" onclick="deleteCompany(${c.id}, '${escapeHtml(c.name)}')">Delete</button>
           </div>
         </div>
       `).join("");
@@ -716,6 +717,26 @@
       msg.textContent = e.message || "Failed — check your connection.";
       msg.style.color = "var(--coral)";
       console.error("addCompany error:", e);
+    }
+  }
+
+  async function deleteCompany(id, name) {
+    if (!confirm(`Delete "${name}" and all its plans? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/admin/shares/companies/${id}`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      const msg = data.soft_delete
+        ? "Company deactivated (has purchase history — hidden from users)."
+        : "Company deleted.";
+      Trovee.showToast(msg);
+      loadSharesCompanies();
+    } catch(e) {
+      Trovee.showToast(e.message || "Failed to delete company.", "error");
+      console.error("deleteCompany:", e);
     }
   }
 
