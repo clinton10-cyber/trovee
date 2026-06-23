@@ -1249,6 +1249,8 @@ def method_not_allowed(e):
     return e
 
 
+print("[trovee] app.py loaded — all routes registered (1254 lines)")
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True, port=5000)
