@@ -1146,7 +1146,36 @@ def api_admin_shares_company_update(company_id):
     return jsonify({"message": "Company updated."})
 
 
-@app.route("/api/admin/shares/companies/<int:company_id>/plans", methods=["GET"])
+@app.route("/api/admin/shares/companies/<int:company_id>", methods=["DELETE"])
+@admin_required
+def api_admin_shares_company_delete(company_id):
+    db = get_db()
+    company = db.execute(
+        "SELECT id FROM share_companies WHERE id = ?", (company_id,)
+    ).fetchone()
+    if not company:
+        db.close()
+        return jsonify({"error": "Company not found."}), 404
+    # Deactivate all plans (keeps purchase history intact)
+    db.execute("UPDATE share_plans SET is_active = 0 WHERE company_id = ?", (company_id,))
+    # Check if any purchases exist — if so, soft-delete only
+    purchases = db.execute(
+        "SELECT COUNT(*) as n FROM share_purchases WHERE company_id = ?", (company_id,)
+    ).fetchone()["n"]
+    if purchases > 0:
+        # Cannot hard-delete — users have purchase records referencing this company.
+        # Deactivate instead so it disappears from the user-facing shares page.
+        db.execute("UPDATE share_companies SET is_active = 0 WHERE id = ?", (company_id,))
+        db.commit()
+        db.close()
+        return jsonify({"message": "Company deactivated (has existing purchases — records preserved).", "soft_delete": True})
+    db.execute("DELETE FROM share_companies WHERE id = ?", (company_id,))
+    db.commit()
+    db.close()
+    return jsonify({"message": "Company deleted.", "soft_delete": False})
+
+
+
 @admin_required
 def api_admin_shares_company_plans(company_id):
     db = get_db()
