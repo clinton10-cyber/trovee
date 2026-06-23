@@ -1,22 +1,27 @@
 """
-OTP generation/verification and email delivery via a Gmail account (SMTP with an
-App Password). Also used to relay customer-support messages to the admin's inbox
-without the user ever leaving the app.
+OTP generation/verification and email delivery for Trovee.
 
-SETUP REQUIRED (one-time, done by the Trovee operator, not by Claude):
-1. The Gmail account sending mail (workspace4568@gmail.com) must have 2-Step
-   Verification turned on: https://myaccount.google.com/security
-2. Create an App Password: https://myaccount.google.com/apppasswords
-   (choose app "Mail", device "Other", name it "Trovee")
-3. Google gives you a 16-character password. Set it as an environment variable,
-   never hardcode it in source:
-       export TROVEE_GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"
-4. If using Google Workspace (not consumer Gmail), an admin may also need to allow
-   "Less secure app access" / SMTP relay is OFF by default and App Passwords are the
-   correct, secure approach — no extra step needed if 2FA + App Password are set.
+DELIVERY METHODS (auto-detected from environment variables):
+─────────────────────────────────────────────────────────────
+1. Brevo HTTP API  ← recommended for Render.com (no SMTP port needed)
+   Set: TROVEE_BREVO_API_KEY
+   Get a free key at https://app.brevo.com → SMTP & API → API Keys
+   Free tier: 300 emails/day, no credit card.
+
+2. Gmail SMTP  ← works locally / Termux, blocked on Render free plan
+   Set: TROVEE_GMAIL_APP_PASSWORD
+   Requires Gmail 2FA + App Password from https://myaccount.google.com/apppasswords
+
+If BOTH are set, Brevo is used (more reliable on cloud hosts).
+If NEITHER is set, emails are skipped and the code is printed to the log
+so you can still test OTP verification manually during development.
 """
 
 import os
+import ssl
+import json
+import urllib.request
+import urllib.error
 import smtplib
 import secrets
 import hashlib
@@ -25,20 +30,23 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 
-SENDER_EMAIL = os.environ.get("TROVEE_SENDER_EMAIL", "workspace4568@gmail.com")
-APP_PASSWORD = os.environ.get("TROVEE_GMAIL_APP_PASSWORD", "")
+SENDER_EMAIL      = os.environ.get("TROVEE_SENDER_EMAIL", "")
+SENDER_NAME       = os.environ.get("TROVEE_SENDER_NAME", "Trovee")
+APP_PASSWORD      = os.environ.get("TROVEE_GMAIL_APP_PASSWORD", "")
+BREVO_API_KEY     = os.environ.get("TROVEE_BREVO_API_KEY", "")
 ADMIN_INBOX_EMAIL = os.environ.get("TROVEE_ADMIN_EMAIL", SENDER_EMAIL)
+
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 
-OTP_LENGTH = 6
-OTP_TTL_MINUTES = 5
+OTP_LENGTH       = 6
+OTP_TTL_MINUTES  = 5
 OTP_MAX_ATTEMPTS = 5
 
-# Used only to hash OTPs at rest in the database (so a DB leak doesn't expose
-# raw codes). Not a substitute for the App Password setup above.
 _OTP_HASH_SECRET = os.environ.get("TROVEE_OTP_HASH_SECRET", "trovee-dev-secret-change-me")
 
+
+# ── OTP helpers ────────────────────────────────────────────────────────────────
 
 def generate_otp() -> str:
     return "".join(secrets.choice("0123456789") for _ in range(OTP_LENGTH))
@@ -56,44 +64,106 @@ def otp_expiry_timestamp() -> str:
     return (datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _send_email(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
-    """Send an email via Gmail SMTP. Returns True on success, False on failure
-    (failures are logged, never raised to the user as a stack trace)."""
-    if not APP_PASSWORD:
-        print("[trovee] WARNING: TROVEE_GMAIL_APP_PASSWORD not set. Email not sent. "
-              f"Would have sent to {to_email}: {subject}")
+# ── Email delivery ─────────────────────────────────────────────────────────────
+
+def _send_via_brevo(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
+    """Send via Brevo HTTP API — works on Render and any host, no SMTP port needed."""
+    payload = {
+        "sender":  {"name": SENDER_NAME, "email": SENDER_EMAIL},
+        "to":      [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_body,
+        "textContent": plain_body,
+    }
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "api-key": BREVO_API_KEY,
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            status = resp.status
+        if status in (200, 201):
+            print(f"[trovee] Brevo: email sent to {to_email} ({subject})")
+            return True
+        print(f"[trovee] Brevo: unexpected status {status} for {to_email}")
+        return False
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode(errors="replace")
+        print(f"[trovee] Brevo HTTP error {exc.code} sending to {to_email}: {body}")
+        return False
+    except Exception as exc:
+        print(f"[trovee] Brevo error sending to {to_email}: {type(exc).__name__}: {exc}")
         return False
 
+
+def _send_via_smtp(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
+    """Send via Gmail SMTP. Tries port 465/SSL first, falls back to 587/STARTTLS."""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"Trovee <{SENDER_EMAIL}>"
-    msg["To"] = to_email
+    msg["From"]    = f"{SENDER_NAME} <{SENDER_EMAIL}>"
+    msg["To"]      = to_email
     msg.attach(MIMEText(plain_body, "plain"))
-    msg.attach(MIMEText(html_body, "html"))
+    msg.attach(MIMEText(html_body,  "html"))
 
+    # Try port 465 (SSL) first — sometimes open on Render free tier
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context, timeout=30) as server:
+            server.login(SENDER_EMAIL, APP_PASSWORD)
+            server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
+        print(f"[trovee] SMTP 465/SSL: email sent to {to_email}")
+        return True
+    except smtplib.SMTPAuthenticationError as exc:
+        print(f"[trovee] SMTP AUTH ERROR on 465 — check TROVEE_GMAIL_APP_PASSWORD. Details: {exc}")
+        return False
+    except Exception as exc:
+        print(f"[trovee] SMTP 465 failed ({type(exc).__name__}: {exc}), trying 587/STARTTLS...")
+
+    # Fall back to port 587 STARTTLS
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
             server.login(SENDER_EMAIL, APP_PASSWORD)
             server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
-        print(f"[trovee] Email sent OK to {to_email}: {subject}")
+        print(f"[trovee] SMTP 587/STARTTLS: email sent to {to_email}")
         return True
     except smtplib.SMTPAuthenticationError as exc:
-        print(f"[trovee] SMTP AUTH ERROR — check TROVEE_GMAIL_APP_PASSWORD env var. Details: {exc}")
+        print(f"[trovee] SMTP AUTH ERROR on 587 — check TROVEE_GMAIL_APP_PASSWORD. Details: {exc}")
         return False
     except Exception as exc:
-        print(f"[trovee] ERROR sending email to {to_email}: {type(exc).__name__}: {exc}")
+        print(f"[trovee] SMTP 587 also failed: {type(exc).__name__}: {exc}")
         return False
 
+
+def _send_email(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
+    """Route to Brevo (preferred) or SMTP depending on which env var is set."""
+    if BREVO_API_KEY:
+        return _send_via_brevo(to_email, subject, html_body, plain_body)
+    if APP_PASSWORD:
+        return _send_via_smtp(to_email, subject, html_body, plain_body)
+    # Neither configured — dev/test mode: log the content so OTP can be read from logs.
+    print(f"[trovee] WARNING: no email provider configured.")
+    print(f"[trovee] Would send to {to_email}: {subject}")
+    print(f"[trovee] Plain body: {plain_body}")
+    return False
+
+
+# ── OTP email ──────────────────────────────────────────────────────────────────
 
 def send_otp_email(to_email: str, code: str, purpose: str = "signup") -> bool:
     subject = "Your Trovee verification code"
     purpose_line = {
-        "signup": "to finish creating your Trovee account",
-        "login": "to sign in to your Trovee account",
-        "reset": "to reset your Trovee password",
+        "signup":     "to finish creating your Trovee account",
+        "login":      "to sign in to your Trovee account",
+        "reset":      "to reset your Trovee password",
         "withdrawal": "to confirm your withdrawal request",
     }.get(purpose, "to verify your identity")
 
@@ -103,20 +173,35 @@ def send_otp_email(to_email: str, code: str, purpose: str = "signup") -> bool:
         f"If you did not request this code, you can safely ignore this email."
     )
     html_body = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; background:#0B1220; color:#F7F8FA; border-radius:12px;">
-      <div style="font-size:20px; font-weight:700; letter-spacing:0.5px; color:#C9A961; margin-bottom:24px;">TROVEE</div>
-      <p style="font-size:15px; line-height:1.6; color:#CBD2DC;">Use this code {purpose_line}:</p>
-      <div style="font-family: 'Courier New', monospace; font-size:36px; font-weight:700; letter-spacing:8px; color:#F7F8FA; background:#151E2E; padding:18px 0; text-align:center; border-radius:8px; margin:20px 0;">{code}</div>
-      <p style="font-size:13px; color:#8A93A3;">This code expires in {OTP_TTL_MINUTES} minutes. Do not share it with anyone, including anyone claiming to be Trovee support.</p>
-      <p style="font-size:12px; color:#5B6573; margin-top:28px;">If you did not request this code, you can safely ignore this email.</p>
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;
+                padding:32px 24px;background:#0B1220;color:#F7F8FA;border-radius:12px;">
+      <div style="font-size:20px;font-weight:700;letter-spacing:0.5px;
+                  color:#0A84FF;margin-bottom:24px;">TROVEE</div>
+      <p style="font-size:15px;line-height:1.6;color:#CBD2DC;">
+        Use this code {purpose_line}:
+      </p>
+      <div style="font-family:'Courier New',monospace;font-size:36px;font-weight:700;
+                  letter-spacing:8px;color:#F7F8FA;background:#151E2E;
+                  padding:18px 0;text-align:center;border-radius:8px;margin:20px 0;">
+        {code}
+      </div>
+      <p style="font-size:13px;color:#8A93A3;">
+        This code expires in {OTP_TTL_MINUTES} minutes.
+        Do not share it with anyone, including anyone claiming to be Trovee support.
+      </p>
+      <p style="font-size:12px;color:#5B6573;margin-top:28px;">
+        If you did not request this code, you can safely ignore this email.
+      </p>
     </div>
     """
     return _send_email(to_email, subject, html_body, plain_body)
 
 
-def send_support_ticket_email(name: str, from_email: str, subject: str, message: str, ticket_id: int) -> bool:
-    """Relay an in-app support message to the admin's inbox. The user stays inside
-    the app; the operator reads/replies entirely from their own Gmail."""
+# ── Support ticket email ────────────────────────────────────────────────────────
+
+def send_support_ticket_email(
+    name: str, from_email: str, subject: str, message: str, ticket_id: int
+) -> bool:
     full_subject = f"[Trovee Support #{ticket_id}] {subject}"
     plain_body = (
         f"New support message from the Trovee app.\n\n"
@@ -127,12 +212,16 @@ def send_support_ticket_email(name: str, from_email: str, subject: str, message:
         f"---\nReply directly to {from_email} to respond, or use the admin panel."
     )
     html_body = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 560px; margin:0 auto; padding:24px; border:1px solid #e4e4e4; border-radius:10px;">
-      <h2 style="color:#0B1220; margin-top:0;">New support ticket #{ticket_id}</h2>
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;
+                padding:24px;border:1px solid #e4e4e4;border-radius:10px;">
+      <h2 style="color:#0B1220;margin-top:0;">New support ticket #{ticket_id}</h2>
       <p><strong>From:</strong> {name} ({from_email})</p>
       <p><strong>Subject:</strong> {subject}</p>
-      <div style="background:#f7f8fa; padding:16px; border-radius:8px; white-space:pre-wrap; color:#222;">{message}</div>
-      <p style="margin-top:20px; font-size:13px; color:#777;">Reply directly to this user's email to respond, or use the Trovee admin panel.</p>
+      <div style="background:#f7f8fa;padding:16px;border-radius:8px;
+                  white-space:pre-wrap;color:#222;">{message}</div>
+      <p style="margin-top:20px;font-size:13px;color:#777;">
+        Reply directly to this user's email to respond, or use the Trovee admin panel.
+      </p>
     </div>
     """
     return _send_email(ADMIN_INBOX_EMAIL, full_subject, html_body, plain_body)
