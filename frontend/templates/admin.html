@@ -676,8 +676,22 @@
           ${c.description ? `<div class="data-card-row"><span class="data-card-label">About</span><span class="data-card-value">${escapeHtml(c.description)}</span></div>` : ""}
           <div class="data-card-actions">
             <button class="btn-sm btn-sm-blue" onclick="manageCompanyPlans(${c.id}, '${escapeHtml(c.name)}')">Manage plans</button>
+            <button class="btn-sm btn-sm-ghost" onclick="editCompany(${c.id})">Edit</button>
             <button class="btn-sm btn-sm-ghost" onclick="toggleCompanyActive(${c.id}, ${c.is_active})">${c.is_active?"Deactivate":"Activate"}</button>
             <button class="btn-sm btn-sm-red" onclick="deleteCompany(${c.id}, '${escapeHtml(c.name)}')">Delete</button>
+          </div>
+          <div class="edit-company-form" id="edit-form-${c.id}" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+            <div style="font-size:11.5px;color:var(--slate-soft);margin-bottom:10px;font-weight:500;">Edit company</div>
+            <div class="form-field"><label>Name</label><input type="text" id="edit-name-${c.id}" value="${escapeHtml(c.name)}"></div>
+            <div class="form-field"><label>Ticker</label><input type="text" id="edit-ticker-${c.id}" value="${escapeHtml(c.ticker)}" maxlength="6"></div>
+            <div class="form-field"><label>Sector</label><input type="text" id="edit-sector-${c.id}" value="${escapeHtml(c.sector||'')}"></div>
+            <div class="form-field"><label>Logo URL</label><input type="url" id="edit-logo-${c.id}" value="${escapeHtml(c.logo_url||'')}" placeholder="https://..."></div>
+            <div class="form-field" style="margin-bottom:10px;"><label>Description</label><textarea id="edit-desc-${c.id}" rows="2">${escapeHtml(c.description||'')}</textarea></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button class="btn-admin" onclick="saveCompany(${c.id})" style="flex:1;">Save</button>
+              <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('edit-form-${c.id}').style.display='none'">Cancel</button>
+              <span class="form-msg" id="edit-msg-${c.id}"></span>
+            </div>
           </div>
         </div>
       `).join("");
@@ -717,6 +731,48 @@
       msg.textContent = e.message || "Failed — check your connection.";
       msg.style.color = "var(--coral)";
       console.error("addCompany error:", e);
+    }
+  }
+
+  function editCompany(id) {
+    const form = document.getElementById(`edit-form-${id}`);
+    const isVisible = form.style.display !== 'none';
+    // Close all other open edit forms first
+    document.querySelectorAll('.edit-company-form').forEach(f => f.style.display = 'none');
+    form.style.display = isVisible ? 'none' : 'block';
+  }
+
+  async function saveCompany(id) {
+    const name    = document.getElementById(`edit-name-${id}`).value.trim();
+    const ticker  = document.getElementById(`edit-ticker-${id}`).value.trim().toUpperCase();
+    const sector  = document.getElementById(`edit-sector-${id}`).value.trim();
+    const logo_url= document.getElementById(`edit-logo-${id}`).value.trim();
+    const description = document.getElementById(`edit-desc-${id}`).value.trim();
+    const msg     = document.getElementById(`edit-msg-${id}`);
+
+    if (!name || !ticker) {
+      msg.textContent = "Name and ticker required.";
+      msg.style.color = "var(--coral)";
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/shares/companies/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ name, ticker, sector, logo_url, description, is_active: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      msg.textContent = "Saved.";
+      msg.style.color = "var(--teal)";
+      setTimeout(() => {
+        document.getElementById(`edit-form-${id}`).style.display = 'none';
+        loadSharesCompanies();
+      }, 800);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
     }
   }
 
