@@ -334,7 +334,7 @@ function renderCompanies(companies) {
     <div class="company-card" onclick="selectCompany(${c.id})">
       <div class="company-logo">
         ${c.logo_url
-          ? `<img src="${escHtml(c.logo_url)}" alt="${escHtml(c.name)}" onerror="this.parentElement.innerHTML='<span class=\\'ticker-fallback\\'>${escHtml(c.ticker)}</span>'">`
+          ? `<img src="${escHtml(c.logo_url)}" alt="${escHtml(c.name)}" crossorigin="anonymous" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ticker-fallback" style="display:none">${escHtml(c.ticker)}</span>`
           : `<span class="ticker-fallback">${escHtml(c.ticker)}</span>`}
       </div>
       <div class="company-info">
