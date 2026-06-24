@@ -890,14 +890,14 @@ def api_shares_certificate(cert_id):
     w, h = A4
     c = rl_canvas.Canvas(buf, pagesize=A4)
 
-    ink = colors.HexColor("#0B1220")
-    surface = colors.HexColor("#151E2E")
-    paper = colors.HexColor("#F7F8FA")
-    slate_soft = colors.HexColor("#8A93A3")
-    gold = colors.HexColor("#C9A961")
-    gold_dim = colors.HexColor("#7A6030")
-    teal = colors.HexColor("#2DD4BF")
-    line_col = colors.HexColor("#1B2738")
+    ink        = colors.HexColor("#06080D")
+    surface    = colors.HexColor("#0F1923")
+    paper      = colors.HexColor("#F5F7FA")
+    slate_soft = colors.HexColor("#8E96A6")
+    accent     = colors.HexColor("#0A84FF")
+    accent_dim = colors.HexColor("#0A4F9A")
+    teal       = colors.HexColor("#2DD4BF")
+    line_col   = colors.HexColor("#1A2535")
 
     # ---- Background ----
     c.setFillColor(ink)
@@ -907,7 +907,7 @@ def api_shares_certificate(cert_id):
     c.saveState()
     c.translate(w / 2, h / 2)
     c.rotate(35)
-    c.setFillColor(gold)
+    c.setFillColor(accent)
     c.setFillAlpha(0.045)
     c.setFont("Helvetica-Bold", 130)
     c.drawCentredString(0, 0, "TROVEE")
@@ -915,10 +915,10 @@ def api_shares_certificate(cert_id):
 
     # ---- Gold border frame ----
     margin = 14 * mm
-    c.setStrokeColor(gold)
+    c.setStrokeColor(accent)
     c.setLineWidth(3)
     c.rect(margin, margin, w - 2*margin, h - 2*margin, fill=0, stroke=1)
-    c.setStrokeColor(gold_dim)
+    c.setStrokeColor(accent_dim)
     c.setLineWidth(1)
     c.rect(margin + 3*mm, margin + 3*mm, w - 2*margin - 6*mm, h - 2*margin - 6*mm, fill=0, stroke=1)
 
@@ -927,7 +927,7 @@ def api_shares_certificate(cert_id):
         sx = -1 if flip_x else 1
         sy = -1 if flip_y else 1
         size = 12 * mm
-        c.setStrokeColor(gold)
+        c.setStrokeColor(accent)
         c.setLineWidth(1.5)
         c.line(cx, cy, cx + sx * size, cy)
         c.line(cx, cy, cx, cy + sy * size)
@@ -945,28 +945,28 @@ def api_shares_certificate(cert_id):
     band_height = 36*mm
     c.setFillColor(surface)
     c.rect(margin, band_bottom, w - 2*margin, band_height, fill=1, stroke=0)
-    c.setStrokeColor(gold)
+    c.setStrokeColor(accent)
     c.setLineWidth(0.5)
     c.line(margin, band_bottom, w - margin, band_bottom)
 
     c.setFillColor(paper)
     c.setFont("Helvetica-Bold", 28)
     c.drawCentredString(w / 2, h - 34*mm, "TROVEE")
-    c.setFillColor(gold)
+    c.setFillColor(accent)
     c.setFont("Helvetica", 10)
     c.drawCentredString(w / 2, h - 41*mm, "INVESTMENT PLATFORM")
 
     # ---- Certificate title ----
     title_y = h - 72*mm
-    c.setFillColor(gold)
+    c.setFillColor(accent)
     c.setFont("Helvetica-Bold", 18)
     c.drawCentredString(w / 2, title_y, "CERTIFICATE OF SHARE OWNERSHIP")
 
     line_y = title_y - 4*mm
-    c.setStrokeColor(gold)
+    c.setStrokeColor(accent)
     c.setLineWidth(1)
     c.line(w/2 - 60*mm, line_y, w/2 + 60*mm, line_y)
-    c.setStrokeColor(gold_dim)
+    c.setStrokeColor(accent_dim)
     c.setLineWidth(0.4)
     c.line(w/2 - 45*mm, line_y - 2*mm, w/2 + 45*mm, line_y - 2*mm)
 
@@ -988,7 +988,7 @@ def api_shares_certificate(cert_id):
     c.drawCentredString(w / 2, y, "IS THE REGISTERED HOLDER OF")
 
     y -= 19*mm
-    c.setFillColor(gold)
+    c.setFillColor(accent)
     c.setFont("Helvetica-Bold", 32)
     c.drawCentredString(w / 2, y, f"{p['shares_count']:,}")
 
@@ -1031,7 +1031,7 @@ def api_shares_certificate(cert_id):
         c.setFillColor(slate_soft)
         c.setFont("Helvetica", 8)
         c.drawCentredString(cx, grid_y + 16*mm, lbl.upper())
-        c.setFillColor(gold)
+        c.setFillColor(accent)
         c.setFont("Helvetica-Bold", 12)
         c.drawCentredString(cx, grid_y + 8*mm, val)
 
@@ -1065,7 +1065,7 @@ def api_shares_certificate(cert_id):
     y -= 14*mm
 
     # ---- Signature line ----
-    c.setStrokeColor(gold_dim)
+    c.setStrokeColor(accent_dim)
     c.setLineWidth(0.5)
     c.line(w/2 - 40*mm, y, w/2 + 40*mm, y)
     c.setFillColor(slate_soft)
