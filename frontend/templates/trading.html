@@ -397,19 +397,25 @@ function renderHistory(trades) {
 async function placeTrade() {
   if (activeTrade) { Trovee.showToast("A trade is already in progress.", "error"); return; }
   const amount = parseFloat(document.getElementById("trade-amount").value);
-  if (!amount || amount < 10) { Trovee.showToast("Minimum trade amount is $10.", "error"); return; }
+  if (!amount || amount <= 0) { Trovee.showToast("Enter an amount.", "error"); return; }
+  if (amount < 10) { Trovee.showToast("Minimum trade amount is $10.", "error"); return; }
   if (amount > userBalance) { Trovee.showToast("Insufficient balance. Please deposit funds.", "error"); return; }
 
   const entryPrice = prices[currentAsset];
+  if (!entryPrice || entryPrice <= 0) { Trovee.showToast("Waiting for price feed. Try again in a moment.", "error"); return; }
+
+  const amount_usd_cents = Math.round(amount * 100);
+  if (amount_usd_cents < 1000) { Trovee.showToast("Minimum trade amount is $10.", "error"); return; }
+
   try {
     const res = await Trovee.api("/api/trades/place", {
       method: "POST",
-      body: JSON.stringify({ asset: currentAsset, direction, duration_sec: durationSec, amount_usd_cents: Math.round(amount * 100), entry_price: entryPrice })
+      body: JSON.stringify({ asset: currentAsset, direction, duration_sec: durationSec, amount_usd_cents, entry_price: entryPrice })
     });
     activeTrade = { id: res.trade_id, asset: currentAsset, direction, durationSec, amount, entryPrice };
     startCountdown(res.trade_id, entryPrice, durationSec);
   } catch(err) {
-    Trovee.showToast(err.message, "error");
+    Trovee.showToast(err.message || "Something went wrong. Please try again.", "error");
   }
 }
 
