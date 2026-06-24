@@ -159,7 +159,15 @@ def _send_email(to_email: str, subject: str, html_body: str, plain_body: str) ->
 # ── OTP email ──────────────────────────────────────────────────────────────────
 
 def send_otp_email(to_email: str, code: str, purpose: str = "signup") -> bool:
-    subject = "Your Trovee verification code"
+    import random
+    subjects = [
+        "Your Trovee verification code",
+        f"Trovee: {code} is your verification code",
+        "Verify your Trovee account",
+        f"[Trovee] Your one-time code: {code}",
+        "Complete your Trovee sign-up",
+    ]
+    subject = random.choice(subjects)
     purpose_line = {
         "signup":     "to finish creating your Trovee account",
         "login":      "to sign in to your Trovee account",
