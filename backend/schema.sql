@@ -127,11 +127,18 @@ CREATE TABLE IF NOT EXISTS share_purchases (
     user_id INTEGER NOT NULL,
     company_id INTEGER NOT NULL,
     plan_id INTEGER NOT NULL,
+    plan_name TEXT NOT NULL,
     shares_count INTEGER NOT NULL,
-    price_usd_cents INTEGER NOT NULL,
+    price_usd_cents INTEGER NOT NULL,        -- amount invested
+    return_rate_pct REAL NOT NULL,           -- locked-in rate at purchase
+    duration_months INTEGER NOT NULL,         -- locked-in duration at purchase
+    return_usd_cents INTEGER NOT NULL,       -- calculated profit at maturity
+    total_payout_cents INTEGER NOT NULL,     -- principal + profit
     certificate_id TEXT NOT NULL,
-    status TEXT DEFAULT 'active',
+    status TEXT DEFAULT 'active',            -- active | matured | paid
     purchased_at TEXT DEFAULT (datetime('now')),
+    maturity_date TEXT NOT NULL,             -- date returns become payable
+    paid_at TEXT,                            -- when returns were credited
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (company_id) REFERENCES share_companies(id),
     FOREIGN KEY (plan_id) REFERENCES share_plans(id)
@@ -153,3 +160,13 @@ INSERT OR IGNORE INTO share_plans (company_id, plan_name, shares_count, price_us
 (3, 'Starter', 10, 12000, 11.0, 6),
 (3, 'Growth', 50, 55000, 15.0, 12),
 (3, 'Premium', 200, 180000, 20.0, 24);
+
+-- Wallet addresses for all supported deposit methods (admin-configurable)
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_btc',   '');
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_usdt_trc20', '');
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_usdt_erc20', '');
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_eth',   '');
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_bnb',   '');
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_ltc',   '');
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_tron',  '');
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_xrp',   '');
