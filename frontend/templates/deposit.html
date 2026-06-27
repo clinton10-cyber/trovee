@@ -61,36 +61,25 @@
   </div>
 
   <div style="padding:0 20px; margin-top:4px;">
-    <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds to your trading account using Bitcoin or a gift card.</p>
+    <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds to your trading account using cryptocurrency or a gift card.</p>
   </div>
 
   <!-- Method tabs -->
   <div class="method-tabs">
-    <button class="method-tab active" id="tab-btc" onclick="switchTab('btc')">
-      ₿ Bitcoin (BTC)
+    <button class="method-tab active" id="tab-crypto" onclick="switchTab('crypto')">
+      ₿ Crypto
     </button>
     <button class="method-tab" id="tab-giftcard" onclick="switchTab('giftcard')">
       Gift Card
     </button>
   </div>
 
-  <!-- BTC Section -->
-  <div class="deposit-section" id="section-btc">
-    <div class="section-card">
-      <div class="network-badge">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="#4ade80"><circle cx="5" cy="5" r="5"/></svg>
-        BTC Network · Bitcoin
-      </div>
-      <div class="wallet-label">Your deposit address</div>
-      <div class="wallet-address" id="btc-wallet-address">Loading...</div>
-      <button class="copy-btn" onclick="copyWallet()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Copy Address
-      </button>
-      <div class="notice-box">
-        <strong>Important:</strong> Only send Bitcoin (BTC) to this address. Sending any other cryptocurrency will result in permanent loss. Deposits are credited after 2 network confirmations (approx. 20–30 min).
-      </div>
+  <!-- Crypto Section -->
+  <div class="deposit-section" id="section-crypto">
+    <div class="section-card" id="crypto-loading">
+      <p class="muted small" style="text-align:center;padding:20px 0;">Loading wallet options...</p>
     </div>
+    <div id="crypto-wallets" style="display:none;"></div>
   </div>
 
   <!-- Gift Card Section -->
@@ -156,14 +145,15 @@
 <script>
 Trovee.requireAuth();
 
-let activeTab = "btc";
+let activeTab = "crypto";
 let selectedGCType = "Amazon";
+let selectedWalletCoin = null;
 
 function switchTab(tab) {
   activeTab = tab;
-  document.getElementById("tab-btc").className = "method-tab" + (tab === "btc" ? " active" : "");
-  document.getElementById("tab-giftcard").className = "method-tab" + (tab === "giftcard" ? " active" : "");
-  document.getElementById("section-btc").style.display = tab === "btc" ? "" : "none";
+  document.getElementById("tab-crypto").className = "method-tab" + (tab === "crypto" ? " active" : "");
+  document.getElementById("tab-giftcard").className = "method-tab" + (tab === "giftcard" ? (" active") : "");
+  document.getElementById("section-crypto").style.display = tab === "crypto" ? "" : "none";
   document.getElementById("section-giftcard").style.display = tab === "giftcard" ? "" : "none";
 }
 
@@ -173,18 +163,73 @@ function selectGC(el) {
   selectedGCType = el.dataset.type;
 }
 
+function selectWallet(coin) {
+  selectedWalletCoin = coin;
+  document.querySelectorAll(".wallet-option").forEach(el => {
+    el.classList.toggle("selected", el.dataset.coin === coin);
+  });
+  const detail = document.getElementById("wallet-detail");
+  const wallet = window._wallets?.find(w => w.coin === coin);
+  if (!wallet) return;
+  detail.style.display = "";
+  detail.innerHTML = `
+    <div class="section-card" style="margin-top:12px;">
+      <div class="network-badge">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="#4ade80"><circle cx="5" cy="5" r="5"/></svg>
+        ${wallet.label}
+      </div>
+      <div class="wallet-label">Your deposit address</div>
+      <div class="wallet-address" id="current-wallet-address" style="word-break:break-all;">${wallet.address}</div>
+      <button class="copy-btn" onclick="copyWallet()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy Address
+      </button>
+      <div class="notice-box">
+        <strong>Important:</strong> Only send <strong>${wallet.label}</strong> to this address. Sending any other cryptocurrency will result in permanent loss. Deposits are credited after network confirmation.
+      </div>
+    </div>`;
+}
+
 async function loadWalletAddress() {
   try {
-    const data = await Trovee.api("/api/deposit/btc-address");
-    document.getElementById("btc-wallet-address").textContent = data.address || "Address not configured. Contact support.";
+    const data = await Trovee.api("/api/deposit/wallets");
+    window._wallets = data.wallets || [];
+    document.getElementById("crypto-loading").style.display = "none";
+    const container = document.getElementById("crypto-wallets");
+    container.style.display = "";
+
+    if (!window._wallets.length) {
+      container.innerHTML = '<div class="section-card"><p class="muted small" style="text-align:center;padding:16px 0;">No crypto wallets configured yet. Contact support.</p></div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:0 0 4px;">
+        ${window._wallets.map(w => `
+          <button class="wallet-option" data-coin="${w.coin}" onclick="selectWallet('${w.coin}')"
+            style="background:var(--surface);border:1px solid var(--line);border-radius:12px;
+                   padding:14px 10px;cursor:pointer;text-align:center;transition:all .15s;color:var(--paper);">
+            <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px;">${w.coin.toUpperCase().replace("_"," ")}</div>
+            <div style="font-size:11px;color:var(--slate-soft);line-height:1.4;">${w.label}</div>
+          </button>`).join("")}
+      </div>
+      <div id="wallet-detail" style="display:none;"></div>
+      <style>
+        .wallet-option.selected { border-color:var(--accent)!important; background:rgba(10,132,255,0.08)!important; }
+        .wallet-option:hover { border-color:var(--accent-bright); }
+      </style>`;
+
+    // Auto-select first wallet
+    if (window._wallets.length > 0) selectWallet(window._wallets[0].coin);
   } catch(e) {
-    document.getElementById("btc-wallet-address").textContent = "Unable to load address. Please try again.";
+    document.getElementById("crypto-loading").innerHTML = '<p class="muted small" style="text-align:center;padding:20px;">Unable to load wallets. Please refresh.</p>';
   }
 }
 
 function copyWallet() {
-  const addr = document.getElementById("btc-wallet-address").textContent;
-  if (addr && addr !== "Loading..." && !addr.startsWith("Unable")) {
+  const el = document.getElementById("current-wallet-address");
+  const addr = el ? el.textContent : "";
+  if (addr) {
     navigator.clipboard.writeText(addr).then(() => {
       Trovee.showToast("Address copied to clipboard!");
     }).catch(() => {
