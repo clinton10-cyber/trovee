@@ -67,7 +67,17 @@ def otp_expiry_timestamp() -> str:
 # ── Email delivery ─────────────────────────────────────────────────────────────
 
 def _send_via_brevo(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
-    """Send via Brevo HTTP API — works on Render and any host, no SMTP port needed."""
+    """Send via Brevo HTTP API with automatic key rotation.
+    
+    Set multiple keys as comma-separated in TROVEE_BREVO_API_KEY:
+    e.g. TROVEE_BREVO_API_KEY=key1,key2,key3
+    When one key hits its daily limit (402/429), the next is tried automatically.
+    """
+    keys = [k.strip() for k in BREVO_API_KEY.split(",") if k.strip()]
+    if not keys:
+        print("[trovee] Brevo: no API keys configured.")
+        return False
+
     payload = {
         "sender":  {"name": SENDER_NAME, "email": SENDER_EMAIL},
         "to":      [{"email": to_email}],
@@ -75,31 +85,37 @@ def _send_via_brevo(to_email: str, subject: str, html_body: str, plain_body: str
         "htmlContent": html_body,
         "textContent": plain_body,
     }
-    req = urllib.request.Request(
-        "https://api.brevo.com/v3/smtp/email",
-        data=json.dumps(payload).encode(),
-        headers={
-            "Content-Type": "application/json",
-            "api-key": BREVO_API_KEY,
-            "Accept": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            status = resp.status
-        if status in (200, 201):
-            print(f"[trovee] Brevo: email sent to {to_email} ({subject})")
-            return True
-        print(f"[trovee] Brevo: unexpected status {status} for {to_email}")
-        return False
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode(errors="replace")
-        print(f"[trovee] Brevo HTTP error {exc.code} sending to {to_email}: {body}")
-        return False
-    except Exception as exc:
-        print(f"[trovee] Brevo error sending to {to_email}: {type(exc).__name__}: {exc}")
-        return False
+
+    for i, key in enumerate(keys):
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=json.dumps(payload).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "api-key": key,
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                if resp.status in (200, 201):
+                    print(f"[trovee] Brevo key {i+1}/{len(keys)}: email sent to {to_email}")
+                    return True
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode(errors="replace")
+            if exc.code in (402, 429):
+                # Daily limit hit — try next key
+                print(f"[trovee] Brevo key {i+1}/{len(keys)} limit reached (HTTP {exc.code}), trying next key...")
+                continue
+            print(f"[trovee] Brevo key {i+1}/{len(keys)} HTTP {exc.code}: {body}")
+            return False
+        except Exception as exc:
+            print(f"[trovee] Brevo key {i+1}/{len(keys)} error: {type(exc).__name__}: {exc}")
+            return False
+
+    print(f"[trovee] Brevo: all {len(keys)} keys exhausted — daily limits reached.")
+    return False
 
 
 def _send_via_smtp(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
