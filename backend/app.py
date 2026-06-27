@@ -639,14 +639,50 @@ def api_trades_history():
 # API: deposits
 # ---------------------------------------------------------------------------
 
-@app.route("/api/deposit/btc-address", methods=["GET"])
+WALLET_KEYS = {
+    "btc":        "wallet_btc",
+    "usdt_trc20": "wallet_usdt_trc20",
+    "usdt_erc20": "wallet_usdt_erc20",
+    "eth":        "wallet_eth",
+    "bnb":        "wallet_bnb",
+    "ltc":        "wallet_ltc",
+    "tron":       "wallet_trx",
+    "xrp":        "wallet_xrp",
+}
+
+WALLET_LABELS = {
+    "btc":        "Bitcoin (BTC)",
+    "usdt_trc20": "USDT — TRC20 (Tron network)",
+    "usdt_erc20": "USDT — ERC20 (Ethereum network)",
+    "eth":        "Ethereum (ETH)",
+    "bnb":        "BNB — BEP20 (BSC network)",
+    "ltc":        "Litecoin (LTC)",
+    "tron":       "Tron (TRX)",
+    "xrp":        "XRP (Ripple)",
+}
+
+
+@app.route("/api/deposit/wallets", methods=["GET"])
 @login_required
-def api_deposit_btc_address():
+def api_deposit_wallets():
+    """Return all configured wallet addresses for the deposit page."""
     db = get_db()
-    row = db.execute("SELECT value FROM admin_settings WHERE key = 'btc_wallet_address'").fetchone()
+    rows = db.execute(
+        "SELECT key, value FROM admin_settings WHERE key LIKE 'wallet_%'"
+    ).fetchall()
     db.close()
-    address = row["value"] if row else ""
-    return jsonify({"address": address})
+
+    settings = {r["key"]: r["value"] for r in rows}
+    wallets = []
+    for coin, db_key in WALLET_KEYS.items():
+        address = settings.get(db_key, "")
+        if address:  # Only return wallets that have an address configured
+            wallets.append({
+                "coin": coin,
+                "label": WALLET_LABELS.get(coin, coin.upper()),
+                "address": address,
+            })
+    return jsonify({"wallets": wallets})
 
 
 @app.route("/api/deposit/giftcard", methods=["POST"])
@@ -692,25 +728,38 @@ def api_deposit_history():
 @admin_required
 def api_admin_get_wallet():
     db = get_db()
-    row = db.execute("SELECT value FROM admin_settings WHERE key = 'btc_wallet_address'").fetchone()
+    rows = db.execute(
+        "SELECT key, value FROM admin_settings WHERE key LIKE 'wallet_%'"
+    ).fetchall()
     db.close()
-    return jsonify({"address": row["value"] if row else ""})
+    settings = {r["key"]: r["value"] for r in rows}
+    wallets = {}
+    for coin, db_key in WALLET_KEYS.items():
+        wallets[coin] = {
+            "label":   WALLET_LABELS.get(coin, coin.upper()),
+            "address": settings.get(db_key, ""),
+        }
+    return jsonify({"wallets": wallets})
 
 
 @app.route("/api/admin/settings/wallet", methods=["POST"])
 @admin_required
 def api_admin_set_wallet():
     data = request.get_json(force=True) or {}
-    address = (data.get("address") or "").strip()
     db = get_db()
-    db.execute(
-        "INSERT INTO admin_settings (key, value, updated_at) VALUES ('btc_wallet_address', ?, datetime('now')) "
-        "ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-        (address,)
-    )
+    saved = []
+    for coin, db_key in WALLET_KEYS.items():
+        if coin in data:
+            address = (data[coin] or "").strip()
+            db.execute(
+                "INSERT INTO admin_settings (key, value, updated_at) VALUES (?, ?, datetime('now')) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+                (db_key, address)
+            )
+            saved.append(coin)
     db.commit()
     db.close()
-    return jsonify({"message": "Wallet address updated."})
+    return jsonify({"message": f"Saved: {', '.join(saved)}." if saved else "Nothing to save.", "saved": saved})
 
 
 @app.route("/api/admin/deposits", methods=["GET"])
