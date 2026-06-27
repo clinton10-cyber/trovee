@@ -329,16 +329,18 @@
 
   <!-- SETTINGS -->
   <div class="admin-panel" id="panel-settings">
-    <div class="admin-form-card" style="max-width:480px;">
-      <h4>BTC Deposit Wallet Address</h4>
-      <p class="section-desc" style="margin-bottom:12px;">This is the Bitcoin address shown to users on the Deposit page.</p>
-      <div class="form-field" style="margin-bottom:12px;">
-        <label>Wallet Address</label>
-        <input type="text" id="wallet-input" placeholder="bc1q..." style="font-family:var(--font-mono);font-size:13px;">
+    <div class="admin-form-card" style="max-width:560px;">
+      <h4>Deposit Wallet Addresses</h4>
+      <p class="section-desc" style="margin-bottom:16px;">
+        Set the wallet address for each cryptocurrency. Only wallets with an address configured will appear on the user deposit page.
+        Leave blank to hide a currency.
+      </p>
+      <div id="wallet-fields-container">
+        <p class="muted small">Loading...</p>
       </div>
-      <div class="form-actions">
-        <button class="btn-admin" onclick="saveWallet()">Save Address</button>
-        <span class="form-msg" id="wallet-saved-msg" style="display:none;color:#4ade80;">Saved.</span>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn-admin" onclick="saveWallet()">Save All Wallets</button>
+        <span class="form-msg" id="wallet-saved-msg"></span>
       </div>
     </div>
   </div>
@@ -629,24 +631,50 @@
     }
   }
 
-  // ── WALLET SETTING ──
+  // ── WALLET SETTINGS ──
   async function loadWalletSetting() {
     try {
       const data = await adminApi("/api/admin/settings/wallet");
-      document.getElementById("wallet-input").value = data.address || "";
+      const container = document.getElementById("wallet-fields-container");
+      if (!data.wallets) { container.innerHTML = '<p class="muted small">Failed to load wallets.</p>'; return; }
+      container.innerHTML = Object.entries(data.wallets).map(([coin, info]) => `
+        <div class="form-field" style="margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <span style="font-family:var(--font-mono);font-size:11px;background:rgba(10,132,255,0.12);color:var(--accent);padding:2px 7px;border-radius:6px;">${coin.toUpperCase()}</span>
+            ${escapeHtml(info.label)}
+          </label>
+          <input type="text" id="wallet-${coin}" value="${escapeHtml(info.address)}"
+            placeholder="Paste ${info.label} address here"
+            style="font-family:var(--font-mono);font-size:12px;">
+        </div>
+      `).join("");
     } catch(e) { console.error("loadWallet", e); }
   }
 
   async function saveWallet() {
-    const address = document.getElementById("wallet-input").value.trim();
-    await fetch("/api/admin/settings/wallet", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
-      body: JSON.stringify({ address }),
+    const container = document.getElementById("wallet-fields-container");
+    const coins = ["btc","usdt_trc20","usdt_erc20","eth","bnb","ltc","tron","xrp"];
+    const payload = {};
+    coins.forEach(coin => {
+      const el = document.getElementById(`wallet-${coin}`);
+      if (el) payload[coin] = el.value.trim();
     });
     const msg = document.getElementById("wallet-saved-msg");
-    msg.style.display = "inline";
-    setTimeout(() => msg.style.display = "none", 3000);
+    try {
+      const res = await fetch("/api/admin/settings/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      msg.textContent = data.message || "Saved.";
+      msg.style.color = "var(--teal)";
+    } catch(e) {
+      msg.textContent = e.message || "Save failed.";
+      msg.style.color = "var(--coral)";
+    }
+    setTimeout(() => msg.textContent = "", 4000);
   }
 
   // ── SHARES: COMPANIES ──
@@ -902,14 +930,21 @@
       const data = await adminApi("/api/admin/shares/purchases");
       const el = document.getElementById("purchases-list");
       if (!data.purchases.length) { el.innerHTML = '<p class="muted small">No purchases yet.</p>'; return; }
-      el.innerHTML = data.purchases.map(p => `
-        <div class="data-card">
+      el.innerHTML = data.purchases.map(p => {
+        const isPaid   = p.status === "paid";
+        const isActive = p.status === "active";
+        const overdue  = p.is_overdue;
+        const statusColor = isPaid ? "var(--teal)" : overdue ? "#F59E0B" : "var(--accent)";
+        const statusLabel = isPaid ? "PAID" : overdue ? "OVERDUE" : "ACTIVE";
+        return `
+        <div class="data-card" style="${overdue && !isPaid ? 'border-color:rgba(245,158,11,0.4);' : ''}">
           <div class="data-card-head">
             <div>
               <div class="data-card-head-title">${escapeHtml(p.username)}</div>
               <div class="data-card-head-sub">${escapeHtml(p.email)}</div>
             </div>
-            <span class="mono" style="font-size:14px;color:var(--teal);">$${(p.price_usd_cents/100).toFixed(2)}</span>
+            <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;
+              background:rgba(255,255,255,0.06);color:${statusColor};">${statusLabel}</span>
           </div>
           <div class="data-card-row">
             <span class="data-card-label">Company</span>
@@ -917,19 +952,62 @@
           </div>
           <div class="data-card-row">
             <span class="data-card-label">Plan</span>
-            <span class="data-card-value">${escapeHtml(p.plan_name)} · ${p.shares_count} shares</span>
+            <span class="data-card-value">${escapeHtml(p.plan_name || "")} · ${p.shares_count} shares</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Invested</span>
+            <span class="data-card-value mono">$${(p.price_usd_cents/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Return</span>
+            <span class="data-card-value mono" style="color:var(--teal);">+$${((p.return_usd_cents||0)/100).toFixed(2)} (${p.return_rate_pct}% p.a.)</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Total payout</span>
+            <span class="data-card-value mono" style="font-weight:700;">$${((p.total_payout_cents||0)/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Purchased</span>
+            <span class="data-card-value">${p.purchased_at ? p.purchased_at.slice(0,10) : ""}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Matures</span>
+            <span class="data-card-value" style="${overdue && !isPaid ? 'color:#F59E0B;font-weight:600;' : ''}">
+              ${p.maturity_date || ""}${isActive ? ` (${p.days_remaining} days)` : ""}
+              ${isPaid && p.paid_at ? ` · Paid ${p.paid_at.slice(0,10)}` : ""}
+            </span>
           </div>
           <div class="data-card-row">
             <span class="data-card-label">Certificate</span>
             <span class="data-card-value mono" style="font-size:11px;">${escapeHtml(p.certificate_id)}</span>
           </div>
-          <div class="data-card-row">
-            <span class="data-card-label">Date</span>
-            <span class="data-card-value">${new Date(p.purchased_at).toLocaleDateString()}</span>
-          </div>
-        </div>
-      `).join("");
+          ${!isPaid ? `
+          <div style="margin-top:12px;">
+            <button class="btn-admin" onclick="adminPayout(${p.id}, '${escapeHtml(p.username)}', ${p.total_payout_cents})"
+              style="background:rgba(45,212,191,0.12);color:var(--teal);border:1px solid rgba(45,212,191,0.3);width:100%;">
+              Pay out $${((p.total_payout_cents||0)/100).toFixed(2)} now
+            </button>
+          </div>` : ""}
+        </div>`;
+      }).join("");
     } catch(e) { console.error("loadPurchases", e); }
+  }
+
+  async function adminPayout(purchaseId, username, amountCents) {
+    const amount = (amountCents / 100).toFixed(2);
+    if (!confirm(`Credit $${amount} to ${username}'s balance now?\n\nThis marks the investment as paid out.`)) return;
+    try {
+      const res = await fetch(`/api/admin/shares/purchases/${purchaseId}/payout`, {
+        method: "POST",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      Trovee.showToast(`$${amount} credited to ${username}.`);
+      loadSharesPurchases();
+    } catch(e) {
+      Trovee.showToast(e.message || "Payout failed.", "error");
+    }
   }
 </script>
 </body>
