@@ -145,9 +145,42 @@
 <script>
 Trovee.requireAuth();
 
-let activeTab = "crypto";
-let selectedGCType = "Amazon";
-let selectedWalletCoin = null;
+let selectedWalletId = null;
+
+async function loadWalletAddress() {
+  try {
+    const data = await Trovee.api("/api/deposit/wallets");
+    window._wallets = data.wallets || [];
+    document.getElementById("crypto-loading").style.display = "none";
+    const container = document.getElementById("crypto-wallets");
+    container.style.display = "";
+
+    if (!window._wallets.length) {
+      container.innerHTML = '<div class="section-card"><p class="muted small" style="text-align:center;padding:20px 0;">No deposit wallets configured yet. Contact support.</p></div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:0 0 4px;">
+        ${window._wallets.map(w => `
+          <button class="wallet-option" data-id="${w.id}" onclick="selectWallet(${w.id})"
+            style="background:var(--surface);border:1px solid var(--line);border-radius:12px;
+                   padding:14px 10px;cursor:pointer;text-align:center;transition:all .15s;color:var(--paper);">
+            ${w.qr_url ? `<img src="${w.qr_url}" style="width:36px;height:36px;border-radius:6px;object-fit:contain;background:#fff;padding:2px;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'">` : ''}
+            <div style="font-size:12px;font-weight:600;color:var(--paper);line-height:1.4;">${w.display_name}</div>
+          </button>`).join("")}
+      </div>
+      <div id="wallet-detail" style="display:none;"></div>
+      <style>
+        .wallet-option.selected { border-color:var(--accent)!important; background:rgba(10,132,255,0.08)!important; }
+        .wallet-option:hover { border-color:var(--accent-bright); }
+      </style>`;
+
+    if (window._wallets.length > 0) selectWallet(window._wallets[0].id);
+  } catch(e) {
+    document.getElementById("crypto-loading").innerHTML = '<p class="muted small" style="text-align:center;padding:20px;">Unable to load wallets. Please refresh.</p>';
+  }
+}
 
 function switchTab(tab) {
   activeTab = tab;
@@ -163,29 +196,39 @@ function selectGC(el) {
   selectedGCType = el.dataset.type;
 }
 
-function selectWallet(coin) {
-  selectedWalletCoin = coin;
+function selectWallet(id) {
+  selectedWalletId = id;
   document.querySelectorAll(".wallet-option").forEach(el => {
-    el.classList.toggle("selected", el.dataset.coin === coin);
+    el.classList.toggle("selected", parseInt(el.dataset.id) === id);
   });
   const detail = document.getElementById("wallet-detail");
-  const wallet = window._wallets?.find(w => w.coin === coin);
+  const wallet = window._wallets?.find(w => w.id === id);
   if (!wallet) return;
   detail.style.display = "";
   detail.innerHTML = `
-    <div class="section-card" style="margin-top:12px;">
-      <div class="network-badge">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="#4ade80"><circle cx="5" cy="5" r="5"/></svg>
-        ${wallet.label}
+    <div class="section-card" style="margin-top:14px;">
+      <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;">
+        ${wallet.qr_url ? `
+        <div style="flex-shrink:0;">
+          <img src="${wallet.qr_url}" alt="QR Code"
+            style="width:120px;height:120px;border-radius:10px;object-fit:contain;background:#fff;padding:6px;"
+            onerror="this.parentElement.style.display='none'">
+          <div style="font-size:10px;color:var(--slate-soft);text-align:center;margin-top:4px;">Scan to deposit</div>
+        </div>` : ""}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--paper);margin-bottom:8px;">${wallet.display_name}</div>
+          <div class="wallet-label" style="margin-bottom:6px;">Wallet address</div>
+          <div class="wallet-address" id="current-wallet-address" style="word-break:break-all;font-size:12px;">${wallet.address}</div>
+        </div>
       </div>
-      <div class="wallet-label">Your deposit address</div>
-      <div class="wallet-address" id="current-wallet-address" style="word-break:break-all;">${wallet.address}</div>
-      <button class="copy-btn" onclick="copyWallet()">
+      <button class="copy-btn" onclick="copyWallet()" style="width:100%;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Copy Address
       </button>
-      <div class="notice-box">
-        <strong>Important:</strong> Only send <strong>${wallet.label}</strong> to this address. Sending any other cryptocurrency will result in permanent loss. Deposits are credited after network confirmation.
+      <div class="notice-box" style="margin-top:10px;">
+        <strong>Important:</strong> Only send <strong>${wallet.display_name}</strong> to this address.
+        Sending the wrong cryptocurrency will result in permanent loss.
+        Deposits are credited after network confirmation.
       </div>
     </div>`;
 }
