@@ -329,18 +329,40 @@
 
   <!-- SETTINGS -->
   <div class="admin-panel" id="panel-settings">
-    <div class="admin-form-card" style="max-width:560px;">
-      <h4>Deposit Wallet Addresses</h4>
-      <p class="section-desc" style="margin-bottom:16px;">
-        Set the wallet address for each cryptocurrency. Only wallets with an address configured will appear on the user deposit page.
-        Leave blank to hide a currency.
+    <div class="admin-form-card" style="max-width:600px;">
+      <h4>Deposit Wallets</h4>
+      <p class="section-desc" style="margin-bottom:18px;">
+        Add each wallet you accept. Users will see the name, QR code, and address on the deposit page.
       </p>
-      <div id="wallet-fields-container">
-        <p class="muted small">Loading...</p>
+
+      <!-- Add new wallet form -->
+      <div style="background:rgba(10,132,255,0.06);border:1px solid rgba(10,132,255,0.18);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:12px;letter-spacing:0.04em;text-transform:uppercase;">Add new wallet</div>
+        <div class="form-field">
+          <label>Wallet name</label>
+          <input type="text" id="new-wallet-name" placeholder="e.g. Bitcoin (BTC), USDT TRC20">
+        </div>
+        <div class="form-field">
+          <label>Wallet address</label>
+          <input type="text" id="new-wallet-address" placeholder="Paste full address here" style="font-family:var(--font-mono);font-size:12px;">
+        </div>
+        <div class="form-field">
+          <label>QR code image URL <span style="color:var(--slate-soft);font-weight:400;">(optional — link to a .png image of the QR code)</span></label>
+          <input type="url" id="new-wallet-qr" placeholder="https://...">
+        </div>
+        <div class="form-field" style="margin-bottom:14px;">
+          <label>Display order <span style="color:var(--slate-soft);font-weight:400;">(lower = shown first)</span></label>
+          <input type="number" id="new-wallet-order" value="0" min="0" style="width:100px;">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-admin" onclick="addWallet()">Add Wallet</button>
+          <span id="add-wallet-msg" style="font-size:12px;"></span>
+        </div>
       </div>
-      <div class="form-actions" style="margin-top:16px;">
-        <button class="btn-admin" onclick="saveWallet()">Save All Wallets</button>
-        <span class="form-msg" id="wallet-saved-msg"></span>
+
+      <!-- Existing wallets list -->
+      <div id="wallets-list">
+        <p class="muted small">Loading...</p>
       </div>
     </div>
   </div>
@@ -631,51 +653,144 @@
     }
   }
 
-  // ── WALLET SETTINGS ──
+  // ── WALLET MANAGER ──
   async function loadWalletSetting() {
     try {
-      const data = await adminApi("/api/admin/settings/wallet");
-      const container = document.getElementById("wallet-fields-container");
-      if (!data.wallets) { container.innerHTML = '<p class="muted small">Failed to load wallets.</p>'; return; }
-      container.innerHTML = Object.entries(data.wallets).map(([coin, info]) => `
-        <div class="form-field" style="margin-bottom:14px;">
-          <label style="display:flex;align-items:center;gap:8px;">
-            <span style="font-family:var(--font-mono);font-size:11px;background:rgba(10,132,255,0.12);color:var(--accent);padding:2px 7px;border-radius:6px;">${coin.toUpperCase()}</span>
-            ${escapeHtml(info.label)}
-          </label>
-          <input type="text" id="wallet-${coin}" value="${escapeHtml(info.address)}"
-            placeholder="Paste ${info.label} address here"
-            style="font-family:var(--font-mono);font-size:12px;">
-        </div>
-      `).join("");
-    } catch(e) { console.error("loadWallet", e); }
+      const data = await adminApi("/api/admin/wallets");
+      renderWalletList(data.wallets || []);
+    } catch(e) { console.error("loadWallets", e); }
   }
 
-  async function saveWallet() {
-    const container = document.getElementById("wallet-fields-container");
-    const coins = ["btc","usdt_trc20","usdt_erc20","eth","bnb","ltc","tron","xrp"];
-    const payload = {};
-    coins.forEach(coin => {
-      const el = document.getElementById(`wallet-${coin}`);
-      if (el) payload[coin] = el.value.trim();
-    });
-    const msg = document.getElementById("wallet-saved-msg");
+  function renderWalletList(wallets) {
+    const el = document.getElementById("wallets-list");
+    if (!wallets.length) {
+      el.innerHTML = '<p class="muted small">No wallets added yet. Add one above.</p>';
+      return;
+    }
+    el.innerHTML = wallets.map(w => `
+      <div class="data-card" id="wallet-card-${w.id}" style="margin-bottom:12px;">
+        <div class="data-card-head">
+          <div>
+            <div class="data-card-head-title">${escapeHtml(w.display_name)}</div>
+            <div class="data-card-head-sub" style="font-family:var(--font-mono);font-size:11px;">${escapeHtml(w.address.slice(0,28))}...</div>
+          </div>
+          ${w.qr_url ? `<img src="${escapeHtml(w.qr_url)}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'">` : '<div style="width:52px;height:52px;background:rgba(255,255,255,0.05);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--slate-soft);font-size:10px;">No QR</div>'}
+        </div>
+
+        <!-- Inline edit form (hidden by default) -->
+        <div id="wallet-edit-${w.id}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+          <div class="form-field"><label>Name</label><input type="text" id="we-name-${w.id}" value="${escapeHtml(w.display_name)}"></div>
+          <div class="form-field"><label>Address</label><input type="text" id="we-addr-${w.id}" value="${escapeHtml(w.address)}" style="font-family:var(--font-mono);font-size:12px;"></div>
+          <div class="form-field"><label>QR code URL</label><input type="url" id="we-qr-${w.id}" value="${escapeHtml(w.qr_url||'')}"></div>
+          <div class="form-field"><label>Order</label><input type="number" id="we-order-${w.id}" value="${w.sort_order}" style="width:80px;"></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn-admin" onclick="saveWallet(${w.id})" style="flex:1;">Save</button>
+            <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('wallet-edit-${w.id}').style.display='none'">Cancel</button>
+            <span id="we-msg-${w.id}" style="font-size:12px;"></span>
+          </div>
+        </div>
+
+        <div class="data-card-actions" style="margin-top:10px;">
+          <button class="btn-sm btn-sm-blue" onclick="toggleWalletEdit(${w.id})">Edit</button>
+          <button class="btn-sm btn-sm-ghost" onclick="toggleWalletActive(${w.id}, ${w.is_active})">${w.is_active ? 'Disable' : 'Enable'}</button>
+          <button class="btn-sm btn-sm-red" onclick="deleteWallet(${w.id}, '${escapeHtml(w.display_name)}')">Delete</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function toggleWalletEdit(id) {
+    const el = document.getElementById(`wallet-edit-${id}`);
+    document.querySelectorAll('[id^="wallet-edit-"]').forEach(e => { if (e.id !== `wallet-edit-${id}`) e.style.display='none'; });
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function addWallet() {
+    const name    = document.getElementById("new-wallet-name").value.trim();
+    const address = document.getElementById("new-wallet-address").value.trim();
+    const qr_url  = document.getElementById("new-wallet-qr").value.trim();
+    const order   = parseInt(document.getElementById("new-wallet-order").value) || 0;
+    const msg     = document.getElementById("add-wallet-msg");
+
+    if (!name || !address) {
+      msg.textContent = "Name and address are required.";
+      msg.style.color = "var(--coral)"; return;
+    }
+
     try {
-      const res = await fetch("/api/admin/settings/wallet", {
+      const res = await fetch("/api/admin/wallets", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ display_name: name, address, qr_url, sort_order: order }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      msg.textContent = data.message || "Saved.";
+      if (!res.ok) throw new Error(data.error);
+      msg.textContent = "Wallet added!";
       msg.style.color = "var(--teal)";
+      ["new-wallet-name","new-wallet-address","new-wallet-qr"].forEach(id => document.getElementById(id).value = "");
+      document.getElementById("new-wallet-order").value = "0";
+      setTimeout(() => { msg.textContent = ""; loadWalletSetting(); }, 800);
     } catch(e) {
-      msg.textContent = e.message || "Save failed.";
+      msg.textContent = e.message || "Failed.";
       msg.style.color = "var(--coral)";
     }
-    setTimeout(() => msg.textContent = "", 4000);
   }
+
+  async function saveWallet(id) {
+    const name    = document.getElementById(`we-name-${id}`).value.trim();
+    const address = document.getElementById(`we-addr-${id}`).value.trim();
+    const qr_url  = document.getElementById(`we-qr-${id}`).value.trim();
+    const order   = parseInt(document.getElementById(`we-order-${id}`).value) || 0;
+    const msg     = document.getElementById(`we-msg-${id}`);
+
+    try {
+      const res = await fetch(`/api/admin/wallets/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ display_name: name, address, qr_url, sort_order: order, is_active: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      msg.textContent = "Saved.";
+      msg.style.color = "var(--teal)";
+      setTimeout(() => { document.getElementById(`wallet-edit-${id}`).style.display='none'; loadWalletSetting(); }, 600);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
+    }
+  }
+
+  async function toggleWalletActive(id, currentlyActive) {
+    // Reload current values then toggle is_active
+    try {
+      const allData = await adminApi("/api/admin/wallets");
+      const w = allData.wallets.find(x => x.id === id);
+      if (!w) return;
+      await fetch(`/api/admin/wallets/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ ...w, is_active: currentlyActive ? 0 : 1 }),
+      });
+      loadWalletSetting();
+    } catch(e) { Trovee.showToast("Failed.", "error"); }
+  }
+
+  async function deleteWallet(id, name) {
+    if (!confirm(`Delete wallet "${name}"? Users will no longer see it on the deposit page.`)) return;
+    try {
+      const res = await fetch(`/api/admin/wallets/${id}`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      Trovee.showToast("Wallet deleted.");
+      loadWalletSetting();
+    } catch(e) { Trovee.showToast(e.message || "Failed.", "error"); }
+  }
+
+
+
 
   // ── SHARES: COMPANIES ──
   let currentManagedCompanyId = null;
