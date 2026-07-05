@@ -639,50 +639,10 @@ def api_trades_history():
 # API: deposits
 # ---------------------------------------------------------------------------
 
-WALLET_KEYS = {
-    "btc":        "wallet_btc",
-    "usdt_trc20": "wallet_usdt_trc20",
-    "usdt_erc20": "wallet_usdt_erc20",
-    "eth":        "wallet_eth",
-    "bnb":        "wallet_bnb",
-    "ltc":        "wallet_ltc",
-    "tron":       "wallet_trx",
-    "xrp":        "wallet_xrp",
-}
-
-WALLET_LABELS = {
-    "btc":        "Bitcoin (BTC)",
-    "usdt_trc20": "USDT — TRC20 (Tron network)",
-    "usdt_erc20": "USDT — ERC20 (Ethereum network)",
-    "eth":        "Ethereum (ETH)",
-    "bnb":        "BNB — BEP20 (BSC network)",
-    "ltc":        "Litecoin (LTC)",
-    "tron":       "Tron (TRX)",
-    "xrp":        "XRP (Ripple)",
-}
 
 
-@app.route("/api/deposit/wallets", methods=["GET"])
-@login_required
-def api_deposit_wallets():
-    """Return all configured wallet addresses for the deposit page."""
-    db = get_db()
-    rows = db.execute(
-        "SELECT key, value FROM admin_settings WHERE key LIKE 'wallet_%'"
-    ).fetchall()
-    db.close()
 
-    settings = {r["key"]: r["value"] for r in rows}
-    wallets = []
-    for coin, db_key in WALLET_KEYS.items():
-        address = settings.get(db_key, "")
-        if address:  # Only return wallets that have an address configured
-            wallets.append({
-                "coin": coin,
-                "label": WALLET_LABELS.get(coin, coin.upper()),
-                "address": address,
-            })
-    return jsonify({"wallets": wallets})
+
 
 
 @app.route("/api/deposit/giftcard", methods=["POST"])
@@ -720,46 +680,7 @@ def api_deposit_history():
     return jsonify({"deposits": [dict(r) for r in rows]})
 
 
-# ---------------------------------------------------------------------------
-# API: admin — wallet address + deposit management
-# ---------------------------------------------------------------------------
 
-@app.route("/api/admin/settings/wallet", methods=["GET"])
-@admin_required
-def api_admin_get_wallet():
-    db = get_db()
-    rows = db.execute(
-        "SELECT key, value FROM admin_settings WHERE key LIKE 'wallet_%'"
-    ).fetchall()
-    db.close()
-    settings = {r["key"]: r["value"] for r in rows}
-    wallets = {}
-    for coin, db_key in WALLET_KEYS.items():
-        wallets[coin] = {
-            "label":   WALLET_LABELS.get(coin, coin.upper()),
-            "address": settings.get(db_key, ""),
-        }
-    return jsonify({"wallets": wallets})
-
-
-@app.route("/api/admin/settings/wallet", methods=["POST"])
-@admin_required
-def api_admin_set_wallet():
-    data = request.get_json(force=True) or {}
-    db = get_db()
-    saved = []
-    for coin, db_key in WALLET_KEYS.items():
-        if coin in data:
-            address = (data[coin] or "").strip()
-            db.execute(
-                "INSERT INTO admin_settings (key, value, updated_at) VALUES (?, ?, datetime('now')) "
-                "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
-                (db_key, address)
-            )
-            saved.append(coin)
-    db.commit()
-    db.close()
-    return jsonify({"message": f"Saved: {', '.join(saved)}." if saved else "Nothing to save.", "saved": saved})
 
 
 @app.route("/api/admin/deposits", methods=["GET"])
@@ -848,8 +769,10 @@ def api_shares_plans(company_id):
 @login_required
 def api_shares_purchase():
     import uuid as uuid_lib
+    from datetime import datetime, timedelta
+
     data = request.get_json(force=True) or {}
-    plan_id = data.get("plan_id")
+    plan_id    = data.get("plan_id")
     company_id = data.get("company_id")
 
     db = get_db()
@@ -861,24 +784,37 @@ def api_shares_purchase():
     ).fetchone()
     if not plan:
         db.close()
-        return jsonify({"error": "Plan not found."}), 404
+        return jsonify({"error": "Plan not found or no longer available."}), 404
 
     user = db.execute("SELECT * FROM users WHERE id = ?", (g.user["id"],)).fetchone()
     if plan["price_usd_cents"] > user["balance_usd_cents"]:
         db.close()
         return jsonify({"error": "Insufficient balance. Please deposit funds first."}), 400
 
+    # Lock in return at purchase time
+    principal    = plan["price_usd_cents"]
+    rate         = plan["return_rate_pct"]
+    months       = plan["duration_months"]
+    return_cents = int(principal * (rate / 100) * (months / 12))
+    total_payout = principal + return_cents
+    maturity_date = (datetime.utcnow() + timedelta(days=months * 30)).strftime("%Y-%m-%d")
     cert_id = f"TRV-{uuid_lib.uuid4().hex[:8].upper()}"
 
     db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents - ? WHERE id = ?",
-               (plan["price_usd_cents"], g.user["id"]))
+               (principal, g.user["id"]))
     cur = db.execute(
-        "INSERT INTO share_purchases (user_id, company_id, plan_id, shares_count, price_usd_cents, certificate_id) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (g.user["id"], company_id, plan_id, plan["shares_count"], plan["price_usd_cents"], cert_id)
+        "INSERT INTO share_purchases "
+        "(user_id, company_id, plan_id, plan_name, shares_count, price_usd_cents, "
+        " return_rate_pct, duration_months, return_usd_cents, total_payout_cents, "
+        " certificate_id, status, maturity_date) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)",
+        (g.user["id"], company_id, plan_id, plan["plan_name"], plan["shares_count"],
+         principal, rate, months, return_cents, total_payout, cert_id, maturity_date)
     )
     purchase_id = cur.lastrowid
-    new_balance = db.execute("SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)).fetchone()["balance_usd_cents"]
+    new_balance = db.execute(
+        "SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)
+    ).fetchone()["balance_usd_cents"]
     db.commit()
     db.close()
 
@@ -886,25 +822,104 @@ def api_shares_purchase():
         "message": "Shares purchased successfully.",
         "certificate_id": cert_id,
         "purchase_id": purchase_id,
+        "principal_usd_cents": principal,
+        "return_usd_cents": return_cents,
+        "total_payout_cents": total_payout,
+        "maturity_date": maturity_date,
         "new_balance_usd_cents": new_balance,
     })
+
+
+def _process_matured_purchases(db, user_id: int) -> list:
+    from datetime import datetime
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    matured = db.execute(
+        "SELECT * FROM share_purchases "
+        "WHERE user_id = ? AND status = 'active' AND maturity_date <= ?",
+        (user_id, today)
+    ).fetchall()
+    newly_paid = []
+    for p in matured:
+        p = dict(p)
+        db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
+                   (p["total_payout_cents"], user_id))
+        db.execute("UPDATE share_purchases SET status = 'paid', paid_at = ? WHERE id = ?",
+                   (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"), p["id"]))
+        newly_paid.append(p)
+    if newly_paid:
+        db.commit()
+    return newly_paid
 
 
 @app.route("/api/shares/portfolio", methods=["GET"])
 @login_required
 def api_shares_portfolio():
+    from datetime import datetime
     db = get_db()
+    newly_paid = _process_matured_purchases(db, g.user["id"])
     rows = db.execute(
-        "SELECT sp.*, c.name as company_name, c.ticker, c.sector, c.logo_url, "
-        "pl.plan_name, pl.return_rate_pct, pl.duration_months "
+        "SELECT sp.*, c.name as company_name, c.ticker, c.sector, c.logo_url "
         "FROM share_purchases sp "
         "JOIN share_companies c ON c.id = sp.company_id "
-        "JOIN share_plans pl ON pl.id = sp.plan_id "
         "WHERE sp.user_id = ? ORDER BY sp.purchased_at DESC",
         (g.user["id"],)
     ).fetchall()
+
+    today = datetime.utcnow()
+    portfolio = []
+    for r in rows:
+        p = dict(r)
+        try:
+            mat = datetime.strptime(p["maturity_date"], "%Y-%m-%d")
+            days_remaining = max(0, (mat - today).days)
+        except Exception:
+            days_remaining = 0
+        p["days_remaining"] = days_remaining
+        p["is_matured"]     = p["status"] in ("matured", "paid")
+        p["progress_pct"]   = min(100, max(0, round(
+            100 - (days_remaining / max(1, p["duration_months"] * 30)) * 100
+        )))
+        portfolio.append(p)
+
+    new_balance = db.execute(
+        "SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)
+    ).fetchone()["balance_usd_cents"]
     db.close()
-    return jsonify({"portfolio": [dict(r) for r in rows]})
+
+    return jsonify({
+        "portfolio": portfolio,
+        "newly_credited": [
+            {"certificate_id": p["certificate_id"],
+             "total_payout_cents": p["total_payout_cents"],
+             "company_name": p.get("company_name", "")}
+            for p in newly_paid
+        ],
+        "new_balance_usd_cents": new_balance,
+    })
+
+
+@app.route("/api/shares/portfolio/<int:purchase_id>", methods=["GET"])
+@login_required
+def api_shares_portfolio_detail(purchase_id):
+    from datetime import datetime
+    db = get_db()
+    row = db.execute(
+        "SELECT sp.*, c.name as company_name, c.ticker, c.sector, c.logo_url "
+        "FROM share_purchases sp "
+        "JOIN share_companies c ON c.id = sp.company_id "
+        "WHERE sp.id = ? AND sp.user_id = ?",
+        (purchase_id, g.user["id"])
+    ).fetchone()
+    db.close()
+    if not row:
+        return jsonify({"error": "Investment not found."}), 404
+    p = dict(row)
+    try:
+        mat = datetime.strptime(p["maturity_date"], "%Y-%m-%d")
+        p["days_remaining"] = max(0, (mat - datetime.utcnow()).days)
+    except Exception:
+        p["days_remaining"] = 0
+    return jsonify(p)
 
 
 @app.route("/api/shares/certificate/<cert_id>", methods=["GET"])
@@ -1271,20 +1286,150 @@ def api_admin_shares_plan_delete(plan_id):
 @app.route("/api/admin/shares/purchases", methods=["GET"])
 @admin_required
 def api_admin_shares_purchases():
+    from datetime import datetime
     db = get_db()
     rows = db.execute(
-        "SELECT sp.*, u.username, u.email, c.name as company_name, pl.plan_name "
+        "SELECT sp.*, u.username, u.email, c.name as company_name "
         "FROM share_purchases sp "
         "JOIN users u ON u.id = sp.user_id "
         "JOIN share_companies c ON c.id = sp.company_id "
-        "JOIN share_plans pl ON pl.id = sp.plan_id "
         "ORDER BY sp.purchased_at DESC"
     ).fetchall()
     db.close()
-    return jsonify({"purchases": [dict(r) for r in rows]})
+
+    today = datetime.utcnow()
+    purchases = []
+    for r in rows:
+        p = dict(r)
+        try:
+            mat = datetime.strptime(p["maturity_date"], "%Y-%m-%d")
+            p["days_remaining"] = max(0, (mat - today).days)
+            p["is_overdue"] = p["status"] == "active" and mat < today
+        except Exception:
+            p["days_remaining"] = 0
+            p["is_overdue"] = False
+        purchases.append(p)
+
+    return jsonify({"purchases": purchases})
 
 
-@app.errorhandler(404)
+@app.route("/api/admin/shares/purchases/<int:purchase_id>/payout", methods=["POST"])
+@admin_required
+def api_admin_shares_payout(purchase_id):
+    """Manually credit returns for a specific purchase (admin override)."""
+    from datetime import datetime
+    db = get_db()
+    p = db.execute(
+        "SELECT sp.*, u.balance_usd_cents "
+        "FROM share_purchases sp JOIN users u ON u.id = sp.user_id "
+        "WHERE sp.id = ?", (purchase_id,)
+    ).fetchone()
+    if not p:
+        db.close()
+        return jsonify({"error": "Purchase not found."}), 404
+    p = dict(p)
+    if p["status"] == "paid":
+        db.close()
+        return jsonify({"error": "Returns already credited for this purchase."}), 400
+
+    db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
+               (p["total_payout_cents"], p["user_id"]))
+    db.execute("UPDATE share_purchases SET status = 'paid', paid_at = ? WHERE id = ?",
+               (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"), purchase_id))
+    db.commit()
+    db.close()
+    return jsonify({
+        "message": "Returns credited successfully.",
+        "total_payout_cents": p["total_payout_cents"],
+    })
+
+
+
+# ---------------------------------------------------------------------------
+# Wallet configs — admin CRUD, user read
+# ---------------------------------------------------------------------------
+
+@app.route("/api/admin/wallets", methods=["GET"])
+@admin_required
+def api_admin_wallets_get():
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM wallet_configs ORDER BY sort_order, id"
+    ).fetchall()
+    db.close()
+    return jsonify({"wallets": [dict(r) for r in rows]})
+
+
+@app.route("/api/admin/wallets", methods=["POST"])
+@admin_required
+def api_admin_wallets_add():
+    data = request.get_json(force=True) or {}
+    display_name = (data.get("display_name") or "").strip()
+    address      = (data.get("address") or "").strip()
+    qr_url       = (data.get("qr_url") or "").strip()
+    sort_order   = int(data.get("sort_order") or 0)
+
+    if not display_name or not address:
+        return jsonify({"error": "Name and address are required."}), 400
+
+    db = get_db()
+    cur = db.execute(
+        "INSERT INTO wallet_configs (display_name, address, qr_url, sort_order) VALUES (?, ?, ?, ?)",
+        (display_name, address, qr_url, sort_order)
+    )
+    wid = cur.lastrowid
+    db.commit()
+    db.close()
+    return jsonify({"id": wid, "message": "Wallet added."})
+
+
+@app.route("/api/admin/wallets/<int:wallet_id>", methods=["PUT"])
+@admin_required
+def api_admin_wallets_update(wallet_id):
+    data = request.get_json(force=True) or {}
+    display_name = (data.get("display_name") or "").strip()
+    address      = (data.get("address") or "").strip()
+    qr_url       = (data.get("qr_url") or "").strip()
+    sort_order   = int(data.get("sort_order") or 0)
+    is_active    = int(bool(data.get("is_active", True)))
+
+    if not display_name or not address:
+        return jsonify({"error": "Name and address are required."}), 400
+
+    db = get_db()
+    db.execute(
+        "UPDATE wallet_configs SET display_name=?, address=?, qr_url=?, sort_order=?, is_active=? WHERE id=?",
+        (display_name, address, qr_url, sort_order, is_active, wallet_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Wallet updated."})
+
+
+@app.route("/api/admin/wallets/<int:wallet_id>", methods=["DELETE"])
+@admin_required
+def api_admin_wallets_delete(wallet_id):
+    db = get_db()
+    db.execute("DELETE FROM wallet_configs WHERE id = ?", (wallet_id,))
+    db.commit()
+    db.close()
+    return jsonify({"message": "Wallet deleted."})
+
+
+@app.route("/api/deposit/wallets", methods=["GET"])
+@login_required
+def api_deposit_wallets():
+    """Return all active wallets for the deposit page."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, display_name, address, qr_url FROM wallet_configs "
+        "WHERE is_active = 1 ORDER BY sort_order, id"
+    ).fetchall()
+    db.close()
+    return jsonify({"wallets": [dict(r) for r in rows]})
+
+
+
 def not_found(e):
     if request.path.startswith("/api/"):
         return jsonify({"error": f"Route not found: {request.method} {request.path}"}), 404
