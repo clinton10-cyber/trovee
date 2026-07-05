@@ -138,6 +138,19 @@ def init_db():
 
 def _migrate_sqlite(conn):
     """Add new columns to existing tables without losing data."""
+    # Create new tables if missing
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS wallet_configs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            display_name TEXT NOT NULL,
+            address TEXT NOT NULL,
+            qr_url TEXT DEFAULT '',
+            sort_order INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     migrations = [
         ("share_purchases", "plan_name",          "TEXT NOT NULL DEFAULT ''"),
         ("share_purchases", "return_rate_pct",     "REAL NOT NULL DEFAULT 0"),
