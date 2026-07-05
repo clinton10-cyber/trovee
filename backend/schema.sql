@@ -170,3 +170,14 @@ INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_bnb',   '');
 INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_ltc',   '');
 INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_tron',  '');
 INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_xrp',   '');
+
+-- Wallet configs: admin adds each wallet type with address and QR code
+CREATE TABLE IF NOT EXISTS wallet_configs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    display_name TEXT NOT NULL,        -- e.g. "Bitcoin (BTC)", "USDT TRC20"
+    address TEXT NOT NULL,             -- the wallet address
+    qr_url TEXT DEFAULT '',            -- URL to QR code image
+    sort_order INTEGER DEFAULT 0,      -- display order
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+);
