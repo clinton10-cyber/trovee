@@ -89,11 +89,7 @@ CREATE TABLE IF NOT EXISTS deposits (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS admin_settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
-    updated_at TEXT DEFAULT (datetime('now'))
-);
+-- Note: admin_settings is no longer used; we removed it.
 
 -- Share companies and plans (admin-managed)
 CREATE TABLE IF NOT EXISTS share_companies (
@@ -141,9 +137,6 @@ CREATE TABLE IF NOT EXISTS share_purchases (
     FOREIGN KEY (company_id) REFERENCES share_companies(id),
     FOREIGN KEY (plan_id) REFERENCES share_plans(id)
 );
-
--- Wallet addresses for deposit methods (admin-configurable)
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_tron', '');
 
 -- Wallet configs: admin adds each wallet type with address and QR code
 CREATE TABLE IF NOT EXISTS wallet_configs (
