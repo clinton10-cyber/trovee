@@ -2,10 +2,10 @@ import os
 import re
 import jwt
 import datetime
+import traceback
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, g, redirect, send_from_directory
 
-# Change these imports
 from backend.db import get_db, init_db
 from backend.security import hash_password, verify_password
 from backend.email_otp import (
@@ -16,8 +16,9 @@ from backend.geo_currency import (
     get_currency_for_country, convert_usd_cents, get_withdrawal_methods,
     COUNTRY_CURRENCY, USD_EXCHANGE_RATES,
 )
+
 APP_SECRET = os.environ.get("TROVEE_APP_SECRET", "trovee-dev-secret-change-me-in-prod")
-WITHDRAWAL_MINIMUM_USD_CENTS = 500000      # $5,000.00 minimum withdrawal
+WITHDRAWAL_MINIMUM_USD_CENTS = 1  # Allow any positive amount
 ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
@@ -78,7 +79,7 @@ USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,20}$")
 
 
 # ---------------------------------------------------------------------------
-# Page routes (serve the frontend)
+# Page routes
 # ---------------------------------------------------------------------------
 
 @app.route("/")
@@ -116,6 +117,21 @@ def page_admin():
     return render_template("admin.html")
 
 
+@app.route("/trading")
+def page_trading():
+    return render_template("trading.html")
+
+
+@app.route("/deposit")
+def page_deposit():
+    return render_template("deposit.html")
+
+
+@app.route("/shares")
+def page_shares():
+    return render_template("shares.html")
+
+
 @app.route("/favicon.ico")
 def favicon():
     return send_from_directory(app.static_folder + "/img", "favicon.ico")
@@ -127,10 +143,6 @@ def favicon():
 
 @app.route("/api/geo/detect", methods=["GET"])
 def api_geo_detect():
-    """Best-effort country detection from the request. In production behind a
-    real host, request.headers may include a CDN-provided country header
-    (e.g. CloudFront 'CloudFront-Viewer-Country', Cloudflare 'CF-IPCountry').
-    Falls back to 'US' if nothing is available (e.g. local development)."""
     country_code = (
         request.headers.get("CF-IPCountry")
         or request.headers.get("CloudFront-Viewer-Country")
@@ -180,9 +192,6 @@ def api_signup_start():
         db.close()
         return jsonify({"error": "An account with that email or username already exists."}), 409
 
-    # Stash pending signup details in the otp_codes table via a side-channel:
-    # simplest robust approach is a dedicated pending_signups table-like row.
-    # To keep schema minimal, we store the payload JSON-encoded in support of OTP step.
     import json
     code = generate_otp()
     code_hash = hash_otp(code)
@@ -239,7 +248,6 @@ def api_signup_verify():
         db.close()
         return jsonify({"error": "Incorrect code. Please try again."}), 400
 
-    # Code correct: extract pending payload, create the user, mark otp consumed.
     payload_str = row["email"].split("signup:", 1)[1]
     payload = json.loads(payload_str)
 
@@ -295,7 +303,7 @@ def api_me():
 
 
 # ---------------------------------------------------------------------------
-# API: withdrawals
+# API: withdrawals (minimum = 1 cent)
 # ---------------------------------------------------------------------------
 
 @app.route("/api/withdraw/methods", methods=["GET"])
@@ -323,8 +331,7 @@ def api_withdraw_request():
 
     if not isinstance(amount_usd_cents, int) or amount_usd_cents <= 0:
         return jsonify({"error": "Enter a valid withdrawal amount."}), 400
-    if amount_usd_cents < WITHDRAWAL_MINIMUM_USD_CENTS:
-        return jsonify({"error": f"Minimum withdrawal is ${WITHDRAWAL_MINIMUM_USD_CENTS/100:.2f}."}), 400
+    # No minimum check – any positive amount is allowed
     if not destination:
         return jsonify({"error": "Provide your withdrawal destination details."}), 400
 
@@ -363,7 +370,7 @@ def api_withdraw_history():
 
 
 # ---------------------------------------------------------------------------
-# API: support (in-app, emails the admin, user never leaves the app)
+# API: support
 # ---------------------------------------------------------------------------
 
 @app.route("/api/support/send", methods=["POST"])
@@ -405,7 +412,7 @@ def api_support_history():
 
 
 # ---------------------------------------------------------------------------
-# API: admin (operator views support tickets and withdrawal requests)
+# API: admin (operator views)
 # ---------------------------------------------------------------------------
 
 @app.route("/api/admin/login", methods=["POST"])
@@ -471,7 +478,7 @@ def api_admin_withdrawal_update(withdrawal_id):
 def api_admin_user_balance(user_id):
     data = request.get_json(force=True) or {}
     amount_usd_cents = data.get("amount_usd_cents")
-    mode = data.get("mode", "set")  # "set" or "adjust"
+    mode = data.get("mode", "set")
 
     if not isinstance(amount_usd_cents, int):
         return jsonify({"error": "amount_usd_cents must be an integer."}), 400
@@ -516,111 +523,109 @@ def api_admin_users():
 
 
 # ---------------------------------------------------------------------------
-# Page routes: trading, deposit
+# API: trades (with detailed error logging)
 # ---------------------------------------------------------------------------
 
-@app.route("/trading")
-def page_trading():
-    return render_template("trading.html")
-
-
-@app.route("/deposit")
-def page_deposit():
-    return render_template("deposit.html")
-
-
-# ---------------------------------------------------------------------------
-# API: trades
-# ---------------------------------------------------------------------------
-
-TRADE_RETURN_RATE = 0.20   # 20% profit on a winning trade
+TRADE_RETURN_RATE = 0.20
 
 
 @app.route("/api/trades/place", methods=["POST"])
 @login_required
 def api_trade_place():
-    data = request.get_json(force=True) or {}
-    asset = (data.get("asset") or "").strip()
-    direction = data.get("direction")
-    duration_sec = data.get("duration_sec")
-    amount_usd_cents = data.get("amount_usd_cents")
-    entry_price = data.get("entry_price")
+    try:
+        data = request.get_json(force=True) or {}
+        asset = (data.get("asset") or "").strip()
+        direction = data.get("direction")
+        duration_sec = data.get("duration_sec")
+        amount_usd_cents = data.get("amount_usd_cents")
+        entry_price = data.get("entry_price")
 
-    VALID_ASSETS = {"BTC/USD", "ETH/USD", "XAU/USD", "EUR/USD", "BNB/USD"}
-    if asset not in VALID_ASSETS:
-        return jsonify({"error": "Invalid asset."}), 400
-    if direction not in ("up", "down"):
-        return jsonify({"error": "Direction must be 'up' or 'down'."}), 400
-    if not isinstance(duration_sec, int) or duration_sec not in (30, 60, 90, 120, 180, 360):
-        return jsonify({"error": "Invalid duration."}), 400
-    if not isinstance(amount_usd_cents, int) or amount_usd_cents < 1000:
-        return jsonify({"error": "Minimum trade amount is $10."}), 400
-    if not isinstance(entry_price, (int, float)) or entry_price <= 0:
-        return jsonify({"error": "Invalid entry price."}), 400
+        VALID_ASSETS = {"BTC/USD", "ETH/USD", "XAU/USD", "EUR/USD", "BNB/USD"}
+        if asset not in VALID_ASSETS:
+            return jsonify({"error": "Invalid asset."}), 400
+        if direction not in ("up", "down"):
+            return jsonify({"error": "Direction must be 'up' or 'down'."}), 400
+        if not isinstance(duration_sec, int) or duration_sec not in (30, 60, 90, 120, 180, 360):
+            return jsonify({"error": "Invalid duration."}), 400
+        if not isinstance(amount_usd_cents, int) or amount_usd_cents < 1000:
+            return jsonify({"error": "Minimum trade amount is $10."}), 400
+        if not isinstance(entry_price, (int, float)) or entry_price <= 0:
+            return jsonify({"error": "Invalid entry price."}), 400
 
-    db = get_db()
-    user = db.execute("SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)).fetchone()
-    if amount_usd_cents > user["balance_usd_cents"]:
+        db = get_db()
+        user = db.execute("SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)).fetchone()
+        if amount_usd_cents > user["balance_usd_cents"]:
+            db.close()
+            return jsonify({"error": "Insufficient balance."}), 400
+
+        db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents - ? WHERE id = ?",
+                   (amount_usd_cents, g.user["id"]))
+        cur = db.execute(
+            "INSERT INTO trades (user_id, asset, direction, duration_sec, amount_usd_cents, entry_price) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (g.user["id"], asset, direction, duration_sec, amount_usd_cents, entry_price)
+        )
+        trade_id = cur.lastrowid
+        if trade_id is None:
+            db.close()
+            return jsonify({"error": "Failed to create trade – please try again."}), 500
+        db.commit()
         db.close()
-        return jsonify({"error": "Insufficient balance."}), 400
+        return jsonify({"trade_id": trade_id, "message": "Trade placed."})
 
-    # Deduct the amount immediately (held in the trade)
-    db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents - ? WHERE id = ?",
-               (amount_usd_cents, g.user["id"]))
-    cur = db.execute(
-        "INSERT INTO trades (user_id, asset, direction, duration_sec, amount_usd_cents, entry_price) VALUES (?, ?, ?, ?, ?, ?)",
-        (g.user["id"], asset, direction, duration_sec, amount_usd_cents, entry_price)
-    )
-    trade_id = cur.lastrowid
-    db.commit()
-    db.close()
-    return jsonify({"trade_id": trade_id, "message": "Trade placed."})
+    except Exception as e:
+        print(f"[trovee] ERROR in /api/trades/place: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        raise
 
 
 @app.route("/api/trades/close", methods=["POST"])
 @login_required
 def api_trade_close():
-    data = request.get_json(force=True) or {}
-    trade_id = data.get("trade_id")
-    exit_price = data.get("exit_price")
+    try:
+        data = request.get_json(force=True) or {}
+        trade_id = data.get("trade_id")
+        exit_price = data.get("exit_price")
 
-    if not isinstance(exit_price, (int, float)) or exit_price <= 0:
-        return jsonify({"error": "Invalid exit price."}), 400
+        if not isinstance(exit_price, (int, float)) or exit_price <= 0:
+            return jsonify({"error": "Invalid exit price."}), 400
 
-    db = get_db()
-    trade = db.execute(
-        "SELECT * FROM trades WHERE id = ? AND user_id = ? AND outcome IS NULL",
-        (trade_id, g.user["id"])
-    ).fetchone()
-    if not trade:
+        db = get_db()
+        trade = db.execute(
+            "SELECT * FROM trades WHERE id = ? AND user_id = ? AND outcome IS NULL",
+            (trade_id, g.user["id"])
+        ).fetchone()
+        if not trade:
+            db.close()
+            return jsonify({"error": "Trade not found or already closed."}), 404
+
+        price_up = exit_price > trade["entry_price"]
+        won = (trade["direction"] == "up" and price_up) or (trade["direction"] == "down" and not price_up)
+        outcome = "win" if won else "loss"
+
+        profit_usd_cents = int(trade["amount_usd_cents"] * TRADE_RETURN_RATE) if won else 0
+        credit_back = trade["amount_usd_cents"] + profit_usd_cents if won else 0
+
+        db.execute(
+            "UPDATE trades SET exit_price = ?, outcome = ?, profit_usd_cents = ?, closed_at = datetime('now') WHERE id = ?",
+            (exit_price, outcome, profit_usd_cents, trade_id)
+        )
+        if credit_back > 0:
+            db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
+                       (credit_back, g.user["id"]))
+        new_balance = db.execute("SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)).fetchone()["balance_usd_cents"]
+        db.commit()
         db.close()
-        return jsonify({"error": "Trade not found or already closed."}), 404
 
-    # Determine outcome
-    price_up = exit_price > trade["entry_price"]
-    won = (trade["direction"] == "up" and price_up) or (trade["direction"] == "down" and not price_up)
-    outcome = "win" if won else "loss"
-
-    # On win: return stake + 20% profit. On loss: stake already deducted.
-    profit_usd_cents = int(trade["amount_usd_cents"] * TRADE_RETURN_RATE) if won else 0
-    credit_back = trade["amount_usd_cents"] + profit_usd_cents if won else 0
-
-    db.execute(
-        "UPDATE trades SET exit_price = ?, outcome = ?, profit_usd_cents = ?, closed_at = datetime('now') WHERE id = ?",
-        (exit_price, outcome, profit_usd_cents, trade_id)
-    )
-    if credit_back > 0:
-        db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
-                   (credit_back, g.user["id"]))
-    new_balance = db.execute("SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)).fetchone()["balance_usd_cents"]
-    db.commit()
-    db.close()
-
-    return jsonify({
-        "outcome": outcome,
-        "profit_usd_cents": profit_usd_cents,
-        "new_balance_usd_cents": new_balance,
-    })
+        return jsonify({
+            "outcome": outcome,
+            "profit_usd_cents": profit_usd_cents,
+            "new_balance_usd_cents": new_balance,
+        })
+    except Exception as e:
+        print(f"[trovee] ERROR in /api/trades/close: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        raise
 
 
 @app.route("/api/trades/history", methods=["GET"])
@@ -715,15 +720,6 @@ def api_admin_deposit_review(deposit_id):
 
 
 # ---------------------------------------------------------------------------
-# Page routes: shares
-# ---------------------------------------------------------------------------
-
-@app.route("/shares")
-def page_shares():
-    return render_template("shares.html")
-
-
-# ---------------------------------------------------------------------------
 # API: shares — companies and plans
 # ---------------------------------------------------------------------------
 
@@ -763,7 +759,7 @@ def api_shares_purchase():
     from datetime import datetime, timedelta
 
     data = request.get_json(force=True) or {}
-    plan_id    = data.get("plan_id")
+    plan_id = data.get("plan_id")
     company_id = data.get("company_id")
 
     db = get_db()
@@ -782,10 +778,9 @@ def api_shares_purchase():
         db.close()
         return jsonify({"error": "Insufficient balance. Please deposit funds first."}), 400
 
-    # Lock in return at purchase time
-    principal    = plan["price_usd_cents"]
-    rate         = plan["return_rate_pct"]
-    months       = plan["duration_months"]
+    principal = plan["price_usd_cents"]
+    rate = plan["return_rate_pct"]
+    months = plan["duration_months"]
     return_cents = int(principal * (rate / 100) * (months / 12))
     total_payout = principal + return_cents
     maturity_date = (datetime.utcnow() + timedelta(days=months * 30)).strftime("%Y-%m-%d")
@@ -819,331 +814,6 @@ def api_shares_purchase():
         "maturity_date": maturity_date,
         "new_balance_usd_cents": new_balance,
     })
-
-
-def _process_matured_purchases(db, user_id: int) -> list:
-    from datetime import datetime
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    matured = db.execute(
-        "SELECT * FROM share_purchases "
-        "WHERE user_id = ? AND status = 'active' AND maturity_date <= ?",
-        (user_id, today)
-    ).fetchall()
-    newly_paid = []
-    for p in matured:
-        p = dict(p)
-        db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
-                   (p["total_payout_cents"], user_id))
-        db.execute("UPDATE share_purchases SET status = 'paid', paid_at = ? WHERE id = ?",
-                   (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"), p["id"]))
-        newly_paid.append(p)
-    if newly_paid:
-        db.commit()
-    return newly_paid
-
-
-@app.route("/api/shares/portfolio", methods=["GET"])
-@login_required
-def api_shares_portfolio():
-    from datetime import datetime
-    db = get_db()
-    newly_paid = _process_matured_purchases(db, g.user["id"])
-    rows = db.execute(
-        "SELECT sp.*, c.name as company_name, c.ticker, c.sector, c.logo_url "
-        "FROM share_purchases sp "
-        "JOIN share_companies c ON c.id = sp.company_id "
-        "WHERE sp.user_id = ? ORDER BY sp.purchased_at DESC",
-        (g.user["id"],)
-    ).fetchall()
-
-    today = datetime.utcnow()
-    portfolio = []
-    for r in rows:
-        p = dict(r)
-        try:
-            mat = datetime.strptime(p["maturity_date"], "%Y-%m-%d")
-            days_remaining = max(0, (mat - today).days)
-        except Exception:
-            days_remaining = 0
-        p["days_remaining"] = days_remaining
-        p["is_matured"]     = p["status"] in ("matured", "paid")
-        p["progress_pct"]   = min(100, max(0, round(
-            100 - (days_remaining / max(1, p["duration_months"] * 30)) * 100
-        )))
-        portfolio.append(p)
-
-    new_balance = db.execute(
-        "SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)
-    ).fetchone()["balance_usd_cents"]
-    db.close()
-
-    return jsonify({
-        "portfolio": portfolio,
-        "newly_credited": [
-            {"certificate_id": p["certificate_id"],
-             "total_payout_cents": p["total_payout_cents"],
-             "company_name": p.get("company_name", "")}
-            for p in newly_paid
-        ],
-        "new_balance_usd_cents": new_balance,
-    })
-
-
-@app.route("/api/shares/portfolio/<int:purchase_id>", methods=["GET"])
-@login_required
-def api_shares_portfolio_detail(purchase_id):
-    from datetime import datetime
-    db = get_db()
-    row = db.execute(
-        "SELECT sp.*, c.name as company_name, c.ticker, c.sector, c.logo_url "
-        "FROM share_purchases sp "
-        "JOIN share_companies c ON c.id = sp.company_id "
-        "WHERE sp.id = ? AND sp.user_id = ?",
-        (purchase_id, g.user["id"])
-    ).fetchone()
-    db.close()
-    if not row:
-        return jsonify({"error": "Investment not found."}), 404
-    p = dict(row)
-    try:
-        mat = datetime.strptime(p["maturity_date"], "%Y-%m-%d")
-        p["days_remaining"] = max(0, (mat - datetime.utcnow()).days)
-    except Exception:
-        p["days_remaining"] = 0
-    return jsonify(p)
-
-
-@app.route("/api/shares/certificate/<cert_id>", methods=["GET"])
-@login_required
-def api_shares_certificate(cert_id):
-    """Generate and stream a PDF investment certificate."""
-    import io
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-    from reportlab.pdfgen import canvas as rl_canvas
-
-    db = get_db()
-    purchase = db.execute(
-        "SELECT sp.*, u.username, u.email, "
-        "c.name as company_name, c.ticker, c.sector, c.description as company_desc, "
-        "pl.plan_name, pl.return_rate_pct, pl.duration_months, pl.shares_count as plan_shares "
-        "FROM share_purchases sp "
-        "JOIN users u ON u.id = sp.user_id "
-        "JOIN share_companies c ON c.id = sp.company_id "
-        "JOIN share_plans pl ON pl.id = sp.plan_id "
-        "WHERE sp.certificate_id = ? AND sp.user_id = ?",
-        (cert_id, g.user["id"])
-    ).fetchone()
-    db.close()
-
-    if not purchase:
-        return jsonify({"error": "Certificate not found."}), 404
-
-    p = dict(purchase)
-    buf = io.BytesIO()
-    w, h = A4
-    c = rl_canvas.Canvas(buf, pagesize=A4)
-
-    ink        = colors.HexColor("#06080D")
-    surface    = colors.HexColor("#0F1923")
-    paper      = colors.HexColor("#F5F7FA")
-    slate_soft = colors.HexColor("#8E96A6")
-    accent     = colors.HexColor("#0A84FF")
-    accent_dim = colors.HexColor("#0A4F9A")
-    teal       = colors.HexColor("#2DD4BF")
-    line_col   = colors.HexColor("#1A2535")
-
-    # ---- Background ----
-    c.setFillColor(ink)
-    c.rect(0, 0, w, h, fill=1, stroke=0)
-
-    # ---- Single faint diagonal watermark (drawn before borders/text) ----
-    c.saveState()
-    c.translate(w / 2, h / 2)
-    c.rotate(35)
-    c.setFillColor(accent)
-    c.setFillAlpha(0.045)
-    c.setFont("Helvetica-Bold", 130)
-    c.drawCentredString(0, 0, "TROVEE")
-    c.restoreState()
-
-    # ---- Gold border frame ----
-    margin = 14 * mm
-    c.setStrokeColor(accent)
-    c.setLineWidth(3)
-    c.rect(margin, margin, w - 2*margin, h - 2*margin, fill=0, stroke=1)
-    c.setStrokeColor(accent_dim)
-    c.setLineWidth(1)
-    c.rect(margin + 3*mm, margin + 3*mm, w - 2*margin - 6*mm, h - 2*margin - 6*mm, fill=0, stroke=1)
-
-    # ---- Corner ornaments ----
-    def corner(cx, cy, flip_x=False, flip_y=False):
-        sx = -1 if flip_x else 1
-        sy = -1 if flip_y else 1
-        size = 12 * mm
-        c.setStrokeColor(accent)
-        c.setLineWidth(1.5)
-        c.line(cx, cy, cx + sx * size, cy)
-        c.line(cx, cy, cx, cy + sy * size)
-        c.setLineWidth(0.7)
-        c.line(cx + sx * 3*mm, cy + sy * 3*mm, cx + sx * 9*mm, cy + sy * 3*mm)
-        c.line(cx + sx * 3*mm, cy + sy * 3*mm, cx + sx * 3*mm, cy + sy * 9*mm)
-
-    corner(margin, margin)
-    corner(w - margin, margin, flip_x=True)
-    corner(margin, h - margin, flip_y=True)
-    corner(w - margin, h - margin, flip_x=True, flip_y=True)
-
-    # ---- Header band ----
-    band_bottom = h - 58*mm
-    band_height = 36*mm
-    c.setFillColor(surface)
-    c.rect(margin, band_bottom, w - 2*margin, band_height, fill=1, stroke=0)
-    c.setStrokeColor(accent)
-    c.setLineWidth(0.5)
-    c.line(margin, band_bottom, w - margin, band_bottom)
-
-    c.setFillColor(paper)
-    c.setFont("Helvetica-Bold", 28)
-    c.drawCentredString(w / 2, h - 34*mm, "TROVEE")
-    c.setFillColor(accent)
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(w / 2, h - 41*mm, "INVESTMENT PLATFORM")
-
-    # ---- Certificate title ----
-    title_y = h - 72*mm
-    c.setFillColor(accent)
-    c.setFont("Helvetica-Bold", 18)
-    c.drawCentredString(w / 2, title_y, "CERTIFICATE OF SHARE OWNERSHIP")
-
-    line_y = title_y - 4*mm
-    c.setStrokeColor(accent)
-    c.setLineWidth(1)
-    c.line(w/2 - 60*mm, line_y, w/2 + 60*mm, line_y)
-    c.setStrokeColor(accent_dim)
-    c.setLineWidth(0.4)
-    c.line(w/2 - 45*mm, line_y - 2*mm, w/2 + 45*mm, line_y - 2*mm)
-
-    # ---- Body content (generously spaced) ----
-    y = line_y - 14*mm
-
-    # "This certifies that" + username
-    c.setFillColor(slate_soft)
-    c.setFont("Helvetica", 9)
-    c.drawCentredString(w / 2, y, "THIS CERTIFIES THAT")
-    y -= 9*mm
-    c.setFillColor(paper)
-    c.setFont("Helvetica-Bold", 22)
-    c.drawCentredString(w / 2, y, p["username"])
-
-    y -= 16*mm
-    c.setFillColor(slate_soft)
-    c.setFont("Helvetica", 9)
-    c.drawCentredString(w / 2, y, "IS THE REGISTERED HOLDER OF")
-
-    y -= 19*mm
-    c.setFillColor(accent)
-    c.setFont("Helvetica-Bold", 32)
-    c.drawCentredString(w / 2, y, f"{p['shares_count']:,}")
-
-    y -= 8*mm
-    c.setFillColor(paper)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawCentredString(w / 2, y, "SHARES")
-
-    y -= 13*mm
-    c.setFillColor(slate_soft)
-    c.setFont("Helvetica", 9)
-    c.drawCentredString(w / 2, y, "IN")
-
-    y -= 11*mm
-    c.setFillColor(paper)
-    c.setFont("Helvetica-Bold", 19)
-    c.drawCentredString(w / 2, y, p["company_name"])
-
-    y -= 7*mm
-    c.setFillColor(slate_soft)
-    c.setFont("Helvetica", 9)
-    c.drawCentredString(w / 2, y, f"({p['ticker']})  \u2022  {p['sector']}")
-
-    # ---- Info grid ----
-    y -= 14*mm
-    grid_h = 26*mm
-    grid_y = y - grid_h
-    c.setFillColor(surface)
-    c.roundRect(20*mm, grid_y, w - 40*mm, grid_h, 4*mm, fill=1, stroke=0)
-
-    col_w = (w - 40*mm) / 4
-    info_items = [
-        ("Plan", p["plan_name"]),
-        ("Return Rate", f"{p['return_rate_pct']:.1f}% p.a."),
-        ("Duration", f"{p['duration_months']} months"),
-        ("Investment", f"${p['price_usd_cents']/100:,.2f}"),
-    ]
-    for i, (lbl, val) in enumerate(info_items):
-        cx = 20*mm + col_w * i + col_w / 2
-        c.setFillColor(slate_soft)
-        c.setFont("Helvetica", 8)
-        c.drawCentredString(cx, grid_y + 16*mm, lbl.upper())
-        c.setFillColor(accent)
-        c.setFont("Helvetica-Bold", 12)
-        c.drawCentredString(cx, grid_y + 8*mm, val)
-
-    y = grid_y - 13*mm
-
-    # ---- Certificate ID ----
-    c.setFillColor(slate_soft)
-    c.setFont("Helvetica", 8)
-    c.drawCentredString(w / 2, y, "CERTIFICATE NO.")
-    y -= 6*mm
-    c.setFillColor(paper)
-    c.setFont("Courier-Bold", 13)
-    c.drawCentredString(w / 2, y, p["certificate_id"])
-
-    y -= 15*mm
-
-    # ---- Date & Email ----
-    date_str = p["purchased_at"][:10]
-    left_cx = w / 4
-    right_cx = 3 * w / 4
-    c.setFillColor(slate_soft)
-    c.setFont("Helvetica", 8)
-    c.drawCentredString(left_cx, y, "DATE OF ISSUE")
-    c.drawCentredString(right_cx, y, "ACCOUNT EMAIL")
-    y -= 6*mm
-    c.setFillColor(paper)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(left_cx, y, date_str)
-    c.drawCentredString(right_cx, y, p["email"])
-
-    y -= 14*mm
-
-    # ---- Signature line ----
-    c.setStrokeColor(accent_dim)
-    c.setLineWidth(0.5)
-    c.line(w/2 - 40*mm, y, w/2 + 40*mm, y)
-    c.setFillColor(slate_soft)
-    c.setFont("Helvetica", 8)
-    c.drawCentredString(w / 2, y - 5*mm, "AUTHORIZED SIGNATORY  \u2022  TROVEE INVESTMENT PLATFORM")
-
-    # ---- Footer ----
-    c.setFillColor(colors.HexColor("#5B6573"))
-    c.setFont("Helvetica", 7.5)
-    footer_text = ("This certificate is issued by Trovee Investment Platform and confirms share ownership. "
-                   "This is a digital investment certificate. For queries, contact support.")
-    c.drawCentredString(w / 2, 20*mm, footer_text)
-
-    c.save()
-    buf.seek(0)
-
-    from flask import send_file
-    return send_file(
-        buf,
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name=f"Trovee-Certificate-{cert_id}.pdf"
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -1205,21 +875,15 @@ def api_admin_shares_company_update(company_id):
 @admin_required
 def api_admin_shares_company_delete(company_id):
     db = get_db()
-    company = db.execute(
-        "SELECT id FROM share_companies WHERE id = ?", (company_id,)
-    ).fetchone()
+    company = db.execute("SELECT id FROM share_companies WHERE id = ?", (company_id,)).fetchone()
     if not company:
         db.close()
         return jsonify({"error": "Company not found."}), 404
-    # Deactivate all plans (keeps purchase history intact)
     db.execute("UPDATE share_plans SET is_active = 0 WHERE company_id = ?", (company_id,))
-    # Check if any purchases exist — if so, soft-delete only
     purchases = db.execute(
         "SELECT COUNT(*) as n FROM share_purchases WHERE company_id = ?", (company_id,)
     ).fetchone()["n"]
     if purchases > 0:
-        # Cannot hard-delete — users have purchase records referencing this company.
-        # Deactivate instead so it disappears from the user-facing shares page.
         db.execute("UPDATE share_companies SET is_active = 0 WHERE id = ?", (company_id,))
         db.commit()
         db.close()
@@ -1307,7 +971,6 @@ def api_admin_shares_purchases():
 @app.route("/api/admin/shares/purchases/<int:purchase_id>/payout", methods=["POST"])
 @admin_required
 def api_admin_shares_payout(purchase_id):
-    """Manually credit returns for a specific purchase (admin override)."""
     from datetime import datetime
     db = get_db()
     p = db.execute(
@@ -1336,16 +999,14 @@ def api_admin_shares_payout(purchase_id):
 
 
 # ---------------------------------------------------------------------------
-# Wallet configs — admin CRUD, user read
+# API: admin — wallet configs
 # ---------------------------------------------------------------------------
 
 @app.route("/api/admin/wallets", methods=["GET"])
 @admin_required
 def api_admin_wallets_get():
     db = get_db()
-    rows = db.execute(
-        "SELECT * FROM wallet_configs ORDER BY sort_order, id"
-    ).fetchall()
+    rows = db.execute("SELECT * FROM wallet_configs ORDER BY sort_order, id").fetchall()
     db.close()
     return jsonify({"wallets": [dict(r) for r in rows]})
 
@@ -1355,9 +1016,9 @@ def api_admin_wallets_get():
 def api_admin_wallets_add():
     data = request.get_json(force=True) or {}
     display_name = (data.get("display_name") or "").strip()
-    address      = (data.get("address") or "").strip()
-    qr_url       = (data.get("qr_url") or "").strip()
-    sort_order   = int(data.get("sort_order") or 0)
+    address = (data.get("address") or "").strip()
+    qr_url = (data.get("qr_url") or "").strip()
+    sort_order = int(data.get("sort_order") or 0)
 
     if not display_name or not address:
         return jsonify({"error": "Name and address are required."}), 400
@@ -1379,11 +1040,11 @@ def api_admin_wallets_add():
 def api_admin_wallets_update(wallet_id):
     data = request.get_json(force=True) or {}
     display_name = (data.get("display_name") or "").strip()
-    address      = (data.get("address") or "").strip()
-    logo_url     = (data.get("logo_url") or "").strip()
-    qr_url       = (data.get("qr_url") or "").strip()
-    sort_order   = int(data.get("sort_order") or 0)
-    is_active    = int(bool(data.get("is_active", True)))
+    address = (data.get("address") or "").strip()
+    logo_url = (data.get("logo_url") or "").strip()
+    qr_url = (data.get("qr_url") or "").strip()
+    sort_order = int(data.get("sort_order") or 0)
+    is_active = int(bool(data.get("is_active", True)))
 
     if not display_name or not address:
         return jsonify({"error": "Name and address are required."}), 400
@@ -1411,7 +1072,6 @@ def api_admin_wallets_delete(wallet_id):
 @app.route("/api/deposit/wallets", methods=["GET"])
 @login_required
 def api_deposit_wallets():
-    """Return all active wallets for the deposit page."""
     db = get_db()
     rows = db.execute(
         "SELECT id, display_name, address, logo_url, qr_url FROM wallet_configs "
@@ -1422,7 +1082,7 @@ def api_deposit_wallets():
 
 
 # ---------------------------------------------------------------------------
-# Error handlers (with full traceback logging)
+# Error handlers
 # ---------------------------------------------------------------------------
 
 @app.errorhandler(404)
@@ -1455,16 +1115,14 @@ def internal_error(e):
 
 @app.errorhandler(Exception)
 def handle_unexpected(e):
-    """Catch-all so no API route can ever leak an HTML error page."""
-    import traceback
-    traceback.print_exc()   # This will print the full stack trace to the logs
+    print(f"[trovee] UNHANDLED ERROR: {type(e).__name__}: {e}")
+    traceback.print_exc()
     from werkzeug.exceptions import HTTPException
     if isinstance(e, HTTPException):
         if request.path.startswith("/api/"):
             return jsonify({"error": e.description or str(e)}), e.code
         return e
     if request.path.startswith("/api/"):
-        print(f"[trovee] UNHANDLED ERROR on {request.path}: {type(e).__name__}: {e}")
         return jsonify({"error": "Something went wrong. Please try again."}), 500
     raise e
 
