@@ -1,6 +1,17 @@
 """
 Trovee database layer — supports both SQLite and PostgreSQL.
-... (full docstring) ...
+
+SQLite (default, zero config):
+    Works out of the box. Data is stored at TROVEE_DB_PATH or /tmp/trovee.db.
+
+PostgreSQL (recommended for production):
+    Set TROVEE_DATABASE_URL to your Postgres connection string, e.g.:
+    TROVEE_DATABASE_URL=postgresql://user:password@host:5432/dbname
+
+    Render provides this automatically when you add a PostgreSQL database
+    to your service. The free tier gives you 1 GB.
+
+    Install: pip install psycopg2-binary  (already in requirements.txt)
 """
 
 import os
@@ -158,39 +169,37 @@ def init_db():
 
 
 def _seed_defaults(conn):
-    """
-    Insert default wallets and share companies/plans with logos and QR codes.
-    """
+    """Insert default wallets and share companies/plans with logos and QR codes."""
     cur = conn.cursor()
 
-    # ---- Wallets (with logos and QR codes) ----
+    # ---- Wallets (with working logos and QR codes) ----
     wallets = [
         ("Bitcoin (BTC)", "bc1qegwjs26n6pt5mh0xlmpawkme98scdgn5al3wak",
-         "https://coinicons-api.vercel.app/api/icon/btc",
+         "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=bc1qegwjs26n6pt5mh0xlmpawkme98scdgn5al3wak", 1),
         ("USDT TRC20", "TW6qVWsbPZ5fLneWanmkLH8mEVX1GMUYSn",
-         "https://coinicons-api.vercel.app/api/icon/usdt",
+         "https://assets.coingecko.com/coins/images/325/small/Tether.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TW6qVWsbPZ5fLneWanmkLH8mEVX1GMUYSn", 2),
         ("USDT ERC20", "0x6b916003441cdBe5b6d5FC947f38a25de234EeD6",
-         "https://coinicons-api.vercel.app/api/icon/usdt",
+         "https://assets.coingecko.com/coins/images/325/small/Tether.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x6b916003441cdBe5b6d5FC947f38a25de234EeD6", 3),
         ("USDT Solana", "H8M9MvUBQkSfkR8QpQdjhBDKbgGXv52P2UjvC3rTRp8K",
-         "https://coinicons-api.vercel.app/api/icon/usdt",
+         "https://assets.coingecko.com/coins/images/325/small/Tether.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=H8M9MvUBQkSfkR8QpQdjhBDKbgGXv52P2UjvC3rTRp8K", 4),
         ("Ethereum (ETH)", "0x6b916003441cdBe5b6d5FC947f38a25de234EeD6",
-         "https://coinicons-api.vercel.app/api/icon/eth",
+         "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x6b916003441cdBe5b6d5FC947f38a25de234EeD6", 5),
         ("Solana (SOL)", "H8M9MvUBQkSfkR8QpQdjhBDKbgGXv52P2UjvC3rTRp8K",
-         "https://coinicons-api.vercel.app/api/icon/sol",
+         "https://assets.coingecko.com/coins/images/4128/small/solana.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=H8M9MvUBQkSfkR8QpQdjhBDKbgGXv52P2UjvC3rTRp8K", 6),
         ("TON (Toncoin)", "UQBNib_qibCqn25M22ln5CToop4SAxBlHiQ0pouCkPj6ST2j",
-         "https://coinicons-api.vercel.app/api/icon/ton",
+         "https://assets.coingecko.com/coins/images/17980/small/ton.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=UQBNib_qibCqn25M22ln5CToop4SAxBlHiQ0pouCkPj6ST2j", 7),
         ("BNB (BSC)", "0x6b916003441cdBe5b6d5FC947f38a25de234EeD6",
-         "https://coinicons-api.vercel.app/api/icon/bnb",
+         "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x6b916003441cdBe5b6d5FC947f38a25de234EeD6", 8),
         ("Litecoin (LTC)", "ltc1q7vyp9egglg2jzzfjy82cffkf5lpepzj92xwpxl",
-         "https://coinicons-api.vercel.app/api/icon/ltc",
+         "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=ltc1q7vyp9egglg2jzzfjy82cffkf5lpepzj92xwpxl", 9),
     ]
     for name, addr, logo, qr, order in wallets:
@@ -207,23 +216,23 @@ def _seed_defaults(conn):
                 (name, addr, logo, qr, order)
             )
 
-    # ---- Share Companies (with logo URLs) ----
+    # ---- Share Companies (with working logo URLs) ----
     companies = [
         ("Tesla, Inc.", "TSLA",
          "Electric vehicles and clean energy",
-         "https://www.nicepng.com/png/detail/8-81821_tesla-logo-tesla-motors-logo-png.png",
+         "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Tesla_Motors.svg/200px-Tesla_Motors.svg.png",
          "Automotive"),
         ("NVIDIA Corporation", "NVDA",
          "Graphics processing units and AI",
-         "https://www.nicepng.com/png/detail/72-729799_nvidia-logo-intel-nvidia-logo.png",
+         "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Nvidia_logo.svg/200px-Nvidia_logo.svg.png",
          "Technology"),
         ("Microsoft Corporation", "MSFT",
          "Software and cloud computing",
-         "https://www.nicepng.com/png/detail/858-8586350_microsoft-logo-full-color-microsoft-logo.png",
+         "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Microsoft_logo_%282012%29.svg/200px-Microsoft_logo_%282012%29.svg.png",
          "Technology"),
         ("Apple Inc.", "AAPL",
          "Consumer electronics and software",
-         "https://www.nicepng.com/png/detail/16-167642_apple-logo-png-transparent-background-apple-icon.png",
+         "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/200px-Apple_logo_black.svg.png",
          "Technology"),
     ]
     company_ids = {}
