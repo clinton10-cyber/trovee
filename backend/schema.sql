@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS share_purchases (
 
 CREATE TABLE IF NOT EXISTS wallet_configs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    display_name TEXT NOT NULL,
+    display_name TEXT NOT NULL UNIQUE,
     address TEXT NOT NULL,
     logo_url TEXT DEFAULT '',
     qr_url TEXT DEFAULT '',
