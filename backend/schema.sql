@@ -95,7 +95,6 @@ CREATE TABLE IF NOT EXISTS admin_settings (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('btc_wallet_address', '');
 
 -- Share companies and plans (admin-managed)
 CREATE TABLE IF NOT EXISTS share_companies (
@@ -112,7 +111,7 @@ CREATE TABLE IF NOT EXISTS share_companies (
 CREATE TABLE IF NOT EXISTS share_plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_id INTEGER NOT NULL,
-    plan_name TEXT NOT NULL,
+    plan_name TEXT DEFAULT '',
     shares_count INTEGER NOT NULL,
     price_usd_cents INTEGER NOT NULL,
     return_rate_pct REAL DEFAULT 12.0,
@@ -127,17 +126,17 @@ CREATE TABLE IF NOT EXISTS share_purchases (
     user_id INTEGER NOT NULL,
     company_id INTEGER NOT NULL,
     plan_id INTEGER NOT NULL,
-    plan_name TEXT NOT NULL,
+    plan_name TEXT DEFAULT '',
     shares_count INTEGER NOT NULL,
     price_usd_cents INTEGER NOT NULL,        -- amount invested
-    return_rate_pct REAL NOT NULL,           -- locked-in rate at purchase
-    duration_months INTEGER NOT NULL,         -- locked-in duration at purchase
-    return_usd_cents INTEGER NOT NULL,       -- calculated profit at maturity
-    total_payout_cents INTEGER NOT NULL,     -- principal + profit
+    return_rate_pct REAL DEFAULT 0,
+    duration_months INTEGER DEFAULT 12,
+    return_usd_cents INTEGER DEFAULT 0,
+    total_payout_cents INTEGER DEFAULT 0,
     certificate_id TEXT NOT NULL,
     status TEXT DEFAULT 'active',            -- active | matured | paid
     purchased_at TEXT DEFAULT (datetime('now')),
-    maturity_date TEXT NOT NULL,             -- date returns become payable
+    maturity_date TEXT DEFAULT '',
     paid_at TEXT,                            -- when returns were credited
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (company_id) REFERENCES share_companies(id),
@@ -162,20 +161,14 @@ INSERT OR IGNORE INTO share_plans (company_id, plan_name, shares_count, price_us
 (3, 'Premium', 200, 180000, 20.0, 24);
 
 -- Wallet addresses for all supported deposit methods (admin-configurable)
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_btc',   '');
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_usdt_trc20', '');
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_usdt_erc20', '');
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_eth',   '');
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_bnb',   '');
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_ltc',   '');
 INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_tron',  '');
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_xrp',   '');
 
 -- Wallet configs: admin adds each wallet type with address and QR code
 CREATE TABLE IF NOT EXISTS wallet_configs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     display_name TEXT NOT NULL,        -- e.g. "Bitcoin (BTC)", "USDT TRC20"
     address TEXT NOT NULL,             -- the wallet address
+    logo_url TEXT DEFAULT '',          -- URL to wallet logo image
     qr_url TEXT DEFAULT '',            -- URL to QR code image
     sort_order INTEGER DEFAULT 0,      -- display order
     is_active INTEGER DEFAULT 1,
