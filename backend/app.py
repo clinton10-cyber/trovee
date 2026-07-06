@@ -639,12 +639,6 @@ def api_trades_history():
 # API: deposits
 # ---------------------------------------------------------------------------
 
-
-
-
-
-
-
 @app.route("/api/deposit/giftcard", methods=["POST"])
 @login_required
 def api_deposit_giftcard():
@@ -678,9 +672,6 @@ def api_deposit_history():
     ).fetchall()
     db.close()
     return jsonify({"deposits": [dict(r) for r in rows]})
-
-
-
 
 
 @app.route("/api/admin/deposits", methods=["GET"])
@@ -1239,7 +1230,7 @@ def api_admin_shares_company_delete(company_id):
     return jsonify({"message": "Company deleted.", "soft_delete": False})
 
 
-
+@app.route("/api/admin/shares/companies/<int:company_id>/plans", methods=["GET"])
 @admin_required
 def api_admin_shares_company_plans(company_id):
     db = get_db()
@@ -1344,7 +1335,6 @@ def api_admin_shares_payout(purchase_id):
     })
 
 
-
 # ---------------------------------------------------------------------------
 # Wallet configs — admin CRUD, user read
 # ---------------------------------------------------------------------------
@@ -1431,6 +1421,9 @@ def api_deposit_wallets():
     return jsonify({"wallets": [dict(r) for r in rows]})
 
 
+# ---------------------------------------------------------------------------
+# Error handlers (with full traceback logging)
+# ---------------------------------------------------------------------------
 
 @app.errorhandler(404)
 def not_found(e):
@@ -1463,6 +1456,8 @@ def internal_error(e):
 @app.errorhandler(Exception)
 def handle_unexpected(e):
     """Catch-all so no API route can ever leak an HTML error page."""
+    import traceback
+    traceback.print_exc()   # This will print the full stack trace to the logs
     from werkzeug.exceptions import HTTPException
     if isinstance(e, HTTPException):
         if request.path.startswith("/api/"):
@@ -1474,7 +1469,7 @@ def handle_unexpected(e):
     raise e
 
 
-print("[trovee] app.py loaded — all routes registered (1254 lines)")
+print("[trovee] app.py loaded — all routes registered")
 
 if __name__ == "__main__":
     init_db()
