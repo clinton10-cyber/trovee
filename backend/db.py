@@ -1,17 +1,6 @@
 """
 Trovee database layer — supports both SQLite and PostgreSQL.
-
-SQLite (default, zero config):
-    Works out of the box. Data is stored at TROVEE_DB_PATH or /tmp/trovee.db.
-
-PostgreSQL (recommended for production):
-    Set TROVEE_DATABASE_URL to your Postgres connection string, e.g.:
-    TROVEE_DATABASE_URL=postgresql://user:password@host:5432/dbname
-
-    Render provides this automatically when you add a PostgreSQL database
-    to your service. The free tier gives you 1 GB.
-
-    Install: pip install psycopg2-binary  (already in requirements.txt)
+... (docstring remains) ...
 """
 
 import os
@@ -20,7 +9,6 @@ import sqlite3
 DATABASE_URL = os.environ.get("TROVEE_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
 USE_POSTGRES = bool(DATABASE_URL)
 
-# SQLite fallback path
 _default_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "instance", "trovee.db")
 DB_PATH = os.environ.get("TROVEE_DB_PATH", _default_db)
 if not USE_POSTGRES and not os.path.exists(os.path.dirname(DB_PATH)):
@@ -30,7 +18,6 @@ SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.s
 
 
 def get_db():
-    """Return an open database connection (SQLite or PostgreSQL)."""
     if USE_POSTGRES:
         import psycopg2
         import psycopg2.extras
@@ -46,21 +33,15 @@ def get_db():
 
 
 class _PgWrapper:
-    """
-    Thin wrapper that makes psycopg2 behave like sqlite3 for our usage.
-    Uses RETURNING id to reliably capture the last inserted ID.
-    """
     def __init__(self, conn):
         self._conn = conn
         self._cur = conn.cursor()
         self._last_insert_id = None
 
     def execute(self, sql, params=()):
-        # Convert SQLite ? placeholders to Postgres %s
         pg_sql = sql.replace("?", "%s")
-        # Convert SQLite datetime('now') to Postgres now()
         pg_sql = pg_sql.replace("datetime('now')", "now()")
-        # Convert INSERT OR IGNORE to INSERT ... ON CONFLICT DO NOTHING
+
         if "INSERT" in pg_sql.upper():
             if "INSERT OR IGNORE" in pg_sql.upper():
                 pg_sql = pg_sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
@@ -69,13 +50,11 @@ class _PgWrapper:
             elif "INSERT OR REPLACE" in pg_sql.upper():
                 pg_sql = pg_sql.replace("INSERT OR REPLACE INTO", "INSERT INTO")
 
-        # If this is an INSERT and we haven't added RETURNING yet, append it
         if pg_sql.strip().upper().startswith("INSERT") and "RETURNING" not in pg_sql.upper():
             pg_sql += " RETURNING id"
 
         self._cur.execute(pg_sql, params)
 
-        # If it was an INSERT, fetch the returned id
         if pg_sql.strip().upper().startswith("INSERT"):
             row = self._cur.fetchone()
             self._last_insert_id = row["id"] if row else None
@@ -104,12 +83,9 @@ class _PgWrapper:
 
 
 def _schema_for_postgres(sql: str) -> str:
-    """Convert SQLite schema to PostgreSQL-compatible DDL."""
     sql = sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
     sql = sql.replace("INTEGER PRIMARY KEY", "INTEGER PRIMARY KEY")
     sql = sql.replace("datetime('now')", "now()")
-    # Remove default company/plan INSERTs from schema (we seed in Python)
-    # Also remove the unused admin_settings insert (invalid syntax for PG)
     lines = sql.split("\n")
     out = []
     for line in lines:
@@ -124,7 +100,6 @@ def _schema_for_postgres(sql: str) -> str:
 
 
 def init_db():
-    """Create all tables if they don't exist. Safe to call on every startup."""
     with open(SCHEMA_PATH, "r") as f:
         schema = f.read()
 
@@ -144,14 +119,12 @@ def init_db():
                         print(f"[trovee] DB init warning: {e}")
         _migrate_postgres(cur)
         cur.close()
-        # Seed defaults
         _seed_defaults(conn)
         conn.close()
         print(f"[trovee] PostgreSQL database initialized.")
     else:
         os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
         conn = sqlite3.connect(DB_PATH)
-        # Remove seeding lines from schema for SQLite too
         schema_lines = schema.split("\n")
         clean_schema = "\n".join(
             line for line in schema_lines
@@ -169,10 +142,30 @@ def init_db():
 
 
 def _seed_defaults(conn):
-    """Insert default wallets and share companies/plans with logos and QR codes."""
     cur = conn.cursor()
 
-    # ---- Wallets (with working logos and QR codes) ----
+    # Use helper to avoid duplicates by display_name
+    def insert_wallet(name, address, logo, qr, order):
+        # Check if it already exists
+        if USE_POSTGRES:
+            cur.execute("SELECT id FROM wallet_configs WHERE display_name = %s", (name,))
+        else:
+            cur.execute("SELECT id FROM wallet_configs WHERE display_name = ?", (name,))
+        if cur.fetchone() is not None:
+            return  # already exists
+        if USE_POSTGRES:
+            cur.execute(
+                "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (name, address, logo, qr, order)
+            )
+        else:
+            cur.execute(
+                "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (name, address, logo, qr, order)
+            )
+
     wallets = [
         ("Bitcoin (BTC)", "bc1qegwjs26n6pt5mh0xlmpawkme98scdgn5al3wak",
          "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
@@ -202,21 +195,10 @@ def _seed_defaults(conn):
          "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=ltc1q7vyp9egglg2jzzfjy82cffkf5lpepzj92xwpxl", 9),
     ]
-    for name, addr, logo, qr, order in wallets:
-        if USE_POSTGRES:
-            cur.execute(
-                "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order) "
-                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                (name, addr, logo, qr, order)
-            )
-        else:
-            cur.execute(
-                "INSERT OR IGNORE INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (name, addr, logo, qr, order)
-            )
+    for w in wallets:
+        insert_wallet(*w)
 
-    # ---- Share Companies (with working logo URLs) ----
+    # Companies and plans (using similar duplicate prevention)
     companies = [
         ("Tesla, Inc.", "TSLA",
          "Electric vehicles and clean energy",
@@ -260,7 +242,6 @@ def _seed_defaults(conn):
             row = cur.fetchone()
             company_ids[name] = row[0] if row else None
 
-    # ---- Helper to insert a plan ----
     def insert_plan(company_name, plan_name, shares, price_usd, rate, months):
         tid = company_ids.get(company_name)
         if not tid:
@@ -279,11 +260,10 @@ def _seed_defaults(conn):
                 (tid, plan_name, shares, price_cents, rate, months)
             )
 
-    # ---- STARTER plan ($100) for every company ----
+    # Starter plans
     for company in companies:
         insert_plan(company[0], "Starter", 1, 100, 8.0, 6)
 
-    # ---- Tesla: car models ----
     tesla_plans = [
         ("Model 3", 10, 45000, 12.0, 12),
         ("Model Y", 15, 55000, 13.5, 12),
@@ -294,7 +274,6 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in tesla_plans:
         insert_plan("Tesla, Inc.", plan_name, shares, price_usd, rate, months)
 
-    # ---- NVIDIA ----
     nv_plans = [
         ("Growth", 12, 50000, 14.0, 12),
         ("Premium", 25, 100000, 18.0, 18),
@@ -303,7 +282,6 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in nv_plans:
         insert_plan("NVIDIA Corporation", plan_name, shares, price_usd, rate, months)
 
-    # ---- Microsoft ----
     ms_plans = [
         ("Growth", 15, 60000, 15.0, 12),
         ("Premium", 30, 120000, 19.0, 18),
@@ -312,7 +290,6 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in ms_plans:
         insert_plan("Microsoft Corporation", plan_name, shares, price_usd, rate, months)
 
-    # ---- Apple ----
     aa_plans = [
         ("Growth", 18, 70000, 14.5, 12),
         ("Premium", 35, 140000, 18.5, 18),
@@ -325,11 +302,10 @@ def _seed_defaults(conn):
 
 
 def _migrate_sqlite(conn):
-    """Add new columns to existing tables without losing data."""
     conn.execute("""
         CREATE TABLE IF NOT EXISTS wallet_configs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            display_name TEXT NOT NULL,
+            display_name TEXT NOT NULL UNIQUE,
             address TEXT NOT NULL,
             logo_url TEXT DEFAULT '',
             qr_url TEXT DEFAULT '',
@@ -364,7 +340,6 @@ def _migrate_sqlite(conn):
 
 
 def _migrate_postgres(cur):
-    """Add new columns to existing Postgres tables without losing data."""
     migrations = [
         ("share_purchases", "plan_name",         "TEXT NOT NULL DEFAULT ''"),
         ("share_purchases", "return_rate_pct",   "REAL NOT NULL DEFAULT 0"),
@@ -381,7 +356,7 @@ def _migrate_postgres(cur):
             cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}")
             print(f"[trovee] Migration: added {table}.{col}")
         except Exception:
-            pass  # Column already exists
+            pass
 
 
 if __name__ == "__main__":
