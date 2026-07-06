@@ -32,7 +32,7 @@
     <div class="balance-hero" style="padding:22px;">
       <div class="balance-label">Available to withdraw</div>
       <div class="balance-figure" id="balance-figure" style="font-size:32px;">···</div>
-      <div class="small muted mt-8" id="minimum-note">···</div>
+      <!-- Minimum note removed entirely -->
     </div>
   </div>
 
@@ -129,8 +129,7 @@
       document.getElementById("balance-figure").textContent =
         `${userInfo.currency_symbol}${userInfo.balance_local.toFixed(2)}`;
       document.getElementById("currency-label").textContent = userInfo.currency_code;
-      document.getElementById("minimum-note").textContent =
-        `Minimum withdrawal: ${methodsData.currency_symbol}${methodsData.minimum_local.toFixed(2)}`;
+      // Minimum note removed – no line to display
       renderMethods();
       loadHistory();
     } catch (err) {
