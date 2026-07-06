@@ -95,7 +95,6 @@ CREATE TABLE IF NOT EXISTS admin_settings (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
-
 -- Share companies and plans (admin-managed)
 CREATE TABLE IF NOT EXISTS share_companies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,25 +142,8 @@ CREATE TABLE IF NOT EXISTS share_purchases (
     FOREIGN KEY (plan_id) REFERENCES share_plans(id)
 );
 
--- Seed some default companies
-INSERT OR IGNORE INTO share_companies (id, name, ticker, description, sector) VALUES
-(1, 'TechNova Corp', 'TNC', 'Leading AI and cloud infrastructure provider', 'Technology'),
-(2, 'GreenEnergy Ltd', 'GEL', 'Renewable energy and sustainable solutions', 'Energy'),
-(3, 'FinBridge Inc', 'FBI', 'Digital banking and payment solutions', 'Finance');
-
-INSERT OR IGNORE INTO share_plans (company_id, plan_name, shares_count, price_usd_cents, return_rate_pct, duration_months) VALUES
-(1, 'Starter', 10, 10000, 10.0, 6),
-(1, 'Growth', 50, 45000, 14.0, 12),
-(1, 'Premium', 200, 150000, 18.0, 24),
-(2, 'Starter', 10, 8000, 10.0, 6),
-(2, 'Growth', 50, 38000, 13.0, 12),
-(2, 'Premium', 200, 130000, 17.0, 24),
-(3, 'Starter', 10, 12000, 11.0, 6),
-(3, 'Growth', 50, 55000, 15.0, 12),
-(3, 'Premium', 200, 180000, 20.0, 24);
-
--- Wallet addresses for all supported deposit methods (admin-configurable)
-INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_tron',  '');
+-- Wallet addresses for deposit methods (admin-configurable)
+INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('wallet_tron', '');
 
 -- Wallet configs: admin adds each wallet type with address and QR code
 CREATE TABLE IF NOT EXISTS wallet_configs (
