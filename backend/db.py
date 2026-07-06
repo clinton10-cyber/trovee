@@ -98,11 +98,15 @@ def _schema_for_postgres(sql: str) -> str:
     sql = sql.replace("INTEGER PRIMARY KEY", "INTEGER PRIMARY KEY")
     sql = sql.replace("datetime('now')", "now()")
     # Remove default company/plan INSERTs from schema (we seed in Python)
+    # Also remove the unused admin_settings insert (invalid syntax for PG)
     lines = sql.split("\n")
     out = []
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("INSERT INTO share_companies") or stripped.startswith("INSERT INTO share_plans"):
+        if stripped.startswith("INSERT INTO share_companies") or \
+           stripped.startswith("INSERT INTO share_plans") or \
+           stripped.startswith("INSERT OR IGNORE INTO admin_settings") or \
+           stripped.startswith("INSERT INTO admin_settings"):
             continue
         out.append(line)
     return "\n".join(out)
@@ -142,6 +146,8 @@ def init_db():
             line for line in schema_lines
             if not line.strip().startswith("INSERT INTO share_companies")
             and not line.strip().startswith("INSERT INTO share_plans")
+            and not line.strip().startswith("INSERT OR IGNORE INTO admin_settings")
+            and not line.strip().startswith("INSERT INTO admin_settings")
         )
         conn.executescript(clean_schema)
         _migrate_sqlite(conn)
@@ -158,7 +164,6 @@ def _seed_defaults(conn):
     cur = conn.cursor()
 
     # ---- Wallets (with logos and QR codes) ----
-    # Logo icons from coinicons API (SVG), QR codes from qrserver.com
     wallets = [
         ("Bitcoin (BTC)", "bc1qegwjs26n6pt5mh0xlmpawkme98scdgn5al3wak",
          "https://coinicons-api.vercel.app/api/icon/btc",
@@ -333,7 +338,8 @@ def _migrate_sqlite(conn):
         ("share_purchases", "total_payout_cents",  "INTEGER DEFAULT 0"),
         ("share_purchases", "maturity_date",       "TEXT DEFAULT ''"),
         ("share_purchases", "paid_at",             "TEXT"),
-        ("wallet_configs",    "logo_url",            "TEXT DEFAULT ''"),
+        ("wallet_configs",    "logo_url",          "TEXT DEFAULT ''"),
+        ("wallet_configs",    "qr_url",            "TEXT DEFAULT ''"),
     ]
     existing = {(row[0], row[1]) for row in conn.execute(
         "SELECT m.name, p.name FROM sqlite_master m "
@@ -358,6 +364,8 @@ def _migrate_postgres(cur):
         ("share_purchases", "total_payout_cents","INTEGER NOT NULL DEFAULT 0"),
         ("share_purchases", "maturity_date",     "TEXT NOT NULL DEFAULT ''"),
         ("share_purchases", "paid_at",           "TEXT"),
+        ("wallet_configs",  "logo_url",          "TEXT DEFAULT ''"),
+        ("wallet_configs",  "qr_url",            "TEXT DEFAULT ''"),
     ]
     for table, col, col_def in migrations:
         try:
