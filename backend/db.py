@@ -144,6 +144,7 @@ def _migrate_sqlite(conn):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             display_name TEXT NOT NULL,
             address TEXT NOT NULL,
+            logo_url TEXT DEFAULT '',
             qr_url TEXT DEFAULT '',
             sort_order INTEGER DEFAULT 0,
             is_active INTEGER DEFAULT 1,
@@ -152,13 +153,14 @@ def _migrate_sqlite(conn):
     """)
 
     migrations = [
-        ("share_purchases", "plan_name",          "TEXT NOT NULL DEFAULT ''"),
-        ("share_purchases", "return_rate_pct",     "REAL NOT NULL DEFAULT 0"),
-        ("share_purchases", "duration_months",     "INTEGER NOT NULL DEFAULT 12"),
-        ("share_purchases", "return_usd_cents",    "INTEGER NOT NULL DEFAULT 0"),
-        ("share_purchases", "total_payout_cents",  "INTEGER NOT NULL DEFAULT 0"),
-        ("share_purchases", "maturity_date",       "TEXT NOT NULL DEFAULT ''"),
+        ("share_purchases", "plan_name",          "TEXT DEFAULT ''"),
+        ("share_purchases", "return_rate_pct",     "REAL DEFAULT 0"),
+        ("share_purchases", "duration_months",     "INTEGER DEFAULT 12"),
+        ("share_purchases", "return_usd_cents",    "INTEGER DEFAULT 0"),
+        ("share_purchases", "total_payout_cents",  "INTEGER DEFAULT 0"),
+        ("share_purchases", "maturity_date",       "TEXT DEFAULT ''"),
         ("share_purchases", "paid_at",             "TEXT"),
+        ("wallet_configs",    "logo_url",            "TEXT DEFAULT ''"),
     ]
     existing = {(row[0], row[1]) for row in conn.execute(
         "SELECT m.name, p.name FROM sqlite_master m "
