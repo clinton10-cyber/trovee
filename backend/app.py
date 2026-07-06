@@ -1424,7 +1424,7 @@ def api_deposit_wallets():
     """Return all active wallets for the deposit page."""
     db = get_db()
     rows = db.execute(
-        "SELECT id, display_name, address, qr_url FROM wallet_configs "
+        "SELECT id, display_name, address, logo_url, qr_url FROM wallet_configs "
         "WHERE is_active = 1 ORDER BY sort_order, id"
     ).fetchall()
     db.close()
@@ -1432,6 +1432,7 @@ def api_deposit_wallets():
 
 
 
+@app.errorhandler(404)
 def not_found(e):
     if request.path.startswith("/api/"):
         return jsonify({"error": f"Route not found: {request.method} {request.path}"}), 404
@@ -1443,6 +1444,34 @@ def method_not_allowed(e):
     if request.path.startswith("/api/"):
         return jsonify({"error": f"Method {request.method} not allowed on {request.path}"}), 405
     return e
+
+
+@app.errorhandler(400)
+def bad_request(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Invalid or missing JSON body."}), 400
+    return e
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Internal server error. Please try again."}), 500
+    return e
+
+
+@app.errorhandler(Exception)
+def handle_unexpected(e):
+    """Catch-all so no API route can ever leak an HTML error page."""
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": e.description or str(e)}), e.code
+        return e
+    if request.path.startswith("/api/"):
+        print(f"[trovee] UNHANDLED ERROR on {request.path}: {type(e).__name__}: {e}")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+    raise e
 
 
 print("[trovee] app.py loaded — all routes registered (1254 lines)")
