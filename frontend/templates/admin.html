@@ -347,6 +347,10 @@
           <input type="text" id="new-wallet-address" placeholder="Paste full address here" style="font-family:var(--font-mono);font-size:12px;">
         </div>
         <div class="form-field">
+          <label>Logo image URL <span style="color:var(--slate-soft);font-weight:400;">(optional — coin icon shown to users)</span></label>
+          <input type="url" id="new-wallet-logo" placeholder="https://...">
+        </div>
+        <div class="form-field">
           <label>QR code image URL <span style="color:var(--slate-soft);font-weight:400;">(optional — link to a .png image of the QR code)</span></label>
           <input type="url" id="new-wallet-qr" placeholder="https://...">
         </div>
@@ -681,6 +685,7 @@
         <div id="wallet-edit-${w.id}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
           <div class="form-field"><label>Name</label><input type="text" id="we-name-${w.id}" value="${escapeHtml(w.display_name)}"></div>
           <div class="form-field"><label>Address</label><input type="text" id="we-addr-${w.id}" value="${escapeHtml(w.address)}" style="font-family:var(--font-mono);font-size:12px;"></div>
+          <div class="form-field"><label>Logo image URL</label><input type="url" id="we-logo-${w.id}" value="${escapeHtml(w.logo_url||'')}"></div>
           <div class="form-field"><label>QR code URL</label><input type="url" id="we-qr-${w.id}" value="${escapeHtml(w.qr_url||'')}"></div>
           <div class="form-field"><label>Order</label><input type="number" id="we-order-${w.id}" value="${w.sort_order}" style="width:80px;"></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -708,6 +713,7 @@
   async function addWallet() {
     const name    = document.getElementById("new-wallet-name").value.trim();
     const address = document.getElementById("new-wallet-address").value.trim();
+    const logo_url= document.getElementById("new-wallet-logo").value.trim();
     const qr_url  = document.getElementById("new-wallet-qr").value.trim();
     const order   = parseInt(document.getElementById("new-wallet-order").value) || 0;
     const msg     = document.getElementById("add-wallet-msg");
@@ -721,13 +727,13 @@
       const res = await fetch("/api/admin/wallets", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
-        body: JSON.stringify({ display_name: name, address, qr_url, sort_order: order }),
+        body: JSON.stringify({ display_name: name, address, logo_url, qr_url, sort_order: order }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       msg.textContent = "Wallet added!";
       msg.style.color = "var(--teal)";
-      ["new-wallet-name","new-wallet-address","new-wallet-qr"].forEach(id => document.getElementById(id).value = "");
+      ["new-wallet-name","new-wallet-address","new-wallet-logo","new-wallet-qr"].forEach(id => document.getElementById(id).value = "");
       document.getElementById("new-wallet-order").value = "0";
       setTimeout(() => { msg.textContent = ""; loadWalletSetting(); }, 800);
     } catch(e) {
@@ -739,6 +745,7 @@
   async function saveWallet(id) {
     const name    = document.getElementById(`we-name-${id}`).value.trim();
     const address = document.getElementById(`we-addr-${id}`).value.trim();
+    const logo_url= document.getElementById(`we-logo-${id}`).value.trim();
     const qr_url  = document.getElementById(`we-qr-${id}`).value.trim();
     const order   = parseInt(document.getElementById(`we-order-${id}`).value) || 0;
     const msg     = document.getElementById(`we-msg-${id}`);
@@ -747,7 +754,7 @@
       const res = await fetch(`/api/admin/wallets/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
-        body: JSON.stringify({ display_name: name, address, qr_url, sort_order: order, is_active: true }),
+        body: JSON.stringify({ display_name: name, address, logo_url, qr_url, sort_order: order, is_active: true }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
