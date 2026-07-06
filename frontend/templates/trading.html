@@ -8,11 +8,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/trovee.css">
-<!-- Lightweight Charts -->
 <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js">
 </script>
 <style>
-  /* --- Trading Header --- */
+  /* ── Trading Header ── */
   .trade-header {
     display: flex;
     align-items: center;
@@ -34,13 +33,8 @@
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
   }
-  .asset-selector:hover {
-    border-color: var(--accent);
-  }
-  .asset-name {
-    font-weight: 700;
-    font-size: 15px;
-  }
+  .asset-selector:hover { border-color: var(--accent); }
+  .asset-name { font-weight: 700; font-size: 15px; }
   .asset-price-info {
     display: flex;
     align-items: baseline;
@@ -52,28 +46,18 @@
     font-weight: 700;
     transition: color 0.3s;
   }
-  .asset-price.up {
-    color: #2DD4BF;
-  }
-  .asset-price.down {
-    color: #E8604C;
-  }
+  .asset-price.up { color: #2DD4BF; }
+  .asset-price.down { color: #E8604C; }
   .price-change {
     font-size: 13px;
     font-weight: 600;
     padding: 2px 10px;
     border-radius: 20px;
   }
-  .price-change.up {
-    color: #2DD4BF;
-    background: rgba(45, 212, 191, 0.12);
-  }
-  .price-change.down {
-    color: #E8604C;
-    background: rgba(232, 96, 76, 0.12);
-  }
+  .price-change.up { color: #2DD4BF; background: rgba(45, 212, 191, 0.12); }
+  .price-change.down { color: #E8604C; background: rgba(232, 96, 76, 0.12); }
 
-  /* --- Chart Container --- */
+  /* ── Chart Container ── */
   .chart-container {
     background: var(--surface);
     border: 1px solid var(--line);
@@ -97,19 +81,18 @@
     flex-wrap: wrap;
     align-items: center;
   }
+  /* ── Improved button styles ── */
   .chart-btn {
-    padding: 4px 12px;
-    border-radius: 6px;
+    padding: 5px 14px;
+    border-radius: 8px;
     border: 1px solid var(--line-strong);
-    background: var(--surface-raised);
+    background: transparent;
     color: var(--slate-soft);
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.2s;
     font-family: var(--font-body);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
   }
   .chart-btn:hover {
     border-color: var(--accent);
@@ -119,9 +102,19 @@
     background: var(--accent);
     color: var(--ink);
     border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(10, 132, 255, 0.3);
+  }
+  .chart-btn[data-tf] {
+    padding: 4px 10px;
+    font-size: 10px;
+  }
+  .chart-btn[data-tf].active {
+    background: rgba(45, 212, 191, 0.2);
+    color: var(--teal);
+    border-color: var(--teal);
   }
 
-  /* --- Trade Form --- */
+  /* ── Trade Form ── */
   .trade-form {
     padding: 0 16px;
     display: flex;
@@ -161,9 +154,7 @@
     border-color: #f87171;
     color: #fff;
   }
-  .dir-btn:not(.active):hover {
-    border-color: var(--accent);
-  }
+  .dir-btn:not(.active):hover { border-color: var(--accent); }
 
   .duration-row {
     display: flex;
@@ -188,15 +179,9 @@
     border-color: #4ade80;
     font-weight: 600;
   }
-  .dur-chip:hover {
-    border-color: var(--accent);
-  }
+  .dur-chip:hover { border-color: var(--accent); }
 
-  .form-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
+  .form-row { display: flex; flex-direction: column; gap: 4px; }
   .form-label {
     font-size: 11px;
     color: var(--slate-soft);
@@ -230,9 +215,7 @@
     -webkit-appearance: none;
     margin: 0;
   }
-  .amount-input-wrap input[type=number] {
-    -moz-appearance: textfield;
-  }
+  .amount-input-wrap input[type=number] { -moz-appearance: textfield; }
   .amount-all {
     padding: 0 14px;
     font-size: 12px;
@@ -241,9 +224,7 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  .amount-all:hover {
-    color: #22c55e;
-  }
+  .amount-all:hover { color: #22c55e; }
 
   .return-bar {
     display: flex;
@@ -256,10 +237,7 @@
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
   }
-  .return-label {
-    font-size: 13px;
-    color: var(--slate-soft);
-  }
+  .return-label { font-size: 13px; color: var(--slate-soft); }
   .return-val {
     font-family: var(--font-mono);
     color: #4ade80;
@@ -277,30 +255,18 @@
     cursor: pointer;
     transition: all 0.15s;
   }
-  .trade-btn.up-btn {
-    background: #16a34a;
-    color: #fff;
-  }
-  .trade-btn.down-btn {
-    background: #b91c1c;
-    color: #fff;
-  }
-  .trade-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  .trade-btn.up-btn { background: #16a34a; color: #fff; }
+  .trade-btn.down-btn { background: #b91c1c; color: #fff; }
+  .trade-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  /* --- Gauge Meter (reused from original) --- */
+  /* ── Gauge Meter ── */
   .gauge-wrap {
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 10px 0;
   }
-  .gauge-svg {
-    width: 160px;
-    height: 88px;
-  }
+  .gauge-svg { width: 160px; height: 88px; }
   .gauge-bg {
     fill: none;
     stroke: var(--surface-raised);
@@ -327,7 +293,7 @@
     text-anchor: middle;
   }
 
-  /* --- Live Trade Modal --- */
+  /* ── Live Trade Modal ── */
   .trade-modal {
     position: fixed;
     top: 0;
@@ -341,9 +307,7 @@
     z-index: 9999;
     padding: 20px;
   }
-  .trade-modal.show {
-    display: flex;
-  }
+  .trade-modal.show { display: flex; }
   .trade-modal-card {
     background: var(--surface);
     border-radius: var(--radius-lg);
@@ -373,10 +337,7 @@
     color: var(--slate-soft);
     margin-bottom: 16px;
   }
-  .trade-modal-prices .live {
-    color: #4ade80;
-    font-weight: 600;
-  }
+  .trade-modal-prices .live { color: #4ade80; font-weight: 600; }
   .trade-modal-rows {
     display: flex;
     flex-direction: column;
@@ -388,25 +349,13 @@
     justify-content: space-between;
     font-size: 14px;
   }
-  .trade-modal-row .label {
-    color: var(--slate-soft);
-  }
-  .trade-modal-row .val {
-    font-family: var(--font-mono);
-  }
-  .trade-modal-row .val.profit {
-    color: #4ade80;
-  }
-  .trade-modal-row .val.direction-down {
-    color: #f87171;
-    font-weight: 600;
-  }
-  .trade-modal-row .val.direction-up {
-    color: #4ade80;
-    font-weight: 600;
-  }
+  .trade-modal-row .label { color: var(--slate-soft); }
+  .trade-modal-row .val { font-family: var(--font-mono); }
+  .trade-modal-row .val.profit { color: #4ade80; }
+  .trade-modal-row .val.direction-down { color: #f87171; font-weight: 600; }
+  .trade-modal-row .val.direction-up { color: #4ade80; font-weight: 600; }
 
-  /* --- History --- */
+  /* ── History ── */
   .trade-history {
     padding: 0 16px 100px;
     margin-top: 8px;
@@ -431,54 +380,28 @@
     -webkit-backdrop-filter: var(--blur);
     box-shadow: var(--glass-sheen);
   }
-  .hist-left {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .hist-asset {
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .hist-meta {
-    font-size: 11px;
-    color: var(--slate-soft);
-  }
-  .hist-right {
-    text-align: right;
-  }
+  .hist-left { display: flex; flex-direction: column; gap: 2px; }
+  .hist-asset { font-size: 14px; font-weight: 600; }
+  .hist-meta { font-size: 11px; color: var(--slate-soft); }
+  .hist-right { text-align: right; }
   .hist-amount {
     font-family: var(--font-mono);
     font-size: 14px;
     font-weight: 700;
   }
-  .hist-amount.win {
-    color: #4ade80;
-  }
-  .hist-amount.loss {
-    color: #f87171;
-  }
-  .hist-result {
-    font-size: 11px;
-    color: var(--slate-soft);
-    margin-top: 1px;
-  }
+  .hist-amount.win { color: #4ade80; }
+  .hist-amount.loss { color: #f87171; }
+  .hist-result { font-size: 11px; color: var(--slate-soft); margin-top: 1px; }
   .hist-badge {
     font-size: 10px;
     padding: 2px 8px;
     border-radius: 999px;
     font-weight: 600;
   }
-  .hist-badge.up {
-    background: rgba(74, 222, 128, 0.15);
-    color: #4ade80;
-  }
-  .hist-badge.down {
-    background: rgba(248, 113, 113, 0.15);
-    color: #f87171;
-  }
+  .hist-badge.up { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+  .hist-badge.down { background: rgba(248, 113, 113, 0.15); color: #f87171; }
 
-  /* --- Asset Dropdown --- */
+  /* ── Asset Dropdown ── */
   .asset-dropdown {
     position: fixed;
     top: 0;
@@ -529,20 +452,11 @@
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
   }
-  .asset-opt-name {
-    font-weight: 600;
-    font-size: 14px;
-  }
-  .asset-opt-desc {
-    font-size: 12px;
-    color: var(--slate-soft);
-  }
-  .asset-opt-price {
-    font-family: var(--font-mono);
-    font-size: 14px;
-  }
+  .asset-opt-name { font-weight: 600; font-size: 14px; }
+  .asset-opt-desc { font-size: 12px; color: var(--slate-soft); }
+  .asset-opt-price { font-family: var(--font-mono); font-size: 14px; }
 
-  /* --- Responsive --- */
+  /* ── Responsive ── */
   @media (max-width: 480px) {
     .trade-header {
       padding: 10px 16px 0;
@@ -550,23 +464,11 @@
       align-items: stretch;
       gap: 6px;
     }
-    .asset-selector {
-      justify-content: center;
-    }
-    .asset-price-info {
-      justify-content: center;
-    }
-    .chart-container {
-      height: 280px;
-      margin: 8px 12px 0;
-    }
-    .trade-form {
-      padding: 0 12px;
-      gap: 8px;
-    }
-    .trade-modal-card {
-      padding: 20px 16px;
-    }
+    .asset-selector { justify-content: center; }
+    .asset-price-info { justify-content: center; }
+    .chart-container { height: 280px; margin: 8px 12px 0; }
+    .trade-form { padding: 0 12px; gap: 8px; }
+    .trade-modal-card { padding: 20px 16px; }
   }
 </style>
 </head>
@@ -797,7 +699,6 @@
     const newPrice = Math.max(lastPrice + change, asset.base * 0.8);
     lastPrice = newPrice;
 
-    // Update OHLC for current candle
     if (candleSeries && priceHistory.length > 0) {
       const now = Math.floor(Date.now() / 1000);
       const candleData = priceHistory[priceHistory.length - 1];
@@ -807,7 +708,6 @@
         candleData.close = newPrice;
         candleSeries.update(candleData);
       } else {
-        // New candle
         const newCandle = {
           time: now - (now % (currentTimeframe * 60)),
           open: lastPrice,
@@ -887,13 +787,10 @@
 
     volumeSeries = chart.addHistogramSeries({
       color: '#1A2535',
-      priceFormat: {
-        type: 'volume',
-      },
+      priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
     });
 
-    // Generate initial data
     const asset = ASSETS.find(a => a.key === currentAsset);
     if (asset) {
       priceHistory = generateOHLC(asset.base, asset.vol, 80);
@@ -908,7 +805,6 @@
       updatePriceDisplay(lastPrice);
     }
 
-    // Resize handler
     const resizeObserver = new ResizeObserver(() => {
       chart.applyOptions({ width: container.clientWidth, height: container.clientHeight || 360 });
     });
@@ -922,7 +818,6 @@
     document.querySelectorAll('.chart-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     if (!chart || !candleSeries) return;
 
-    // Remove and re-add the appropriate series
     chart.removeSeries(candleSeries);
     chart.removeSeries(volumeSeries);
 
@@ -977,7 +872,6 @@
   function switchTimeframe(minutes) {
     currentTimeframe = minutes;
     document.querySelectorAll('.chart-btn[data-tf]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.tf) === minutes));
-    // Regenerate data with new timeframe
     const asset = ASSETS.find(a => a.key === currentAsset);
     if (asset && chart && candleSeries) {
       priceHistory = generateOHLC(asset.base, asset.vol, 80);
@@ -1114,14 +1008,7 @@
           entry_price: entryPrice
         })
       });
-      activeTrade = {
-        id: res.trade_id,
-        asset: currentAsset,
-        direction,
-        durationSec,
-        amount,
-        entryPrice
-      };
+      activeTrade = { id: res.trade_id, asset: currentAsset, direction, durationSec, amount, entryPrice };
       startCountdown(res.trade_id, entryPrice, durationSec);
     } catch (err) {
       Trovee.showToast(err.message || "Something went wrong. Please try again.", "error");
@@ -1213,7 +1100,6 @@
     currentAsset = key;
     document.getElementById("asset-name-label").textContent = key;
     document.getElementById("asset-dropdown").classList.remove("show");
-    // Regenerate chart data for new asset
     const asset = ASSETS.find(a => a.key === key);
     if (asset && chart && candleSeries) {
       priceHistory = generateOHLC(asset.base, asset.vol, 80);
@@ -1233,7 +1119,6 @@
   // ─── Init ────────────────────────────────────────────────────
   setTimeout(() => {
     initChart();
-    // Start price simulation
     priceInterval = setInterval(tickPrice, 1000);
   }, 100);
 
