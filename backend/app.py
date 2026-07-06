@@ -1373,9 +1373,10 @@ def api_admin_wallets_add():
         return jsonify({"error": "Name and address are required."}), 400
 
     db = get_db()
+    logo_url = (data.get("logo_url") or "").strip()
     cur = db.execute(
-        "INSERT INTO wallet_configs (display_name, address, qr_url, sort_order) VALUES (?, ?, ?, ?)",
-        (display_name, address, qr_url, sort_order)
+        "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order) VALUES (?, ?, ?, ?, ?)",
+        (display_name, address, logo_url, qr_url, sort_order)
     )
     wid = cur.lastrowid
     db.commit()
@@ -1389,6 +1390,7 @@ def api_admin_wallets_update(wallet_id):
     data = request.get_json(force=True) or {}
     display_name = (data.get("display_name") or "").strip()
     address      = (data.get("address") or "").strip()
+    logo_url     = (data.get("logo_url") or "").strip()
     qr_url       = (data.get("qr_url") or "").strip()
     sort_order   = int(data.get("sort_order") or 0)
     is_active    = int(bool(data.get("is_active", True)))
@@ -1398,8 +1400,8 @@ def api_admin_wallets_update(wallet_id):
 
     db = get_db()
     db.execute(
-        "UPDATE wallet_configs SET display_name=?, address=?, qr_url=?, sort_order=?, is_active=? WHERE id=?",
-        (display_name, address, qr_url, sort_order, is_active, wallet_id)
+        "UPDATE wallet_configs SET display_name=?, address=?, logo_url=?, qr_url=?, sort_order=?, is_active=? WHERE id=?",
+        (display_name, address, logo_url, qr_url, sort_order, is_active, wallet_id)
     )
     db.commit()
     db.close()
