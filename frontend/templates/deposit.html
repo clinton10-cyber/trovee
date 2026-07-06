@@ -16,16 +16,24 @@
   .deposit-section { padding:0 20px; }
   .section-card { background:var(--surface-raised); border-radius:var(--radius-lg); padding:22px; margin-top:16px; border:1px solid var(--line-strong); }
 
-  /* BTC */
-  .wallet-label { font-size:12px; color:var(--slate-soft); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
-  .wallet-address { font-family:var(--font-mono); font-size:13px; background:var(--ink); border-radius:var(--radius-sm); padding:14px; word-break:break-all; line-height:1.6; border:1px solid var(--line-strong); color:var(--paper); position:relative; }
+  /* Wallet grid */
+  .wallet-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; margin-bottom:4px; }
+  .wallet-option {
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:14px 10px; cursor:pointer; text-align:center; transition:all .15s; color:var(--paper);
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .wallet-option:hover { border-color:var(--accent-bright); }
+  .wallet-option.selected { border-color:var(--accent)!important; background:rgba(10,132,255,0.08)!important; }
+  .wallet-option img { width:36px; height:36px; border-radius:6px; object-fit:contain; background:#fff; padding:2px; }
+  .wallet-option .name { font-size:12px; font-weight:600; color:var(--paper); line-height:1.4; }
+
+  .wallet-address { font-family:var(--font-mono); font-size:13px; background:var(--ink); border-radius:var(--radius-sm); padding:14px; word-break:break-all; line-height:1.6; border:1px solid var(--line-strong); color:var(--paper); }
   .copy-btn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-top:12px; padding:12px; border-radius:var(--radius-sm); background:var(--surface); border:1px solid var(--line-strong); color:var(--paper); font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
   .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
 
   .notice-box { background:rgba(10, 132, 255,.08); border:1px solid rgba(10, 132, 255,.2); border-radius:var(--radius-sm); padding:12px 14px; font-size:13px; color:var(--paper-dim); line-height:1.6; margin-top:14px; }
   .notice-box strong { color:var(--accent); }
-
-  .network-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.2); border-radius:999px; padding:4px 12px; font-size:12px; color:#4ade80; font-weight:600; margin-bottom:14px; }
 
   /* Gift card */
   .gc-logo-row { display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
@@ -51,6 +59,15 @@
   .status-pending { color:var(--accent); }
   .status-confirmed { color:#4ade80; }
   .status-rejected { color:#f87171; }
+
+  /* Balance strip */
+  .balance-strip {
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:12px 18px; margin:12px 20px 0;
+  }
+  .balance-strip .lbl { font-size:12px; color:var(--slate-soft); margin-bottom:2px; }
+  .balance-strip .val { font-family:var(--font-mono); font-size:16px; font-weight:600; color:var(--accent); }
 </style>
 </head>
 <body>
@@ -60,18 +77,23 @@
     <span></span>
   </div>
 
+  <!-- Balance -->
+  <div class="balance-strip" id="balance-strip">
+    <div>
+      <div class="lbl">Available Balance</div>
+      <div class="val" id="balance-display">$0.00</div>
+    </div>
+    <a href="/withdraw" class="btn-ghost" style="font-size:13px;">Withdraw</a>
+  </div>
+
   <div style="padding:0 20px; margin-top:4px;">
     <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds to your trading account using cryptocurrency or a gift card.</p>
   </div>
 
   <!-- Method tabs -->
   <div class="method-tabs">
-    <button class="method-tab active" id="tab-crypto" onclick="switchTab('crypto')">
-      ₿ Crypto
-    </button>
-    <button class="method-tab" id="tab-giftcard" onclick="switchTab('giftcard')">
-      Gift Card
-    </button>
+    <button class="method-tab active" id="tab-crypto" onclick="switchTab('crypto')">₿ Crypto</button>
+    <button class="method-tab" id="tab-giftcard" onclick="switchTab('giftcard')">🎁 Gift Card</button>
   </div>
 
   <!-- Crypto Section -->
@@ -85,7 +107,7 @@
   <!-- Gift Card Section -->
   <div class="deposit-section" id="section-giftcard" style="display:none;">
     <div class="section-card">
-      <div class="wallet-label">Select gift card type</div>
+      <div class="wallet-label" style="margin-top:0;">Select gift card type</div>
       <div class="gc-logo-row">
         <div class="gc-logo selected" data-type="Amazon" onclick="selectGC(this)">Amazon</div>
         <div class="gc-logo" data-type="Google Play" onclick="selectGC(this)">Google Play</div>
@@ -113,7 +135,8 @@
     <div id="deposit-history-list"><div class="empty-state small">No deposits yet.</div></div>
   </div>
 
-    <nav class="bottom-nav">
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
     <a href="/dashboard" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
       Home
@@ -146,54 +169,51 @@
 Trovee.requireAuth();
 
 let selectedWalletId = null;
+let selectedGCType = 'Amazon';
+let wallets = [];
 
-async function loadWalletAddress() {
+// Load balance
+async function loadBalance() {
+  try {
+    const me = await Trovee.api("/api/auth/me");
+    const bal = me.balance_local || 0;
+    document.getElementById("balance-display").textContent = `${me.currency_symbol}${bal.toFixed(2)}`;
+  } catch(e) {}
+}
+
+// Load wallets from API
+async function loadWallets() {
   try {
     const data = await Trovee.api("/api/deposit/wallets");
-    window._wallets = data.wallets || [];
+    wallets = data.wallets || [];
     document.getElementById("crypto-loading").style.display = "none";
     const container = document.getElementById("crypto-wallets");
     container.style.display = "";
 
-    if (!window._wallets.length) {
-      container.innerHTML = '<div class="section-card"><p class="muted small" style="text-align:center;padding:20px 0;">No deposit wallets configured yet. Contact support.</p></div>';
+    if (!wallets.length) {
+      container.innerHTML = '<div class="section-card"><p class="muted small" style="text-align:center;padding:16px 0;">No crypto wallets configured yet. Contact support.</p></div>';
       return;
     }
 
-    container.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:0 0 4px;">
-        ${window._wallets.map(w => `
-          <button class="wallet-option" data-id="${w.id}" onclick="selectWallet(${w.id})"
-            style="background:var(--surface);border:1px solid var(--line);border-radius:12px;
-                   padding:14px 10px;cursor:pointer;text-align:center;transition:all .15s;color:var(--paper);">
-            ${w.qr_url ? `<img src="${w.qr_url}" style="width:36px;height:36px;border-radius:6px;object-fit:contain;background:#fff;padding:2px;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'">` : ''}
-            <div style="font-size:12px;font-weight:600;color:var(--paper);line-height:1.4;">${w.display_name}</div>
-          </button>`).join("")}
-      </div>
-      <div id="wallet-detail" style="display:none;"></div>
-      <style>
-        .wallet-option.selected { border-color:var(--accent)!important; background:rgba(10,132,255,0.08)!important; }
-        .wallet-option:hover { border-color:var(--accent-bright); }
-      </style>`;
+    // Build grid
+    let html = `<div class="wallet-grid">`;
+    wallets.forEach(w => {
+      html += `
+        <button class="wallet-option" data-id="${w.id}" onclick="selectWallet(${w.id})">
+          ${w.logo_url ? `<img src="${w.logo_url}" alt="${w.display_name}" onerror="this.style.display='none'">` : ''}
+          <span class="name">${w.display_name}</span>
+        </button>
+      `;
+    });
+    html += `</div>`;
+    html += `<div id="wallet-detail" style="display:none;"></div>`;
+    container.innerHTML = html;
 
-    if (window._wallets.length > 0) selectWallet(window._wallets[0].id);
+    // Auto-select first
+    if (wallets.length > 0) selectWallet(wallets[0].id);
   } catch(e) {
     document.getElementById("crypto-loading").innerHTML = '<p class="muted small" style="text-align:center;padding:20px;">Unable to load wallets. Please refresh.</p>';
   }
-}
-
-function switchTab(tab) {
-  activeTab = tab;
-  document.getElementById("tab-crypto").className = "method-tab" + (tab === "crypto" ? " active" : "");
-  document.getElementById("tab-giftcard").className = "method-tab" + (tab === "giftcard" ? (" active") : "");
-  document.getElementById("section-crypto").style.display = tab === "crypto" ? "" : "none";
-  document.getElementById("section-giftcard").style.display = tab === "giftcard" ? "" : "none";
-}
-
-function selectGC(el) {
-  document.querySelectorAll(".gc-logo").forEach(e => e.classList.remove("selected"));
-  el.classList.add("selected");
-  selectedGCType = el.dataset.type;
 }
 
 function selectWallet(id) {
@@ -202,7 +222,7 @@ function selectWallet(id) {
     el.classList.toggle("selected", parseInt(el.dataset.id) === id);
   });
   const detail = document.getElementById("wallet-detail");
-  const wallet = window._wallets?.find(w => w.id === id);
+  const wallet = wallets.find(w => w.id === id);
   if (!wallet) return;
   detail.style.display = "";
   detail.innerHTML = `
@@ -233,42 +253,6 @@ function selectWallet(id) {
     </div>`;
 }
 
-async function loadWalletAddress() {
-  try {
-    const data = await Trovee.api("/api/deposit/wallets");
-    window._wallets = data.wallets || [];
-    document.getElementById("crypto-loading").style.display = "none";
-    const container = document.getElementById("crypto-wallets");
-    container.style.display = "";
-
-    if (!window._wallets.length) {
-      container.innerHTML = '<div class="section-card"><p class="muted small" style="text-align:center;padding:16px 0;">No crypto wallets configured yet. Contact support.</p></div>';
-      return;
-    }
-
-    container.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:0 0 4px;">
-        ${window._wallets.map(w => `
-          <button class="wallet-option" data-coin="${w.coin}" onclick="selectWallet('${w.coin}')"
-            style="background:var(--surface);border:1px solid var(--line);border-radius:12px;
-                   padding:14px 10px;cursor:pointer;text-align:center;transition:all .15s;color:var(--paper);">
-            <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px;">${w.coin.toUpperCase().replace("_"," ")}</div>
-            <div style="font-size:11px;color:var(--slate-soft);line-height:1.4;">${w.label}</div>
-          </button>`).join("")}
-      </div>
-      <div id="wallet-detail" style="display:none;"></div>
-      <style>
-        .wallet-option.selected { border-color:var(--accent)!important; background:rgba(10,132,255,0.08)!important; }
-        .wallet-option:hover { border-color:var(--accent-bright); }
-      </style>`;
-
-    // Auto-select first wallet
-    if (window._wallets.length > 0) selectWallet(window._wallets[0].coin);
-  } catch(e) {
-    document.getElementById("crypto-loading").innerHTML = '<p class="muted small" style="text-align:center;padding:20px;">Unable to load wallets. Please refresh.</p>';
-  }
-}
-
 function copyWallet() {
   const el = document.getElementById("current-wallet-address");
   const addr = el ? el.textContent : "";
@@ -279,6 +263,19 @@ function copyWallet() {
       Trovee.showToast("Copy failed — please copy manually.", "error");
     });
   }
+}
+
+function switchTab(tab) {
+  document.getElementById("tab-crypto").className = "method-tab" + (tab === "crypto" ? " active" : "");
+  document.getElementById("tab-giftcard").className = "method-tab" + (tab === "giftcard" ? " active" : "");
+  document.getElementById("section-crypto").style.display = tab === "crypto" ? "" : "none";
+  document.getElementById("section-giftcard").style.display = tab === "giftcard" ? "" : "none";
+}
+
+function selectGC(el) {
+  document.querySelectorAll(".gc-logo").forEach(e => e.classList.remove("selected"));
+  el.classList.add("selected");
+  selectedGCType = el.dataset.type;
 }
 
 async function submitGiftCard() {
@@ -300,6 +297,7 @@ async function submitGiftCard() {
     document.getElementById("gc-code").value = "";
     document.getElementById("gc-value").value = "";
     loadHistory();
+    loadBalance();
   } catch(err) {
     Trovee.showToast(err.message, "error");
   } finally {
@@ -337,7 +335,9 @@ async function loadHistory() {
   } catch(e) {}
 }
 
-loadWalletAddress();
+// Init
+loadBalance();
+loadWallets();
 loadHistory();
 </script>
 </body>
