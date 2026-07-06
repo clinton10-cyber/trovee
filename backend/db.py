@@ -1,6 +1,6 @@
 """
 Trovee database layer — supports both SQLite and PostgreSQL.
-... (docstring remains) ...
+Now with detailed logging for debugging.
 """
 
 import os
@@ -144,15 +144,13 @@ def init_db():
 def _seed_defaults(conn):
     cur = conn.cursor()
 
-    # Use helper to avoid duplicates by display_name
     def insert_wallet(name, address, logo, qr, order):
-        # Check if it already exists
         if USE_POSTGRES:
             cur.execute("SELECT id FROM wallet_configs WHERE display_name = %s", (name,))
         else:
             cur.execute("SELECT id FROM wallet_configs WHERE display_name = ?", (name,))
         if cur.fetchone() is not None:
-            return  # already exists
+            return
         if USE_POSTGRES:
             cur.execute(
                 "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order) "
@@ -198,7 +196,6 @@ def _seed_defaults(conn):
     for w in wallets:
         insert_wallet(*w)
 
-    # Companies and plans (using similar duplicate prevention)
     companies = [
         ("Tesla, Inc.", "TSLA",
          "Electric vehicles and clean energy",
@@ -260,10 +257,11 @@ def _seed_defaults(conn):
                 (tid, plan_name, shares, price_cents, rate, months)
             )
 
-    # Starter plans
+    # Starter plans for all companies
     for company in companies:
         insert_plan(company[0], "Starter", 1, 100, 8.0, 6)
 
+    # Tesla plans
     tesla_plans = [
         ("Model 3", 10, 45000, 12.0, 12),
         ("Model Y", 15, 55000, 13.5, 12),
@@ -274,6 +272,7 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in tesla_plans:
         insert_plan("Tesla, Inc.", plan_name, shares, price_usd, rate, months)
 
+    # NVIDIA plans
     nv_plans = [
         ("Growth", 12, 50000, 14.0, 12),
         ("Premium", 25, 100000, 18.0, 18),
@@ -282,6 +281,7 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in nv_plans:
         insert_plan("NVIDIA Corporation", plan_name, shares, price_usd, rate, months)
 
+    # Microsoft plans
     ms_plans = [
         ("Growth", 15, 60000, 15.0, 12),
         ("Premium", 30, 120000, 19.0, 18),
@@ -290,6 +290,7 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in ms_plans:
         insert_plan("Microsoft Corporation", plan_name, shares, price_usd, rate, months)
 
+    # Apple plans
     aa_plans = [
         ("Growth", 18, 70000, 14.5, 12),
         ("Premium", 35, 140000, 18.5, 18),
