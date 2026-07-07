@@ -64,6 +64,7 @@
     padding: 8px;
     position: relative;
     height: 380px;
+    min-height: 300px;
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
     box-shadow: var(--glass-sheen);
@@ -71,6 +72,7 @@
   #chart-container {
     width: 100%;
     height: 100%;
+    min-height: 280px;
   }
   .chart-controls {
     display: flex;
@@ -448,6 +450,15 @@
   .asset-opt-desc { font-size: 12px; color: var(--slate-soft); }
   .asset-opt-price { font-family: var(--font-mono); font-size: 14px; }
 
+  /* Loading / price unavailable state */
+  .price-unavailable {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .price-unavailable .trade-btn {
+    background: #555;
+  }
+
   @media (max-width: 480px) {
     .trade-header {
       padding: 10px 16px 0;
@@ -457,7 +468,7 @@
     }
     .asset-selector { justify-content: center; }
     .asset-price-info { justify-content: center; }
-    .chart-container { height: 280px; margin: 8px 12px 0; }
+    .chart-container { height: 280px; }
     .trade-form { padding: 0 12px; gap: 8px; }
     .trade-modal-card { padding: 20px 16px; }
   }
@@ -699,6 +710,8 @@
     if (activeTrade) {
       document.getElementById("modal-live-price").textContent = "Live: " + formatPrice(newPrice);
     }
+    // Enable trade button now that price is available
+    document.getElementById("trade-btn").disabled = false;
   }
 
   function formatPrice(p) {
@@ -724,9 +737,19 @@
 
   function initChart() {
     const container = document.getElementById('chart-container');
+    if (!container) return;
+    if (!window.LightweightCharts) {
+      console.warn('LightweightCharts not loaded yet, retrying...');
+      setTimeout(initChart, 200);
+      return;
+    }
+
+    const width = container.offsetWidth || container.clientWidth || 400;
+    const height = container.offsetHeight || container.clientHeight || 360;
+
     chart = LightweightCharts.createChart(container, {
-      width: container.clientWidth,
-      height: container.clientHeight || 360,
+      width: width,
+      height: height,
       layout: {
         background: { color: 'transparent' },
         textColor: '#8E96A6',
@@ -778,9 +801,18 @@
     }
 
     const resizeObserver = new ResizeObserver(() => {
-      chart.applyOptions({ width: container.clientWidth, height: container.clientHeight || 360 });
+      const w = container.offsetWidth || container.clientWidth || 400;
+      const h = container.offsetHeight || container.clientHeight || 360;
+      chart.applyOptions({ width: w, height: h });
     });
     resizeObserver.observe(container);
+
+    requestAnimationFrame(() => {
+      const w = container.offsetWidth || container.clientWidth || 400;
+      const h = container.offsetHeight || container.clientHeight || 360;
+      chart.applyOptions({ width: w, height: h });
+      chart.timeScale().fitContent();
+    });
 
     return chart;
   }
@@ -812,15 +844,17 @@
         break;
       case 'line':
         candleSeries = chart.addLineSeries({
-          color: '#2DD4BF',
-          lineWidth: 2,
+          color: '#0EA5E9',
+          lineWidth: 3,
+          crosshairMarkerVisible: true,
+          crosshairMarkerRadius: 6,
         });
         break;
       case 'area':
         candleSeries = chart.addAreaSeries({
-          topColor: 'rgba(45, 212, 191, 0.3)',
-          bottomColor: 'rgba(45, 212, 191, 0.0)',
-          lineColor: '#2DD4BF',
+          topColor: 'rgba(14, 165, 233, 0.4)',
+          bottomColor: 'rgba(14, 165, 233, 0.0)',
+          lineColor: '#0EA5E9',
           lineWidth: 2,
         });
         break;
@@ -979,7 +1013,9 @@
       activeTrade = { id: res.trade_id, asset: currentAsset, direction, durationSec, amount, entryPrice };
       startCountdown(res.trade_id, entryPrice, durationSec);
     } catch (err) {
-      Trovee.showToast(err.message || "Something went wrong. Please try again.", "error");
+      // Show the actual error from the server
+      const msg = err.message || "Something went wrong. Please try again.";
+      Trovee.showToast(msg, "error");
     }
   }
 
@@ -1083,13 +1119,20 @@
     }
   }
 
-  setTimeout(() => {
+  function startApp() {
     initChart();
     priceInterval = setInterval(tickPrice, 1000);
-  }, 100);
+    loadBalance();
+    loadHistory();
+    // Disable trade button until price is loaded
+    document.getElementById("trade-btn").disabled = true;
+  }
 
-  loadBalance();
-  loadHistory();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+  } else {
+    startApp();
+  }
 </script>
 </body>
 </html>
