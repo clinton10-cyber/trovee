@@ -8,8 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/trovee.css">
-<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js">
-</script>
 <style>
   .trade-header {
     display: flex;
@@ -55,63 +53,6 @@
   }
   .price-change.up { color: #2DD4BF; background: rgba(45, 212, 191, 0.12); }
   .price-change.down { color: #E8604C; background: rgba(232, 96, 76, 0.12); }
-
-  .chart-container {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    margin: 10px 16px 0;
-    padding: 8px;
-    position: relative;
-    height: 380px;
-    min-height: 300px;
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    box-shadow: var(--glass-sheen);
-  }
-  #chart-container {
-    width: 100%;
-    height: 100%;
-    min-height: 280px;
-  }
-  .chart-controls {
-    display: flex;
-    gap: 6px;
-    padding: 6px 16px 0;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .chart-btn {
-    padding: 5px 14px;
-    border-radius: 8px;
-    border: 1px solid var(--line-strong);
-    background: transparent;
-    color: var(--slate-soft);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: var(--font-body);
-  }
-  .chart-btn:hover {
-    border-color: var(--accent);
-    color: var(--paper);
-  }
-  .chart-btn.active {
-    background: var(--accent);
-    color: var(--ink);
-    border-color: var(--accent);
-    box-shadow: 0 0 12px rgba(10, 132, 255, 0.3);
-  }
-  .chart-btn[data-tf] {
-    padding: 4px 10px;
-    font-size: 10px;
-  }
-  .chart-btn[data-tf].active {
-    background: rgba(45, 212, 191, 0.2);
-    color: var(--teal);
-    border-color: var(--teal);
-  }
 
   .trade-form {
     padding: 0 16px;
@@ -261,9 +202,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 10px 0;
+    padding: 20px 0;
   }
-  .gauge-svg { width: 160px; height: 88px; }
+  .gauge-svg { width: 200px; height: 110px; }
   .gauge-bg {
     fill: none;
     stroke: var(--surface-raised);
@@ -459,9 +400,10 @@
     }
     .asset-selector { justify-content: center; }
     .asset-price-info { justify-content: center; }
-    .chart-container { height: 280px; }
     .trade-form { padding: 0 12px; gap: 8px; }
     .trade-modal-card { padding: 20px 16px; }
+    .gauge-svg { width: 160px; height: 88px; }
+    .gauge-center { font-size: 24px; }
   }
 </style>
 </head>
@@ -481,24 +423,6 @@
       <span class="asset-price" id="asset-price-display">--</span>
       <span class="price-change" id="price-change-display">+0.00%</span>
     </div>
-  </div>
-
-  <div class="chart-controls">
-    <button class="chart-btn active" data-view="candlestick" onclick="switchChartView('candlestick')">Candles</button>
-    <button class="chart-btn" data-view="bar" onclick="switchChartView('bar')">Bars</button>
-    <button class="chart-btn" data-view="line" onclick="switchChartView('line')">Line</button>
-    <button class="chart-btn" data-view="area" onclick="switchChartView('area')">Area</button>
-    <span style="flex:1;"></span>
-    <button class="chart-btn" data-tf="1" onclick="switchTimeframe(1)">1m</button>
-    <button class="chart-btn active" data-tf="5" onclick="switchTimeframe(5)">5m</button>
-    <button class="chart-btn" data-tf="15" onclick="switchTimeframe(15)">15m</button>
-    <button class="chart-btn" data-tf="60" onclick="switchTimeframe(60)">1h</button>
-    <button class="chart-btn" data-tf="240" onclick="switchTimeframe(240)">4h</button>
-    <button class="chart-btn" data-tf="1440" onclick="switchTimeframe(1440)">1d</button>
-  </div>
-
-  <div class="chart-container">
-    <div id="chart-container"></div>
   </div>
 
   <div class="trade-form" id="trade-form-section">
@@ -634,38 +558,8 @@
   let activeTrade = null;
   let tradeInterval = null;
   let priceInterval = null;
-  let chart = null;
-  let candleSeries = null;
-  let volumeSeries = null;
-  let currentView = 'candlestick';
-  let currentTimeframe = 5;
-  let priceHistory = [];
   let lastPrice = 0;
   const GAUGE_LEN = 251.3;
-
-  function generateOHLC(base, vol, count) {
-    count = count || 100;
-    const data = [];
-    let price = base + (Math.random() - 0.5) * base * 0.002;
-    for (let i = 0; i < count; i++) {
-      const change = (Math.random() - 0.48) * base * vol;
-      const open = price;
-      const close = Math.max(open + change, base * 0.8);
-      const high = Math.max(open, close) + Math.random() * base * vol * 0.3;
-      const low = Math.min(open, close) - Math.random() * base * vol * 0.3;
-      const volume = Math.floor(Math.random() * 100 + 10);
-      data.push({
-        time: Date.now() / 1000 - (count - i) * currentTimeframe * 60,
-        open: open,
-        high: high,
-        low: low,
-        close: close,
-        volume: volume,
-      });
-      price = close;
-    }
-    return data;
-  }
 
   function tickPrice() {
     const asset = ASSETS.find(a => a.key === currentAsset);
@@ -673,30 +567,6 @@
     const change = (Math.random() - 0.49) * asset.base * asset.vol;
     const newPrice = Math.max(lastPrice + change, asset.base * 0.8);
     lastPrice = newPrice;
-
-    if (candleSeries && priceHistory.length > 0) {
-      const now = Math.floor(Date.now() / 1000);
-      const candleData = priceHistory[priceHistory.length - 1];
-      if (candleData && (now - candleData.time) < currentTimeframe * 60) {
-        candleData.high = Math.max(candleData.high, newPrice);
-        candleData.low = Math.min(candleData.low, newPrice);
-        candleData.close = newPrice;
-        candleSeries.update(candleData);
-      } else {
-        const newCandle = {
-          time: now - (now % (currentTimeframe * 60)),
-          open: lastPrice,
-          high: lastPrice,
-          low: lastPrice,
-          close: lastPrice,
-          volume: Math.floor(Math.random() * 50 + 10),
-        };
-        priceHistory.push(newCandle);
-        candleSeries.update(newCandle);
-        if (priceHistory.length > 500) priceHistory.shift();
-      }
-    }
-
     updatePriceDisplay(newPrice);
     if (activeTrade) {
       document.getElementById("modal-live-price").textContent = "Live: " + formatPrice(newPrice);
@@ -723,164 +593,6 @@
     const sign = pct >= 0 ? "+" : "";
     changeEl.textContent = sign + pct.toFixed(2) + "%";
     changeEl.className = "price-change " + (pct >= 0 ? "up" : "down");
-  }
-
-  function initChart() {
-    const container = document.getElementById('chart-container');
-    if (!container) return;
-    if (!window.LightweightCharts) {
-      setTimeout(initChart, 200);
-      return;
-    }
-
-    const width = container.offsetWidth || container.clientWidth || 400;
-    const height = container.offsetHeight || container.clientHeight || 360;
-
-    chart = LightweightCharts.createChart(container, {
-      width: width,
-      height: height,
-      layout: {
-        background: { color: 'transparent' },
-        textColor: '#8E96A6',
-      },
-      grid: {
-        vertLines: { color: 'rgba(26, 37, 53, 0.5)' },
-        horzLines: { color: 'rgba(26, 37, 53, 0.5)' },
-      },
-      crosshair: {
-        mode: LightweightCharts.CrosshairMode.Normal,
-      },
-      rightPriceScale: {
-        borderColor: 'rgba(26, 37, 53, 0.5)',
-      },
-      timeScale: {
-        borderColor: 'rgba(26, 37, 53, 0.5)',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    });
-
-    candleSeries = chart.addCandlestickSeries({
-      upColor: '#2DD4BF',
-      downColor: '#E8604C',
-      borderDownColor: '#E8604C',
-      borderUpColor: '#2DD4BF',
-      wickDownColor: '#E8604C',
-      wickUpColor: '#2DD4BF',
-    });
-
-    volumeSeries = chart.addHistogramSeries({
-      color: '#1A2535',
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'volume',
-    });
-
-    const asset = ASSETS.find(a => a.key === currentAsset);
-    if (asset) {
-      priceHistory = generateOHLC(asset.base, asset.vol, 80);
-      lastPrice = priceHistory[priceHistory.length - 1].close;
-      candleSeries.setData(priceHistory);
-      const volData = priceHistory.map(d => ({
-        time: d.time,
-        value: d.volume,
-        color: d.close >= d.open ? '#2DD4BF40' : '#E8604C40'
-      }));
-      volumeSeries.setData(volData);
-      updatePriceDisplay(lastPrice);
-    }
-
-    const resizeObserver = new ResizeObserver(() => {
-      const w = container.offsetWidth || container.clientWidth || 400;
-      const h = container.offsetHeight || container.clientHeight || 360;
-      chart.applyOptions({ width: w, height: h });
-    });
-    resizeObserver.observe(container);
-
-    requestAnimationFrame(() => {
-      const w = container.offsetWidth || container.clientWidth || 400;
-      const h = container.offsetHeight || container.clientHeight || 360;
-      chart.applyOptions({ width: w, height: h });
-      chart.timeScale().fitContent();
-    });
-
-    return chart;
-  }
-
-  function switchChartView(view) {
-    currentView = view;
-    document.querySelectorAll('.chart-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    if (!chart || !candleSeries) return;
-
-    chart.removeSeries(candleSeries);
-    chart.removeSeries(volumeSeries);
-
-    switch (view) {
-      case 'candlestick':
-        candleSeries = chart.addCandlestickSeries({
-          upColor: '#2DD4BF',
-          downColor: '#E8604C',
-          borderDownColor: '#E8604C',
-          borderUpColor: '#2DD4BF',
-          wickDownColor: '#E8604C',
-          wickUpColor: '#2DD4BF',
-        });
-        break;
-      case 'bar':
-        candleSeries = chart.addBarSeries({
-          upColor: '#2DD4BF',
-          downColor: '#E8604C',
-        });
-        break;
-      case 'line':
-        candleSeries = chart.addLineSeries({
-          color: '#0EA5E9',
-          lineWidth: 3,
-          crosshairMarkerVisible: true,
-          crosshairMarkerRadius: 6,
-        });
-        break;
-      case 'area':
-        candleSeries = chart.addAreaSeries({
-          topColor: 'rgba(14, 165, 233, 0.4)',
-          bottomColor: 'rgba(14, 165, 233, 0.0)',
-          lineColor: '#0EA5E9',
-          lineWidth: 2,
-        });
-        break;
-    }
-
-    candleSeries.setData(priceHistory);
-    volumeSeries = chart.addHistogramSeries({
-      color: '#1A2535',
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'volume',
-    });
-    const volData = priceHistory.map(d => ({
-      time: d.time,
-      value: d.volume,
-      color: d.close >= d.open ? '#2DD4BF40' : '#E8604C40'
-    }));
-    volumeSeries.setData(volData);
-    chart.timeScale().fitContent();
-  }
-
-  function switchTimeframe(minutes) {
-    currentTimeframe = minutes;
-    document.querySelectorAll('.chart-btn[data-tf]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.tf) === minutes));
-    const asset = ASSETS.find(a => a.key === currentAsset);
-    if (asset && chart && candleSeries) {
-      priceHistory = generateOHLC(asset.base, asset.vol, 80);
-      lastPrice = priceHistory[priceHistory.length - 1].close;
-      candleSeries.setData(priceHistory);
-      const volData = priceHistory.map(d => ({
-        time: d.time,
-        value: d.volume,
-        color: d.close >= d.open ? '#2DD4BF40' : '#E8604C40'
-      }));
-      volumeSeries.setData(volData);
-      chart.timeScale().fitContent();
-      updatePriceDisplay(lastPrice);
-    }
   }
 
   function setDirection(d) {
@@ -1094,23 +806,18 @@
     document.getElementById("asset-name-label").textContent = key;
     document.getElementById("asset-dropdown").classList.remove("show");
     const asset = ASSETS.find(a => a.key === key);
-    if (asset && chart && candleSeries) {
-      priceHistory = generateOHLC(asset.base, asset.vol, 80);
-      lastPrice = priceHistory[priceHistory.length - 1].close;
-      candleSeries.setData(priceHistory);
-      const volData = priceHistory.map(d => ({
-        time: d.time,
-        value: d.volume,
-        color: d.close >= d.open ? '#2DD4BF40' : '#E8604C40'
-      }));
-      volumeSeries.setData(volData);
-      chart.timeScale().fitContent();
+    if (asset) {
+      lastPrice = asset.base + (Math.random() - 0.5) * asset.base * 0.002;
       updatePriceDisplay(lastPrice);
     }
   }
 
   function startApp() {
-    initChart();
+    const asset = ASSETS.find(a => a.key === currentAsset);
+    if (asset) {
+      lastPrice = asset.base + (Math.random() - 0.5) * asset.base * 0.002;
+      updatePriceDisplay(lastPrice);
+    }
     priceInterval = setInterval(tickPrice, 1000);
     loadBalance();
     loadHistory();
