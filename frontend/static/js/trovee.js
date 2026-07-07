@@ -1,5 +1,3 @@
-// Trovee shared client-side utilities
-
 const Trovee = (() => {
   const TOKEN_KEY = "trovee_token";
   const GEO_KEY = "trovee_geo";
