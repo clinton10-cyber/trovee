@@ -18,11 +18,10 @@ from backend.geo_currency import (
 )
 
 APP_SECRET = os.environ.get("TROVEE_APP_SECRET", "trovee-dev-secret-change-me-in-prod")
-WITHDRAWAL_MINIMUM_USD_CENTS = 1  # Allow any positive amount
+WITHDRAWAL_MINIMUM_USD_CENTS = 1
 ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
-
 
 # ---------------------------------------------------------------------------
 # Auth helpers
@@ -331,7 +330,6 @@ def api_withdraw_request():
 
     if not isinstance(amount_usd_cents, int) or amount_usd_cents <= 0:
         return jsonify({"error": "Enter a valid withdrawal amount."}), 400
-    # No minimum check – any positive amount is allowed
     if not destination:
         return jsonify({"error": "Provide your withdrawal destination details."}), 400
 
@@ -533,7 +531,13 @@ TRADE_RETURN_RATE = 0.20
 @login_required
 def api_trade_place():
     try:
-        data = request.get_json(force=True) or {}
+        if not request.is_json:
+            return jsonify({"error": "Content-Type must be application/json"}), 400
+        
+        data = request.get_json(force=True, silent=True)
+        if not data or not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON payload"}), 400
+        
         asset = (data.get("asset") or "").strip()
         direction = data.get("direction")
         duration_sec = data.get("duration_sec")
@@ -576,14 +580,20 @@ def api_trade_place():
     except Exception as e:
         print(f"[trovee] ERROR in /api/trades/place: {type(e).__name__}: {e}")
         traceback.print_exc()
-        raise
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/trades/close", methods=["POST"])
 @login_required
 def api_trade_close():
     try:
-        data = request.get_json(force=True) or {}
+        if not request.is_json:
+            return jsonify({"error": "Content-Type must be application/json"}), 400
+        
+        data = request.get_json(force=True, silent=True)
+        if not data or not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON payload"}), 400
+        
         trade_id = data.get("trade_id")
         exit_price = data.get("exit_price")
 
@@ -625,7 +635,7 @@ def api_trade_close():
     except Exception as e:
         print(f"[trovee] ERROR in /api/trades/close: {type(e).__name__}: {e}")
         traceback.print_exc()
-        raise
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/trades/history", methods=["GET"])
