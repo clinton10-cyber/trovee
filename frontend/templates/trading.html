@@ -450,15 +450,6 @@
   .asset-opt-desc { font-size: 12px; color: var(--slate-soft); }
   .asset-opt-price { font-family: var(--font-mono); font-size: 14px; }
 
-  /* Loading / price unavailable state */
-  .price-unavailable {
-    opacity: 0.6;
-    pointer-events: none;
-  }
-  .price-unavailable .trade-btn {
-    background: #555;
-  }
-
   @media (max-width: 480px) {
     .trade-header {
       padding: 10px 16px 0;
@@ -710,7 +701,6 @@
     if (activeTrade) {
       document.getElementById("modal-live-price").textContent = "Live: " + formatPrice(newPrice);
     }
-    // Enable trade button now that price is available
     document.getElementById("trade-btn").disabled = false;
   }
 
@@ -739,7 +729,6 @@
     const container = document.getElementById('chart-container');
     if (!container) return;
     if (!window.LightweightCharts) {
-      console.warn('LightweightCharts not loaded yet, retrying...');
       setTimeout(initChart, 200);
       return;
     }
@@ -1002,20 +991,18 @@
     try {
       const res = await Trovee.api("/api/trades/place", {
         method: "POST",
-        body: JSON.stringify({
+        body: {
           asset: currentAsset,
-          direction,
+          direction: direction,
           duration_sec: durationSec,
-          amount_usd_cents,
+          amount_usd_cents: amount_usd_cents,
           entry_price: entryPrice
-        })
+        }
       });
       activeTrade = { id: res.trade_id, asset: currentAsset, direction, durationSec, amount, entryPrice };
       startCountdown(res.trade_id, entryPrice, durationSec);
     } catch (err) {
-      // Show the actual error from the server
-      const msg = err.message || "Something went wrong. Please try again.";
-      Trovee.showToast(msg, "error");
+      Trovee.showToast(err.message || "Something went wrong. Please try again.", "error");
     }
   }
 
@@ -1060,7 +1047,10 @@
     try {
       const res = await Trovee.api("/api/trades/close", {
         method: "POST",
-        body: JSON.stringify({ trade_id: tradeId, exit_price: exitPrice })
+        body: {
+          trade_id: tradeId,
+          exit_price: exitPrice
+        }
       });
       document.getElementById("live-trade-modal").classList.remove("show");
       activeTrade = null;
@@ -1124,7 +1114,6 @@
     priceInterval = setInterval(tickPrice, 1000);
     loadBalance();
     loadHistory();
-    // Disable trade button until price is loaded
     document.getElementById("trade-btn").disabled = true;
   }
 
