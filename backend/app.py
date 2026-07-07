@@ -1,8 +1,10 @@
 import os
 import re
 import jwt
+import json
 import datetime
 import traceback
+import random
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, g, redirect, send_from_directory
 
@@ -23,7 +25,24 @@ ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 
+# ─── TRADING CONFIGURATION ───
+MAX_TRADE_PERCENTAGE = 0.10  # Max 10% of balance per trade
+MIN_TRADE_AMOUNT = 10  # Minimum $10 per trade
+VALID_DURATIONS = [30, 60, 90, 120, 180, 360]
 
+# ─── PRICE SIMULATION STATE ───
+price_state = {
+    "BTC/USD": {"price": 97000, "trend": 0, "volatility": 0.0018},
+    "ETH/USD": {"price": 3400, "trend": 0, "volatility": 0.0022},
+    "XAU/USD": {"price": 3320, "trend": 0, "volatility": 0.0008},
+    "EUR/USD": {"price": 1.0850, "trend": 0, "volatility": 0.0003},
+    "BNB/USD": {"price": 620, "trend": 0, "volatility": 0.002},
+}
+
+VALID_ASSETS = {"BTC/USD", "ETH/USD", "XAU/USD", "EUR/USD", "BNB/USD"}
+
+
+# ─── AUTH HELPERS ──────────────────────────────────────────
 def make_token(user_id: int) -> str:
     payload = {
         "user_id": user_id,
@@ -74,6 +93,26 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,20}$")
 
 
+# ─── PRICE SIMULATION ──────────────────────────────────────
+def get_current_price(asset: str) -> float:
+    """Get the current simulated price for an asset."""
+    if asset not in price_state:
+        return 0.0
+    return price_state[asset]["price"]
+
+
+def update_prices():
+    """Update all asset prices with realistic simulation."""
+    for asset, state in price_state.items():
+        drift = -state["trend"] * 0.01
+        shock = (random.random() - 0.5) * 2 * state["volatility"]
+        change = drift + shock
+        state["price"] *= (1 + change)
+        state["price"] = max(state["price"], state["price"] * 0.5)
+        state["trend"] = state["trend"] * 0.9 + change * 0.1
+
+
+# ─── PAGE ROUTES ──────────────────────────────────────────
 @app.route("/")
 def page_landing():
     return render_template("landing.html")
@@ -129,6 +168,31 @@ def favicon():
     return send_from_directory(app.static_folder + "/img", "favicon.ico")
 
 
+# ─── API: PRICE FEED ──────────────────────────────────────
+@app.route("/api/price/<asset>", methods=["GET"])
+def api_price(asset):
+    """Get current price for an asset."""
+    if asset not in VALID_ASSETS:
+        return jsonify({"error": "Invalid asset"}), 400
+    update_prices()
+    return jsonify({
+        "asset": asset,
+        "price": get_current_price(asset),
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    })
+
+
+@app.route("/api/price/all", methods=["GET"])
+def api_price_all():
+    """Get all current prices."""
+    update_prices()
+    return jsonify({
+        "prices": {asset: state["price"] for asset, state in price_state.items()},
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    })
+
+
+# ─── API: GEO / CURRENCY ──────────────────────────────────
 @app.route("/api/geo/detect", methods=["GET"])
 def api_geo_detect():
     country_code = (
@@ -148,6 +212,7 @@ def api_geo_detect():
     })
 
 
+# ─── API: AUTH ────────────────────────────────────────────
 @app.route("/api/auth/signup/start", methods=["POST"])
 def api_signup_start():
     data = request.get_json(force=True) or {}
@@ -176,7 +241,6 @@ def api_signup_start():
         db.close()
         return jsonify({"error": "An account with that email or username already exists."}), 409
 
-    import json
     code = generate_otp()
     code_hash = hash_otp(code)
     expires_at = otp_expiry_timestamp()
@@ -201,7 +265,6 @@ def api_signup_start():
 
 @app.route("/api/auth/signup/verify", methods=["POST"])
 def api_signup_verify():
-    import json
     data = request.get_json(force=True) or {}
     email = (data.get("email") or "").strip().lower()
     code = (data.get("code") or "").strip()
@@ -239,7 +302,7 @@ def api_signup_verify():
     currency_code, _, _ = get_currency_for_country(payload["country_code"])
     cur = db.execute(
         "INSERT INTO users (username, email, phone, password_hash, password_salt, country_code, "
-        "currency_code, email_verified) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+        "currency_code, email_verified, trust_level) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)",
         (payload["username"], payload["email"], payload["phone"], pw_hash, salt,
          payload["country_code"], currency_code),
     )
@@ -286,6 +349,7 @@ def api_me():
     })
 
 
+# ─── API: WITHDRAWALS ─────────────────────────────────────
 @app.route("/api/withdraw/methods", methods=["GET"])
 @login_required
 def api_withdraw_methods():
@@ -348,6 +412,7 @@ def api_withdraw_history():
     return jsonify({"withdrawals": [dict(r) for r in rows]})
 
 
+# ─── API: SUPPORT ──────────────────────────────────────────
 @app.route("/api/support/send", methods=["POST"])
 @login_required
 def api_support_send():
@@ -386,6 +451,7 @@ def api_support_history():
     return jsonify({"tickets": [dict(r) for r in rows]})
 
 
+# ─── API: ADMIN ─────────────────────────────────────────────
 @app.route("/api/admin/login", methods=["POST"])
 def api_admin_login():
     data = request.get_json(force=True) or {}
@@ -498,16 +564,13 @@ def api_admin_users():
 def api_admin_delete_user(user_id):
     try:
         db = get_db()
-        
         user = db.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
         if not user:
             db.close()
             return jsonify({"error": "User not found."}), 404
-        
         if user_id == 1:
             db.close()
             return jsonify({"error": "Cannot delete the primary admin account."}), 400
-        
         db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM trades WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM withdrawals WHERE user_id = ?", (user_id,))
@@ -516,10 +579,8 @@ def api_admin_delete_user(user_id):
         db.execute("DELETE FROM share_purchases WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM otp_codes WHERE email LIKE ?", (f"%{user['username']}%",))
         db.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        
         db.commit()
         db.close()
-        
         return jsonify({
             "message": f"User '{user['username']}' and all associated data have been deleted successfully.",
             "deleted_user": user["username"]
@@ -530,9 +591,7 @@ def api_admin_delete_user(user_id):
         return jsonify({"error": str(e)}), 500
 
 
-TRADE_RETURN_RATE = 0.20
-
-
+# ─── API: TRADES (DYNAMIC P&L) ─────────────────────────────
 @app.route("/api/trades/place", methods=["POST"])
 @login_required
 def api_trade_place():
@@ -550,38 +609,49 @@ def api_trade_place():
         amount_usd_cents = data.get("amount_usd_cents")
         entry_price = data.get("entry_price")
 
-        VALID_ASSETS = {"BTC/USD", "ETH/USD", "XAU/USD", "EUR/USD", "BNB/USD"}
         if asset not in VALID_ASSETS:
             return jsonify({"error": "Invalid asset."}), 400
         if direction not in ("up", "down"):
             return jsonify({"error": "Direction must be 'up' or 'down'."}), 400
-        if not isinstance(duration_sec, int) or duration_sec not in (30, 60, 90, 120, 180, 360):
+        if not isinstance(duration_sec, int) or duration_sec not in VALID_DURATIONS:
             return jsonify({"error": "Invalid duration."}), 400
-        if not isinstance(amount_usd_cents, int) or amount_usd_cents < 1000:
-            return jsonify({"error": "Minimum trade amount is $10."}), 400
+        if not isinstance(amount_usd_cents, int) or amount_usd_cents < MIN_TRADE_AMOUNT * 100:
+            return jsonify({"error": f"Minimum trade amount is ${MIN_TRADE_AMOUNT}."}), 400
         if not isinstance(entry_price, (int, float)) or entry_price <= 0:
             return jsonify({"error": "Invalid entry price."}), 400
 
         db = get_db()
-        user = db.execute("SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)).fetchone()
+        user = db.execute("SELECT balance_usd_cents, trust_level FROM users WHERE id = ?", (g.user["id"],)).fetchone()
+        
+        # Max trade amount: 10% of balance
+        max_trade = int(user["balance_usd_cents"] * MAX_TRADE_PERCENTAGE)
+        if amount_usd_cents > max_trade:
+            return jsonify({"error": f"Maximum trade amount is ${max_trade/100:.2f} (10% of balance)."}), 400
+        
         if amount_usd_cents > user["balance_usd_cents"]:
             db.close()
             return jsonify({"error": "Insufficient balance."}), 400
 
+        # Deduct trade amount from balance (locked until trade closes)
         db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents - ? WHERE id = ?",
                    (amount_usd_cents, g.user["id"]))
+        
         cur = db.execute(
-            "INSERT INTO trades (user_id, asset, direction, duration_sec, amount_usd_cents, entry_price) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO trades (user_id, asset, direction, duration_sec, amount_usd_cents, entry_price, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'active')",
             (g.user["id"], asset, direction, duration_sec, amount_usd_cents, entry_price)
         )
         trade_id = cur.lastrowid
         if trade_id is None:
             db.close()
             return jsonify({"error": "Failed to create trade – please try again."}), 500
+        
         db.commit()
         db.close()
-        return jsonify({"trade_id": trade_id, "message": "Trade placed."})
+        return jsonify({
+            "trade_id": trade_id,
+            "message": "Trade placed. Monitor price movement for your P&L."
+        })
 
     except Exception as e:
         print(f"[trovee] ERROR in /api/trades/place: {type(e).__name__}: {e}")
@@ -589,9 +659,90 @@ def api_trade_place():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/trades/status/<int:trade_id>", methods=["GET"])
+@login_required
+def api_trade_status(trade_id):
+    """Get real-time trade status with current P&L."""
+    try:
+        db = get_db()
+        trade = db.execute(
+            "SELECT * FROM trades WHERE id = ? AND user_id = ?",
+            (trade_id, g.user["id"])
+        ).fetchone()
+        if not trade:
+            db.close()
+            return jsonify({"error": "Trade not found."}), 404
+        
+        trade = dict(trade)
+        
+        # If trade is already closed, return final result
+        if trade["status"] == "closed":
+            db.close()
+            return jsonify({
+                "trade_id": trade_id,
+                "status": "closed",
+                "outcome": trade["outcome"],
+                "entry_price": trade["entry_price"],
+                "exit_price": trade["exit_price"],
+                "amount_usd_cents": trade["amount_usd_cents"],
+                "pnl_usd_cents": trade["profit_usd_cents"],
+                "pnl_percent": (trade["profit_usd_cents"] / trade["amount_usd_cents"]) * 100 if trade["amount_usd_cents"] > 0 else 0,
+                "closed_at": trade["closed_at"]
+            })
+        
+        # Get current price
+        update_prices()
+        current_price = get_current_price(trade["asset"])
+        
+        # Calculate P&L based on direction
+        price_change_percent = ((current_price - trade["entry_price"]) / trade["entry_price"]) * 100
+        
+        if trade["direction"] == "up":
+            pnl_percent = price_change_percent
+        else:
+            pnl_percent = -price_change_percent
+        
+        # Calculate P&L in cents
+        pnl_usd_cents = int(trade["amount_usd_cents"] * (pnl_percent / 100))
+        
+        # Current value of the trade (if closed now)
+        current_value_cents = trade["amount_usd_cents"] + pnl_usd_cents
+        
+        # Check if trade has expired
+        opened_at = datetime.datetime.strptime(trade["opened_at"], "%Y-%m-%d %H:%M:%S")
+        elapsed = (datetime.datetime.utcnow() - opened_at).total_seconds()
+        is_expired = elapsed >= trade["duration_sec"]
+        
+        db.close()
+        
+        return jsonify({
+            "trade_id": trade_id,
+            "status": "active",
+            "asset": trade["asset"],
+            "direction": trade["direction"],
+            "entry_price": trade["entry_price"],
+            "current_price": current_price,
+            "amount_usd_cents": trade["amount_usd_cents"],
+            "current_value_usd_cents": current_value_cents,
+            "pnl_usd_cents": pnl_usd_cents,
+            "pnl_percent": pnl_percent,
+            "price_change_percent": price_change_percent,
+            "elapsed_seconds": int(elapsed),
+            "duration_seconds": trade["duration_sec"],
+            "is_expired": is_expired,
+            "opened_at": trade["opened_at"]
+        })
+        
+    except Exception as e:
+        print(f"[trovee] ERROR in /api/trades/status: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/trades/close", methods=["POST"])
 @login_required
 def api_trade_close():
+    """Close a trade at the current price."""
     try:
         if not request.is_json:
             return jsonify({"error": "Content-Type must be application/json"}), 400
@@ -602,42 +753,61 @@ def api_trade_close():
         
         trade_id = data.get("trade_id")
         exit_price = data.get("exit_price")
-
+        
         if not isinstance(exit_price, (int, float)) or exit_price <= 0:
             return jsonify({"error": "Invalid exit price."}), 400
-
+        
         db = get_db()
         trade = db.execute(
-            "SELECT * FROM trades WHERE id = ? AND user_id = ? AND outcome IS NULL",
+            "SELECT * FROM trades WHERE id = ? AND user_id = ? AND status = 'active'",
             (trade_id, g.user["id"])
         ).fetchone()
         if not trade:
             db.close()
-            return jsonify({"error": "Trade not found or already closed."}), 404
-
-        price_up = exit_price > trade["entry_price"]
-        won = (trade["direction"] == "up" and price_up) or (trade["direction"] == "down" and not price_up)
-        outcome = "win" if won else "loss"
-
-        profit_usd_cents = int(trade["amount_usd_cents"] * TRADE_RETURN_RATE) if won else 0
-        credit_back = trade["amount_usd_cents"] + profit_usd_cents if won else 0
-
+            return jsonify({"error": "Active trade not found or already closed."}), 404
+        
+        trade = dict(trade)
+        
+        # Calculate P&L
+        price_change_percent = ((exit_price - trade["entry_price"]) / trade["entry_price"]) * 100
+        
+        if trade["direction"] == "up":
+            pnl_percent = price_change_percent
+        else:
+            pnl_percent = -price_change_percent
+        
+        pnl_usd_cents = int(trade["amount_usd_cents"] * (pnl_percent / 100))
+        current_value = trade["amount_usd_cents"] + pnl_usd_cents
+        
+        # Determine outcome
+        if pnl_usd_cents > 0:
+            outcome = "win"
+        elif pnl_usd_cents < 0:
+            outcome = "loss"
+        else:
+            outcome = "breakeven"
+        
+        # Return the full trade amount + profit to user
         db.execute(
-            "UPDATE trades SET exit_price = ?, outcome = ?, profit_usd_cents = ?, closed_at = datetime('now') WHERE id = ?",
-            (exit_price, outcome, profit_usd_cents, trade_id)
+            "UPDATE trades SET exit_price = ?, outcome = ?, profit_usd_cents = ?, status = 'closed', closed_at = datetime('now') WHERE id = ?",
+            (exit_price, outcome, pnl_usd_cents, trade_id)
         )
-        if credit_back > 0:
-            db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
-                       (credit_back, g.user["id"]))
+        db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
+                   (current_value, g.user["id"]))
+        
         new_balance = db.execute("SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)).fetchone()["balance_usd_cents"]
         db.commit()
         db.close()
-
+        
         return jsonify({
             "outcome": outcome,
-            "profit_usd_cents": profit_usd_cents,
+            "pnl_usd_cents": pnl_usd_cents,
+            "pnl_percent": pnl_percent,
             "new_balance_usd_cents": new_balance,
+            "total_returned_usd_cents": current_value,
+            "message": f"Trade closed. {'+' if pnl_usd_cents > 0 else ''}${pnl_usd_cents/100:.2f}"
         })
+        
     except Exception as e:
         print(f"[trovee] ERROR in /api/trades/close: {type(e).__name__}: {e}")
         traceback.print_exc()
@@ -649,13 +819,27 @@ def api_trade_close():
 def api_trades_history():
     db = get_db()
     rows = db.execute(
-        "SELECT * FROM trades WHERE user_id = ? AND outcome IS NOT NULL ORDER BY closed_at DESC LIMIT 50",
+        "SELECT * FROM trades WHERE user_id = ? AND status = 'closed' ORDER BY closed_at DESC LIMIT 50",
         (g.user["id"],)
     ).fetchall()
     db.close()
     return jsonify({"trades": [dict(r) for r in rows]})
 
 
+@app.route("/api/trades/active", methods=["GET"])
+@login_required
+def api_trades_active():
+    """Get all active trades for the user."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM trades WHERE user_id = ? AND status = 'active' ORDER BY opened_at DESC",
+        (g.user["id"],)
+    ).fetchall()
+    db.close()
+    return jsonify({"active_trades": [dict(r) for r in rows]})
+
+
+# ─── API: DEPOSITS ─────────────────────────────────────────
 @app.route("/api/deposit/giftcard", methods=["POST"])
 @login_required
 def api_deposit_giftcard():
@@ -731,6 +915,7 @@ def api_admin_deposit_review(deposit_id):
     return jsonify({"message": f"Deposit {status}.", "credited_usd_cents": credited})
 
 
+# ─── API: SHARES ────────────────────────────────────────────
 @app.route("/api/shares/companies", methods=["GET"])
 @login_required
 def api_shares_companies():
@@ -824,6 +1009,7 @@ def api_shares_purchase():
     })
 
 
+# ─── API: ADMIN — SHARES ────────────────────────────────────
 @app.route("/api/admin/shares/companies", methods=["GET"])
 @admin_required
 def api_admin_shares_companies():
@@ -1002,6 +1188,7 @@ def api_admin_shares_payout(purchase_id):
     })
 
 
+# ─── API: ADMIN — WALLETS ──────────────────────────────────
 @app.route("/api/admin/wallets", methods=["GET"])
 @admin_required
 def api_admin_wallets_get():
@@ -1081,6 +1268,7 @@ def api_deposit_wallets():
     return jsonify({"wallets": [dict(r) for r in rows]})
 
 
+# ─── ERROR HANDLERS ─────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(e):
     if request.path.startswith("/api/"):
