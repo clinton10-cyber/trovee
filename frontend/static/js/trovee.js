@@ -1,3 +1,5 @@
+// Trovee shared client-side utilities
+
 const Trovee = (() => {
   const TOKEN_KEY = "trovee_token";
   const GEO_KEY = "trovee_geo";
@@ -18,14 +20,20 @@ const Trovee = (() => {
     return !!getToken();
   }
 
-  async function api(path, { method = "GET", body = null, auth = true } = {}) {
-    const headers = { 
+  async function api(path, { method = "GET", body = null, auth = true, headers = {} } = {}) {
+    const requestHeaders = {
       "Content-Type": "application/json",
-      "Accept": "application/json"
+      "Accept": "application/json",
     };
-    
+
     if (auth && getToken()) {
-      headers["Authorization"] = `Bearer ${getToken()}`;
+      requestHeaders["Authorization"] = `Bearer ${getToken()}`;
+    }
+
+    for (const key in headers) {
+      if (headers.hasOwnProperty(key)) {
+        requestHeaders[key] = headers[key];
+      }
     }
 
     let requestBody = null;
@@ -38,8 +46,8 @@ const Trovee = (() => {
     }
 
     const options = {
-      method,
-      headers,
+      method: method,
+      headers: requestHeaders,
     };
 
     if (requestBody && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {
@@ -95,7 +103,8 @@ const Trovee = (() => {
     }
   }
 
-  function showToast(message, type = "default") {
+  function showToast(message, type) {
+    type = type || "default";
     const existing = document.querySelector(".toast");
     if (existing) existing.remove();
 
@@ -123,16 +132,16 @@ const Trovee = (() => {
     `;
     document.body.appendChild(toast);
 
-    requestAnimationFrame(() => {
+    requestAnimationFrame(function() {
       toast.style.opacity = '1';
       toast.style.transform = 'translateX(-50%) translateY(0)';
     });
 
     clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => {
+    toast._timer = setTimeout(function() {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(-50%) translateY(20px)';
-      setTimeout(() => toast.remove(), 300);
+      setTimeout(function() { toast.remove(); }, 300);
     }, 4000);
   }
 
@@ -150,17 +159,17 @@ const Trovee = (() => {
   }
 
   return {
-    getToken,
-    setToken,
-    clearToken,
-    isLoggedIn,
-    api,
-    formatMoney,
-    centsToLocal,
-    detectGeo,
-    showToast,
-    requireAuth,
-    logout,
+    getToken: getToken,
+    setToken: setToken,
+    clearToken: clearToken,
+    isLoggedIn: isLoggedIn,
+    api: api,
+    formatMoney: formatMoney,
+    centsToLocal: centsToLocal,
+    detectGeo: detectGeo,
+    showToast: showToast,
+    requireAuth: requireAuth,
+    logout: logout,
   };
 })();
 
