@@ -169,8 +169,6 @@
   .status-badge.open { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
   .status-badge.active { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
   .status-badge.inactive { background: rgba(248, 113, 113, 0.2); color: #f87171; }
-  .status-badge.win { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
-  .status-badge.loss { background: rgba(248, 113, 113, 0.2); color: #f87171; }
 
   .actions {
     display: flex;
@@ -337,7 +335,7 @@
     color: var(--slate-soft);
   }
 
-  .add-wallet-btn {
+  .add-btn {
     padding: 6px 16px;
     border-radius: 8px;
     border: 1px solid var(--accent);
@@ -348,9 +346,111 @@
     cursor: pointer;
     transition: all 0.15s;
   }
-  .add-wallet-btn:hover {
+  .add-btn:hover {
     background: var(--accent);
     color: var(--ink);
+  }
+
+  /* Modal Styles */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show {
+    display: flex;
+  }
+  .modal-box {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal-box h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--paper);
+  }
+  .modal-box .field {
+    margin-bottom: 12px;
+  }
+  .modal-box .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-soft);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .modal-box .field input,
+  .modal-box .field textarea,
+  .modal-box .field select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line-strong);
+    background: var(--surface-raised);
+    color: var(--paper);
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+  .modal-box .field input:focus,
+  .modal-box .field textarea:focus,
+  .modal-box .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .modal-box .field textarea {
+    resize: vertical;
+    min-height: 60px;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: flex-end;
+  }
+  .modal-actions button {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .modal-actions button:hover {
+    opacity: 0.85;
+  }
+  .modal-actions .btn-primary {
+    background: var(--accent);
+    color: var(--ink);
+  }
+  .modal-actions .btn-secondary {
+    background: var(--surface-raised);
+    color: var(--paper);
+    border: 1px solid var(--line-strong);
+  }
+  .modal-actions .btn-danger {
+    background: #b91c1c;
+    color: white;
   }
 
   @media (max-width: 640px) {
@@ -369,15 +469,7 @@
     .admin-header h1 { font-size: 17px; }
     .admin-header .logout-btn { font-size: 12px; padding: 4px 12px; }
     .status-badge { font-size: 9px; padding: 2px 8px; }
-    td .address { max-width: 60px; }
-  }
-
-  @media (max-width: 400px) {
-    table { font-size: 11px; min-width: 380px; }
-    th, td { padding: 6px 4px; }
-    .actions select { font-size: 9px; min-width: 50px; padding: 2px 4px; }
-    .actions input { font-size: 9px; width: 40px; padding: 2px 4px; }
-    .actions button { font-size: 9px; padding: 2px 6px; }
+    .modal-box { padding: 16px; max-width: 100%; }
   }
 
   .table-scroll {
@@ -415,6 +507,7 @@
         <button class="tab-btn" data-tab="deposits" onclick="switchTab('deposits')">Deposits</button>
         <button class="tab-btn" data-tab="support" onclick="switchTab('support')">Support</button>
         <button class="tab-btn" data-tab="shares" onclick="switchTab('shares')">Shares</button>
+        <button class="tab-btn" data-tab="companies" onclick="switchTab('companies')">Companies</button>
         <button class="tab-btn" data-tab="wallets" onclick="switchTab('wallets')">Wallets</button>
       </div>
 
@@ -563,6 +656,69 @@
         </div>
       </div>
 
+      <!-- Companies Tab -->
+      <div class="tab-content" id="tab-companies">
+        <div class="admin-section">
+          <div class="section-header">
+            <h2>Share Companies</h2>
+            <span class="badge" id="companies-count">0</span>
+          </div>
+          <div style="margin-bottom:12px;">
+            <button class="add-btn" onclick="showAddCompany()">+ Add Company</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Ticker</th>
+                  <th>Sector</th>
+                  <th>Status</th>
+                  <th>Plans</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="companies-table-body">
+                <tr><td colspan="7" class="empty-state">Loading companies...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Plans Section -->
+        <div class="admin-section">
+          <div class="section-header">
+            <h2>Share Plans</h2>
+            <span class="badge" id="plans-count">0</span>
+          </div>
+          <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="add-btn" onclick="showAddPlan()">+ Add Plan</button>
+            <span style="font-size:12px;color:var(--slate-soft);">Select a company above to filter plans</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Company</th>
+                  <th>Plan Name</th>
+                  <th>Shares</th>
+                  <th>Price</th>
+                  <th>Return %</th>
+                  <th>Duration</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="plans-table-body">
+                <tr><td colspan="9" class="empty-state">Loading plans...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Wallets Tab -->
       <div class="tab-content" id="tab-wallets">
         <div class="admin-section">
@@ -571,7 +727,7 @@
             <span class="badge" id="wallets-count">0</span>
           </div>
           <div style="margin-bottom:12px;">
-            <button class="add-wallet-btn" onclick="showAddWallet()">+ Add Wallet</button>
+            <button class="add-btn" onclick="showAddWallet()">+ Add Wallet</button>
           </div>
           <div class="table-scroll">
             <table>
@@ -590,6 +746,18 @@
             </table>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" id="modal-box">
+      <h3 id="modal-title">Modal</h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions" id="modal-actions">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" id="modal-submit">Save</button>
       </div>
     </div>
   </div>
@@ -624,8 +792,9 @@
 
 <script src="/static/js/trovee.js"></script>
 <script>
-  let adminToken = localStorage.getItem('trovee_admin_token');
-  let currentTab = 'users';
+  var adminToken = localStorage.getItem('trovee_admin_token');
+  var currentTab = 'users';
+  var currentCompanyId = null;
 
   function logout() {
     localStorage.removeItem('trovee_admin_token');
@@ -634,13 +803,13 @@
   }
 
   async function adminLogin() {
-    const password = document.getElementById('admin-password').value;
+    var password = document.getElementById('admin-password').value;
     if (!password) {
       Trovee.showToast('Enter the admin password.', 'error');
       return;
     }
     try {
-      const res = await Trovee.api('/api/admin/login', {
+      var res = await Trovee.api('/api/admin/login', {
         method: 'POST',
         body: { password: password },
         auth: false
@@ -662,17 +831,20 @@
 
   function switchTab(tab) {
     currentTab = tab;
-    document.querySelectorAll('.tab-btn').forEach(function(b) {
-      b.classList.toggle('active', b.dataset.tab === tab);
-    });
-    document.querySelectorAll('.tab-content').forEach(function(c) {
-      c.classList.toggle('active', c.id === 'tab-' + tab);
-    });
+    var btns = document.querySelectorAll('.tab-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('active', btns[i].dataset.tab === tab);
+    }
+    var contents = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < contents.length; i++) {
+      contents[i].classList.toggle('active', contents[i].id === 'tab-' + tab);
+    }
     if (tab === 'users') loadUsers();
     else if (tab === 'withdrawals') loadWithdrawals();
     else if (tab === 'deposits') loadDeposits();
     else if (tab === 'support') loadSupport();
     else if (tab === 'shares') loadShares();
+    else if (tab === 'companies') { loadCompanies(); loadPlans(); }
     else if (tab === 'wallets') loadWallets();
   }
 
@@ -682,15 +854,32 @@
     await loadDeposits();
     await loadSupport();
     await loadShares();
+    await loadCompanies();
+    await loadPlans();
     await loadWallets();
   }
 
-  // ─── USERS ────────────────────────────────────────────────
+  // ─── MODAL ──────────────────────────────────────────────────
+  function openModal(title, bodyHTML, submitText, onSubmit) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = bodyHTML;
+    document.getElementById('modal-submit').textContent = submitText || 'Save';
+    document.getElementById('modal-overlay').classList.add('show');
+    document.getElementById('modal-submit').onclick = onSubmit;
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('show');
+  }
+
+  document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // ─── USERS ──────────────────────────────────────────────────
   async function loadUsers() {
     try {
-      const data = await Trovee.api('/api/admin/users', {
-        headers: getAdminHeaders()
-      });
+      var data = await Trovee.api('/api/admin/users', { headers: getAdminHeaders() });
       renderUsers(data.users || []);
     } catch (e) {
       document.getElementById('users-table-body').innerHTML = '<tr><td colspan="8" class="empty-state">Error: ' + e.message + '</td></tr>';
@@ -705,7 +894,8 @@
       return;
     }
     var html = '';
-    users.forEach(function(u) {
+    for (var i = 0; i < users.length; i++) {
+      var u = users[i];
       var disabled = u.id === 1 ? 'disabled' : '';
       html += '<tr>' +
         '<td>' + u.id + '</td>' +
@@ -717,7 +907,7 @@
         '<td style="font-size:11px;color:var(--slate-soft);">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
         '<td><div class="actions"><button class="btn-danger" onclick="deleteUser(' + u.id + ', \'' + u.username + '\')" ' + disabled + '>Delete</button></div></td>' +
         '</tr>';
-    });
+    }
     tbody.innerHTML = html;
   }
 
@@ -726,14 +916,9 @@
       Trovee.showToast('Cannot delete the primary admin account.', 'error');
       return;
     }
-    if (!confirm('Are you sure you want to delete user "' + username + '"? This will permanently remove all their data. This action cannot be undone.')) {
-      return;
-    }
+    if (!confirm('Are you sure you want to delete user "' + username + '"? This action cannot be undone.')) return;
     try {
-      await Trovee.api('/api/admin/users/' + userId, {
-        method: 'DELETE',
-        headers: getAdminHeaders()
-      });
+      await Trovee.api('/api/admin/users/' + userId, { method: 'DELETE', headers: getAdminHeaders() });
       Trovee.showToast('User "' + username + '" deleted successfully.');
       loadUsers();
     } catch (e) {
@@ -744,9 +929,7 @@
   // ─── WITHDRAWALS ──────────────────────────────────────────
   async function loadWithdrawals() {
     try {
-      var data = await Trovee.api('/api/admin/withdrawals', {
-        headers: getAdminHeaders()
-      });
+      var data = await Trovee.api('/api/admin/withdrawals', { headers: getAdminHeaders() });
       renderWithdrawals(data.withdrawals || []);
     } catch (e) {
       document.getElementById('withdrawals-table-body').innerHTML = '<tr><td colspan="8" class="empty-state">Error: ' + e.message + '</td></tr>';
@@ -761,13 +944,14 @@
       return;
     }
     var html = '';
-    withdrawals.forEach(function(w) {
-      var statusOptions = ['pending', 'approved', 'paid', 'rejected'];
+    for (var i = 0; i < withdrawals.length; i++) {
+      var w = withdrawals[i];
       var opts = '';
-      statusOptions.forEach(function(s) {
-        var sel = s === w.status ? 'selected' : '';
-        opts += '<option value="' + s + '" ' + sel + '>' + s.charAt(0).toUpperCase() + s.slice(1) + '</option>';
-      });
+      var statuses = ['pending', 'approved', 'paid', 'rejected'];
+      for (var s = 0; s < statuses.length; s++) {
+        var sel = statuses[s] === w.status ? 'selected' : '';
+        opts += '<option value="' + statuses[s] + '" ' + sel + '>' + statuses[s].charAt(0).toUpperCase() + statuses[s].slice(1) + '</option>';
+      }
       html += '<tr>' +
         '<td>' + w.id + '</td>' +
         '<td>' + (w.username || '—') + '</td>' +
@@ -778,7 +962,7 @@
         '<td style="font-size:11px;color:var(--slate-soft);">' + new Date(w.requested_at).toLocaleDateString() + '</td>' +
         '<td><div class="actions"><select onchange="updateWithdrawalStatus(' + w.id + ', this.value)">' + opts + '</select></div></td>' +
         '</tr>';
-    });
+    }
     tbody.innerHTML = html;
   }
 
@@ -796,12 +980,10 @@
     }
   }
 
-  // ─── DEPOSITS ─────────────────────────────────────────────
+  // ─── DEPOSITS ──────────────────────────────────────────────
   async function loadDeposits() {
     try {
-      var data = await Trovee.api('/api/admin/deposits', {
-        headers: getAdminHeaders()
-      });
+      var data = await Trovee.api('/api/admin/deposits', { headers: getAdminHeaders() });
       renderDeposits(data.deposits || []);
     } catch (e) {
       document.getElementById('deposits-table-body').innerHTML = '<tr><td colspan="8" class="empty-state">Error: ' + e.message + '</td></tr>';
@@ -816,7 +998,8 @@
       return;
     }
     var html = '';
-    deposits.forEach(function(d) {
+    for (var i = 0; i < deposits.length; i++) {
+      var d = deposits[i];
       var actions = '—';
       if (d.status === 'pending') {
         actions = '<div class="actions"><button class="btn-success" onclick="reviewDeposit(' + d.id + ', \'confirmed\')">Confirm</button><button class="btn-danger" onclick="reviewDeposit(' + d.id + ', \'rejected\')">Reject</button></div>';
@@ -831,7 +1014,7 @@
         '<td style="font-size:11px;color:var(--slate-soft);">' + new Date(d.created_at).toLocaleDateString() + '</td>' +
         '<td>' + actions + '</td>' +
         '</tr>';
-    });
+    }
     tbody.innerHTML = html;
   }
 
@@ -849,12 +1032,10 @@
     }
   }
 
-  // ─── SUPPORT ──────────────────────────────────────────────
+  // ─── SUPPORT ───────────────────────────────────────────────
   async function loadSupport() {
     try {
-      var data = await Trovee.api('/api/admin/support', {
-        headers: getAdminHeaders()
-      });
+      var data = await Trovee.api('/api/admin/support', { headers: getAdminHeaders() });
       renderSupport(data.tickets || []);
     } catch (e) {
       document.getElementById('support-table-body').innerHTML = '<tr><td colspan="6" class="empty-state">Error: ' + e.message + '</td></tr>';
@@ -869,7 +1050,8 @@
       return;
     }
     var html = '';
-    tickets.forEach(function(t) {
+    for (var i = 0; i < tickets.length; i++) {
+      var t = tickets[i];
       html += '<tr>' +
         '<td>' + t.id + '</td>' +
         '<td>' + (t.name || '—') + '</td>' +
@@ -878,16 +1060,14 @@
         '<td><span class="status-badge ' + t.status + '">' + t.status + '</span></td>' +
         '<td style="font-size:11px;color:var(--slate-soft);">' + new Date(t.created_at).toLocaleDateString() + '</td>' +
         '</tr>';
-    });
+    }
     tbody.innerHTML = html;
   }
 
-  // ─── SHARES ────────────────────────────────────────────────
+  // ─── SHARES ─────────────────────────────────────────────────
   async function loadShares() {
     try {
-      var data = await Trovee.api('/api/admin/shares/purchases', {
-        headers: getAdminHeaders()
-      });
+      var data = await Trovee.api('/api/admin/shares/purchases', { headers: getAdminHeaders() });
       renderShares(data.purchases || []);
     } catch (e) {
       document.getElementById('shares-table-body').innerHTML = '<tr><td colspan="10" class="empty-state">Error: ' + e.message + '</td></tr>';
@@ -902,7 +1082,8 @@
       return;
     }
     var html = '';
-    purchases.forEach(function(p) {
+    for (var i = 0; i < purchases.length; i++) {
+      var p = purchases[i];
       var actions = '—';
       if (p.status === 'active') {
         actions = '<div class="actions"><button class="btn-success" onclick="payoutShares(' + p.id + ')">Payout</button></div>';
@@ -919,7 +1100,7 @@
         '<td style="font-size:11px;color:var(--slate-soft);">' + (p.maturity_date || '—') + '</td>' +
         '<td>' + actions + '</td>' +
         '</tr>';
-    });
+    }
     tbody.innerHTML = html;
   }
 
@@ -937,12 +1118,320 @@
     }
   }
 
-  // ─── WALLETS ───────────────────────────────────────────────
+  // ─── COMPANIES ──────────────────────────────────────────────
+  async function loadCompanies() {
+    try {
+      var data = await Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() });
+      renderCompanies(data.companies || []);
+    } catch (e) {
+      document.getElementById('companies-table-body').innerHTML = '<tr><td colspan="7" class="empty-state">Error: ' + e.message + '</td></tr>';
+    }
+  }
+
+  function renderCompanies(companies) {
+    var tbody = document.getElementById('companies-table-body');
+    document.getElementById('companies-count').textContent = companies.length;
+    if (!companies.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No companies found.</td></tr>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < companies.length; i++) {
+      var c = companies[i];
+      var statusClass = c.is_active ? 'active' : 'inactive';
+      var statusLabel = c.is_active ? 'Active' : 'Inactive';
+      html += '<tr>' +
+        '<td>' + c.id + '</td>' +
+        '<td><strong>' + c.name + '</strong></td>' +
+        '<td>' + c.ticker + '</td>' +
+        '<td>' + (c.sector || '—') + '</td>' +
+        '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+        '<td>' + (c.plan_count || 0) + '</td>' +
+        '<td><div class="actions">' +
+          '<button class="btn-secondary" onclick="editCompany(' + c.id + ')">Edit</button>' +
+          '<button class="btn-danger" onclick="deleteCompany(' + c.id + ')">Delete</button>' +
+        '</div></td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  function showAddCompany() {
+    var body = 
+      '<div class="field"><label>Company Name</label><input id="company-name" placeholder="e.g. Tesla, Inc." /></div>' +
+      '<div class="field"><label>Ticker Symbol</label><input id="company-ticker" placeholder="e.g. TSLA" /></div>' +
+      '<div class="field"><label>Description</label><textarea id="company-desc" placeholder="Company description..."></textarea></div>' +
+      '<div class="field"><label>Sector</label><input id="company-sector" placeholder="e.g. Technology" /></div>' +
+      '<div class="field"><label>Logo URL</label><input id="company-logo" placeholder="https://..." /></div>';
+    openModal('Add Company', body, 'Create', function() {
+      var name = document.getElementById('company-name').value.trim();
+      var ticker = document.getElementById('company-ticker').value.trim().toUpperCase();
+      if (!name || !ticker) {
+        Trovee.showToast('Name and ticker are required.', 'error');
+        return;
+      }
+      Trovee.api('/api/admin/shares/companies', {
+        method: 'POST',
+        body: {
+          name: name,
+          ticker: ticker,
+          description: document.getElementById('company-desc').value.trim(),
+          sector: document.getElementById('company-sector').value.trim(),
+          logo_url: document.getElementById('company-logo').value.trim()
+        },
+        headers: getAdminHeaders()
+      }).then(function() {
+        Trovee.showToast('Company created successfully.');
+        closeModal();
+        loadCompanies();
+      }).catch(function(e) {
+        Trovee.showToast(e.message || 'Failed to create company.', 'error');
+      });
+    });
+  }
+
+  function editCompany(id) {
+    Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() }).then(function(data) {
+      var company = null;
+      for (var i = 0; i < data.companies.length; i++) {
+        if (data.companies[i].id === id) { company = data.companies[i]; break; }
+      }
+      if (!company) { Trovee.showToast('Company not found.', 'error'); return; }
+      var body = 
+        '<div class="field"><label>Company Name</label><input id="company-name" value="' + company.name + '" /></div>' +
+        '<div class="field"><label>Ticker Symbol</label><input id="company-ticker" value="' + company.ticker + '" /></div>' +
+        '<div class="field"><label>Description</label><textarea id="company-desc">' + (company.description || '') + '</textarea></div>' +
+        '<div class="field"><label>Sector</label><input id="company-sector" value="' + (company.sector || '') + '" /></div>' +
+        '<div class="field"><label>Logo URL</label><input id="company-logo" value="' + (company.logo_url || '') + '" /></div>' +
+        '<div class="field"><label>Active</label><select id="company-active"><option value="1" ' + (company.is_active ? 'selected' : '') + '>Active</option><option value="0" ' + (!company.is_active ? 'selected' : '') + '>Inactive</option></select></div>';
+      openModal('Edit Company', body, 'Update', function() {
+        Trovee.api('/api/admin/shares/companies/' + id, {
+          method: 'PUT',
+          body: {
+            name: document.getElementById('company-name').value.trim(),
+            ticker: document.getElementById('company-ticker').value.trim().toUpperCase(),
+            description: document.getElementById('company-desc').value.trim(),
+            sector: document.getElementById('company-sector').value.trim(),
+            logo_url: document.getElementById('company-logo').value.trim(),
+            is_active: parseInt(document.getElementById('company-active').value) === 1
+          },
+          headers: getAdminHeaders()
+        }).then(function() {
+          Trovee.showToast('Company updated successfully.');
+          closeModal();
+          loadCompanies();
+        }).catch(function(e) {
+          Trovee.showToast(e.message || 'Failed to update company.', 'error');
+        });
+      });
+    });
+  }
+
+  async function deleteCompany(id) {
+    if (!confirm('Delete this company? All associated plans will also be removed.')) return;
+    try {
+      await Trovee.api('/api/admin/shares/companies/' + id, { method: 'DELETE', headers: getAdminHeaders() });
+      Trovee.showToast('Company deleted successfully.');
+      loadCompanies();
+      loadPlans();
+    } catch (e) {
+      Trovee.showToast(e.message || 'Failed to delete company.', 'error');
+    }
+  }
+
+  // ─── PLANS ──────────────────────────────────────────────────
+  async function loadPlans() {
+    try {
+      var data = await Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() });
+      var allPlans = [];
+      for (var i = 0; i < data.companies.length; i++) {
+        var c = data.companies[i];
+        var plansData = await Trovee.api('/api/admin/shares/companies/' + c.id + '/plans', { headers: getAdminHeaders() });
+        for (var p = 0; p < plansData.plans.length; p++) {
+          var plan = plansData.plans[p];
+          plan.company_name = c.name;
+          allPlans.push(plan);
+        }
+      }
+      renderPlans(allPlans);
+    } catch (e) {
+      document.getElementById('plans-table-body').innerHTML = '<tr><td colspan="9" class="empty-state">Error: ' + e.message + '</td></tr>';
+    }
+  }
+
+  function renderPlans(plans) {
+    var tbody = document.getElementById('plans-table-body');
+    document.getElementById('plans-count').textContent = plans.length;
+    if (!plans.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No plans found.</td></tr>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < plans.length; i++) {
+      var p = plans[i];
+      var statusClass = p.is_active ? 'active' : 'inactive';
+      var statusLabel = p.is_active ? 'Active' : 'Inactive';
+      html += '<tr>' +
+        '<td>' + p.id + '</td>' +
+        '<td>' + (p.company_name || '—') + '</td>' +
+        '<td>' + p.plan_name + '</td>' +
+        '<td>' + p.shares_count + '</td>' +
+        '<td class="mono">$' + (p.price_usd_cents / 100).toFixed(2) + '</td>' +
+        '<td>' + p.return_rate_pct + '%</td>' +
+        '<td>' + p.duration_months + 'm</td>' +
+        '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+        '<td><div class="actions">' +
+          '<button class="btn-secondary" onclick="editPlan(' + p.id + ')">Edit</button>' +
+          '<button class="btn-danger" onclick="deletePlan(' + p.id + ')">Delete</button>' +
+        '</div></td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  function showAddPlan() {
+    Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() }).then(function(data) {
+      var companyOptions = '';
+      for (var i = 0; i < data.companies.length; i++) {
+        var c = data.companies[i];
+        companyOptions += '<option value="' + c.id + '">' + c.name + ' (' + c.ticker + ')</option>';
+      }
+      var body = 
+        '<div class="field"><label>Company</label><select id="plan-company">' + companyOptions + '</select></div>' +
+        '<div class="field"><label>Plan Name</label><input id="plan-name" placeholder="e.g. Starter" /></div>' +
+        '<div class="field"><label>Number of Shares</label><input id="plan-shares" type="number" placeholder="10" /></div>' +
+        '<div class="field"><label>Price (USD)</label><input id="plan-price" type="number" step="0.01" placeholder="100.00" /></div>' +
+        '<div class="field"><label>Return Rate (%)</label><input id="plan-return" type="number" step="0.1" placeholder="12" /></div>' +
+        '<div class="field"><label>Duration (months)</label><input id="plan-duration" type="number" placeholder="12" /></div>';
+      openModal('Add Plan', body, 'Create', function() {
+        var companyId = parseInt(document.getElementById('plan-company').value);
+        var planName = document.getElementById('plan-name').value.trim();
+        var shares = parseInt(document.getElementById('plan-shares').value);
+        var price = parseFloat(document.getElementById('plan-price').value);
+        var returnRate = parseFloat(document.getElementById('plan-return').value) || 12;
+        var duration = parseInt(document.getElementById('plan-duration').value) || 12;
+        if (!planName || !shares || !price) {
+          Trovee.showToast('All fields are required.', 'error');
+          return;
+        }
+        Trovee.api('/api/admin/shares/plans', {
+          method: 'POST',
+          body: {
+            company_id: companyId,
+            plan_name: planName,
+            shares_count: shares,
+            price_usd: price,
+            return_rate_pct: returnRate,
+            duration_months: duration
+          },
+          headers: getAdminHeaders()
+        }).then(function() {
+          Trovee.showToast('Plan created successfully.');
+          closeModal();
+          loadPlans();
+        }).catch(function(e) {
+          Trovee.showToast(e.message || 'Failed to create plan.', 'error');
+        });
+      });
+    });
+  }
+
+  function editPlan(id) {
+    Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() }).then(function(data) {
+      var allPlans = [];
+      var companyMap = {};
+      for (var i = 0; i < data.companies.length; i++) {
+        var c = data.companies[i];
+        companyMap[c.id] = c.name;
+      }
+      var promises = [];
+      for (var i = 0; i < data.companies.length; i++) {
+        promises.push(Trovee.api('/api/admin/shares/companies/' + data.companies[i].id + '/plans', { headers: getAdminHeaders() }));
+      }
+      Promise.all(promises).then(function(results) {
+        var targetPlan = null;
+        var targetCompanyId = null;
+        for (var i = 0; i < results.length; i++) {
+          for (var p = 0; p < results[i].plans.length; p++) {
+            if (results[i].plans[p].id === id) {
+              targetPlan = results[i].plans[p];
+              targetCompanyId = data.companies[i].id;
+              break;
+            }
+          }
+          if (targetPlan) break;
+        }
+        if (!targetPlan) { Trovee.showToast('Plan not found.', 'error'); return; }
+        var companyOptions = '';
+        for (var i = 0; i < data.companies.length; i++) {
+          var c = data.companies[i];
+          var sel = c.id === targetCompanyId ? 'selected' : '';
+          companyOptions += '<option value="' + c.id + '" ' + sel + '>' + c.name + ' (' + c.ticker + ')</option>';
+        }
+        var body = 
+          '<div class="field"><label>Company</label><select id="plan-company">' + companyOptions + '</select></div>' +
+          '<div class="field"><label>Plan Name</label><input id="plan-name" value="' + targetPlan.plan_name + '" /></div>' +
+          '<div class="field"><label>Number of Shares</label><input id="plan-shares" type="number" value="' + targetPlan.shares_count + '" /></div>' +
+          '<div class="field"><label>Price (USD)</label><input id="plan-price" type="number" step="0.01" value="' + (targetPlan.price_usd_cents / 100).toFixed(2) + '" /></div>' +
+          '<div class="field"><label>Return Rate (%)</label><input id="plan-return" type="number" step="0.1" value="' + targetPlan.return_rate_pct + '" /></div>' +
+          '<div class="field"><label>Duration (months)</label><input id="plan-duration" type="number" value="' + targetPlan.duration_months + '" /></div>' +
+          '<div class="field"><label>Active</label><select id="plan-active"><option value="1" ' + (targetPlan.is_active ? 'selected' : '') + '>Active</option><option value="0" ' + (!targetPlan.is_active ? 'selected' : '') + '>Inactive</option></select></div>';
+        openModal('Edit Plan', body, 'Update', function() {
+          var companyId = parseInt(document.getElementById('plan-company').value);
+          var planName = document.getElementById('plan-name').value.trim();
+          var shares = parseInt(document.getElementById('plan-shares').value);
+          var price = parseFloat(document.getElementById('plan-price').value);
+          var returnRate = parseFloat(document.getElementById('plan-return').value) || 12;
+          var duration = parseInt(document.getElementById('plan-duration').value) || 12;
+          var isActive = parseInt(document.getElementById('plan-active').value) === 1;
+          if (!planName || !shares || !price) {
+            Trovee.showToast('All fields are required.', 'error');
+            return;
+          }
+          // Update by deleting and recreating (simplest approach)
+          Trovee.api('/api/admin/shares/plans/' + id, {
+            method: 'DELETE',
+            headers: getAdminHeaders()
+          }).then(function() {
+            return Trovee.api('/api/admin/shares/plans', {
+              method: 'POST',
+              body: {
+                company_id: companyId,
+                plan_name: planName,
+                shares_count: shares,
+                price_usd: price,
+                return_rate_pct: returnRate,
+                duration_months: duration
+              },
+              headers: getAdminHeaders()
+            });
+          }).then(function() {
+            Trovee.showToast('Plan updated successfully.');
+            closeModal();
+            loadPlans();
+          }).catch(function(e) {
+            Trovee.showToast(e.message || 'Failed to update plan.', 'error');
+          });
+        });
+      });
+    });
+  }
+
+  async function deletePlan(id) {
+    if (!confirm('Delete this plan?')) return;
+    try {
+      await Trovee.api('/api/admin/shares/plans/' + id, { method: 'DELETE', headers: getAdminHeaders() });
+      Trovee.showToast('Plan deleted successfully.');
+      loadPlans();
+    } catch (e) {
+      Trovee.showToast(e.message || 'Failed to delete plan.', 'error');
+    }
+  }
+
+  // ─── WALLETS ────────────────────────────────────────────────
   async function loadWallets() {
     try {
-      var data = await Trovee.api('/api/admin/wallets', {
-        headers: getAdminHeaders()
-      });
+      var data = await Trovee.api('/api/admin/wallets', { headers: getAdminHeaders() });
       renderWallets(data.wallets || []);
     } catch (e) {
       document.getElementById('wallets-table-body').innerHTML = '<tr><td colspan="5" class="empty-state">Error: ' + e.message + '</td></tr>';
@@ -957,18 +1446,21 @@
       return;
     }
     var html = '';
-    wallets.forEach(function(w) {
+    for (var i = 0; i < wallets.length; i++) {
+      var w = wallets[i];
       var statusClass = w.is_active ? 'active' : 'inactive';
       var statusLabel = w.is_active ? 'Active' : 'Inactive';
-      var toggleLabel = w.is_active ? 'Deactivate' : 'Activate';
       html += '<tr>' +
         '<td>' + w.id + '</td>' +
         '<td><strong>' + w.display_name + '</strong></td>' +
         '<td><span class="address">' + w.address + '</span></td>' +
         '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-        '<td><div class="actions"><button class="btn-warning" onclick="toggleWallet(' + w.id + ', ' + (w.is_active ? 0 : 1) + ')">' + toggleLabel + '</button><button class="btn-danger" onclick="deleteWallet(' + w.id + ')">Delete</button></div></td>' +
+        '<td><div class="actions">' +
+          '<button class="btn-warning" onclick="toggleWallet(' + w.id + ', ' + (w.is_active ? 0 : 1) + ')">' + (w.is_active ? 'Deactivate' : 'Activate') + '</button>' +
+          '<button class="btn-danger" onclick="deleteWallet(' + w.id + ')">Delete</button>' +
+        '</div></td>' +
         '</tr>';
-    });
+    }
     tbody.innerHTML = html;
   }
 
@@ -989,10 +1481,7 @@
   async function deleteWallet(id) {
     if (!confirm('Delete this wallet configuration?')) return;
     try {
-      await Trovee.api('/api/admin/wallets/' + id, {
-        method: 'DELETE',
-        headers: getAdminHeaders()
-      });
+      await Trovee.api('/api/admin/wallets/' + id, { method: 'DELETE', headers: getAdminHeaders() });
       Trovee.showToast('Wallet deleted.');
       loadWallets();
     } catch (e) {
