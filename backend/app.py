@@ -23,9 +23,6 @@ ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 
-# ---------------------------------------------------------------------------
-# Auth helpers
-# ---------------------------------------------------------------------------
 
 def make_token(user_id: int) -> str:
     payload = {
@@ -76,10 +73,6 @@ def admin_required(f):
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,20}$")
 
-
-# ---------------------------------------------------------------------------
-# Page routes
-# ---------------------------------------------------------------------------
 
 @app.route("/")
 def page_landing():
@@ -136,10 +129,6 @@ def favicon():
     return send_from_directory(app.static_folder + "/img", "favicon.ico")
 
 
-# ---------------------------------------------------------------------------
-# API: geo / currency
-# ---------------------------------------------------------------------------
-
 @app.route("/api/geo/detect", methods=["GET"])
 def api_geo_detect():
     country_code = (
@@ -158,10 +147,6 @@ def api_geo_detect():
         "currency_name": name,
     })
 
-
-# ---------------------------------------------------------------------------
-# API: signup / OTP / login
-# ---------------------------------------------------------------------------
 
 @app.route("/api/auth/signup/start", methods=["POST"])
 def api_signup_start():
@@ -301,10 +286,6 @@ def api_me():
     })
 
 
-# ---------------------------------------------------------------------------
-# API: withdrawals (minimum = 1 cent)
-# ---------------------------------------------------------------------------
-
 @app.route("/api/withdraw/methods", methods=["GET"])
 @login_required
 def api_withdraw_methods():
@@ -367,10 +348,6 @@ def api_withdraw_history():
     return jsonify({"withdrawals": [dict(r) for r in rows]})
 
 
-# ---------------------------------------------------------------------------
-# API: support
-# ---------------------------------------------------------------------------
-
 @app.route("/api/support/send", methods=["POST"])
 @login_required
 def api_support_send():
@@ -408,10 +385,6 @@ def api_support_history():
     db.close()
     return jsonify({"tickets": [dict(r) for r in rows]})
 
-
-# ---------------------------------------------------------------------------
-# API: admin (operator views)
-# ---------------------------------------------------------------------------
 
 @app.route("/api/admin/login", methods=["POST"])
 def api_admin_login():
@@ -520,9 +493,42 @@ def api_admin_users():
     return jsonify({"users": [dict(r) for r in rows]})
 
 
-# ---------------------------------------------------------------------------
-# API: trades (with detailed error logging)
-# ---------------------------------------------------------------------------
+@app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
+@admin_required
+def api_admin_delete_user(user_id):
+    try:
+        db = get_db()
+        
+        user = db.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user:
+            db.close()
+            return jsonify({"error": "User not found."}), 404
+        
+        if user_id == 1:
+            db.close()
+            return jsonify({"error": "Cannot delete the primary admin account."}), 400
+        
+        db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM trades WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM withdrawals WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM deposits WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM support_messages WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM share_purchases WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM otp_codes WHERE email LIKE ?", (f"%{user['username']}%",))
+        db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        
+        db.commit()
+        db.close()
+        
+        return jsonify({
+            "message": f"User '{user['username']}' and all associated data have been deleted successfully.",
+            "deleted_user": user["username"]
+        })
+    except Exception as e:
+        print(f"[trovee] ERROR deleting user {user_id}: {e}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 
 TRADE_RETURN_RATE = 0.20
 
@@ -650,10 +656,6 @@ def api_trades_history():
     return jsonify({"trades": [dict(r) for r in rows]})
 
 
-# ---------------------------------------------------------------------------
-# API: deposits
-# ---------------------------------------------------------------------------
-
 @app.route("/api/deposit/giftcard", methods=["POST"])
 @login_required
 def api_deposit_giftcard():
@@ -728,10 +730,6 @@ def api_admin_deposit_review(deposit_id):
     db.close()
     return jsonify({"message": f"Deposit {status}.", "credited_usd_cents": credited})
 
-
-# ---------------------------------------------------------------------------
-# API: shares — companies and plans
-# ---------------------------------------------------------------------------
 
 @app.route("/api/shares/companies", methods=["GET"])
 @login_required
@@ -825,10 +823,6 @@ def api_shares_purchase():
         "new_balance_usd_cents": new_balance,
     })
 
-
-# ---------------------------------------------------------------------------
-# API: admin — share companies and plans
-# ---------------------------------------------------------------------------
 
 @app.route("/api/admin/shares/companies", methods=["GET"])
 @admin_required
@@ -1008,10 +1002,6 @@ def api_admin_shares_payout(purchase_id):
     })
 
 
-# ---------------------------------------------------------------------------
-# API: admin — wallet configs
-# ---------------------------------------------------------------------------
-
 @app.route("/api/admin/wallets", methods=["GET"])
 @admin_required
 def api_admin_wallets_get():
@@ -1090,10 +1080,6 @@ def api_deposit_wallets():
     db.close()
     return jsonify({"wallets": [dict(r) for r in rows]})
 
-
-# ---------------------------------------------------------------------------
-# Error handlers
-# ---------------------------------------------------------------------------
 
 @app.errorhandler(404)
 def not_found(e):
