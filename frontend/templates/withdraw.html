@@ -10,15 +10,342 @@
 <link rel="stylesheet" href="/static/css/trovee.css">
 <style>
   .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
-  .method-card { padding: 13px 12px; border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: var(--surface); cursor: pointer; text-align: center; }
+  .method-card { padding: 13px 12px; border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: var(--surface); cursor: pointer; text-align: center; transition: all 0.15s; }
+  .method-card:hover { border-color: var(--accent); }
   .method-card.selected { border-color: var(--accent); background: rgba(10, 132, 255,0.08); }
   .method-icon { margin-bottom: 8px; color: var(--accent); }
   .method-name { font-size: 13px; font-weight: 600; }
   .tabs { display: flex; gap: 4px; background: var(--ink-soft); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 20px; }
-  .tab { flex: 1; text-align: center; padding: 9px; border-radius: 6px; font-size: 13.5px; color: var(--slate-soft); cursor: pointer; }
+  .tab { flex: 1; text-align: center; padding: 9px; border-radius: 6px; font-size: 13.5px; color: var(--slate-soft); cursor: pointer; transition: all 0.15s; }
+  .tab:hover { color: var(--paper); }
   .tab.active { background: var(--surface-raised); color: var(--paper); }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
+
+  /* Receipt Styles */
+  .receipt-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin: 12px 0;
+    border: 1px solid var(--line);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    box-shadow: var(--glass-sheen);
+    transition: all 0.2s;
+  }
+  .receipt-card:hover {
+    border-color: var(--accent);
+  }
+  .receipt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px dashed var(--line-weak);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .receipt-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .receipt-brand h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--paper);
+  }
+  .receipt-brand small {
+    color: var(--slate-soft);
+    font-size: 12px;
+  }
+  .receipt-status {
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    align-self: center;
+  }
+  .receipt-status.pending { background: rgba(250, 204, 21, 0.2); color: #facc15; }
+  .receipt-status.approved { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+  .receipt-status.paid { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+  .receipt-status.rejected { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+
+  .receipt-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 24px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 480px) {
+    .receipt-body {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+  }
+  .receipt-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .receipt-item .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--slate-soft);
+    font-weight: 600;
+  }
+  .receipt-item .value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--paper);
+    word-break: break-all;
+  }
+  .receipt-item .value.mono {
+    font-family: var(--font-mono);
+  }
+  .receipt-item .value.amount {
+    font-size: 20px;
+    color: var(--accent);
+  }
+  .receipt-item .value.amount.negative {
+    color: #f87171;
+  }
+
+  .receipt-qr {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--surface-raised);
+    border-radius: var(--radius-sm);
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .receipt-qr .qr-box {
+    width: 56px;
+    height: 56px;
+    background: var(--paper);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--ink);
+    font-weight: 700;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+  }
+  .receipt-qr .qr-text {
+    font-size: 11px;
+    color: var(--slate-soft);
+    font-family: var(--font-mono);
+    word-break: break-all;
+  }
+
+  .receipt-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-weak);
+    flex-wrap: wrap;
+  }
+  .receipt-actions button {
+    padding: 6px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .receipt-actions button.download-btn {
+    background: var(--accent);
+    color: var(--ink);
+  }
+  .receipt-actions button.download-btn:hover {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+  .receipt-actions button.copy-btn {
+    background: var(--surface-raised);
+    color: var(--paper);
+    border: 1px solid var(--line-strong);
+  }
+  .receipt-actions button.copy-btn:hover {
+    border-color: var(--accent);
+  }
+
+  /* Receipt inline view (expanded) */
+  .receipt-expanded {
+    display: none;
+    background: var(--surface-raised);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-top: 12px;
+    border: 1px solid var(--line-weak);
+  }
+  .receipt-expanded.show {
+    display: block;
+  }
+  .receipt-expanded .receipt-print-area {
+    max-width: 400px;
+    margin: 0 auto;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 24px 20px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+  }
+  .receipt-expanded .receipt-print-area .print-header {
+    text-align: center;
+    border-bottom: 2px dashed #ddd;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+  .receipt-expanded .receipt-print-area .print-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0B1220;
+    margin: 0;
+  }
+  .receipt-expanded .receipt-print-area .print-header p {
+    font-size: 12px;
+    color: #666;
+    margin: 4px 0 0;
+  }
+  .receipt-expanded .receipt-print-area .print-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+    margin-bottom: 12px;
+  }
+  .receipt-expanded .receipt-print-area .print-body .pl {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .receipt-expanded .receipt-print-area .print-body .pv {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0B1220;
+  }
+  .receipt-expanded .receipt-print-area .print-body .pv.mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .receipt-expanded .receipt-print-area .print-footer {
+    text-align: center;
+    border-top: 2px dashed #ddd;
+    padding-top: 12px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #888;
+  }
+  .receipt-expanded .receipt-print-area .print-footer .hash {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    word-break: break-all;
+  }
+
+  .receipt-toggle {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .receipt-toggle:hover {
+    text-decoration: underline;
+  }
+
+  .ledger-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line-weak);
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ledger-row:last-child {
+    border-bottom: none;
+  }
+  .ledger-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 120px;
+  }
+  .ledger-label {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .ledger-sub {
+    font-size: 11px;
+    color: var(--slate-soft);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ledger-amount {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .ledger-amount.negative { color: #f87171; }
+  .ledger-amount.positive { color: #4ade80; }
+
+  .pill {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .pill-pending { background: rgba(250, 204, 21, 0.2); color: #facc15; }
+  .pill-approved { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+  .pill-paid { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+  .pill-rejected { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+
+  .receipt-list-wrapper {
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .receipt-list-wrapper::-webkit-scrollbar {
+    width: 4px;
+  }
+  .receipt-list-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .receipt-list-wrapper::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 4px;
+  }
+
+  @media print {
+    .receipt-expanded .receipt-print-area {
+      box-shadow: none;
+      border: 1px solid #ddd;
+    }
+    .no-print {
+      display: none !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -32,7 +359,7 @@
     <div class="balance-hero" style="padding:22px;">
       <div class="balance-label">Available to withdraw</div>
       <div class="balance-figure" id="balance-figure" style="font-size:32px;">···</div>
-      <!-- Minimum note removed entirely -->
+      <div class="small muted mt-8" id="minimum-note">···</div>
     </div>
   </div>
 
@@ -66,14 +393,14 @@
 
     <div class="tab-panel" id="panel-history">
       <div class="card-flat">
-        <div class="ledger" id="history-ledger">
+        <div class="receipt-list-wrapper" id="history-ledger">
           <div class="empty-state small">No withdrawals yet.</div>
         </div>
       </div>
     </div>
   </div>
 
-    <nav class="bottom-nav">
+  <nav class="bottom-nav">
     <a href="/dashboard" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
       Home
@@ -107,6 +434,7 @@
   let methodsData = null;
   let userInfo = null;
   let selectedMethod = null;
+  let allWithdrawals = [];
 
   const METHOD_META = {
     bank_transfer: { name: "Bank transfer", icon: bankIcon() },
@@ -129,9 +457,10 @@
       document.getElementById("balance-figure").textContent =
         `${userInfo.currency_symbol}${userInfo.balance_local.toFixed(2)}`;
       document.getElementById("currency-label").textContent = userInfo.currency_code;
-      // Minimum note removed – no line to display
+      document.getElementById("minimum-note").textContent =
+        `Minimum withdrawal: ${methodsData.currency_symbol}${methodsData.minimum_local.toFixed(2)}`;
       renderMethods();
-      loadHistory();
+      await loadHistory();
     } catch (err) {
       if (err.status === 401) { Trovee.logout(); return; }
       Trovee.showToast(err.message, "error");
@@ -196,8 +525,6 @@
       return;
     }
 
-    // Convert entered local-currency amount back to USD cents using the
-    // explicit exchange rate the backend reports.
     const rate = methodsData.exchange_rate || 1;
     const amountUsdCents = Math.round((amountLocal / rate) * 100);
 
@@ -214,7 +541,7 @@
       Trovee.showToast("Withdrawal requested. It's now pending review.");
       document.getElementById("amount").value = "";
       document.getElementById("destination").value = "";
-      init();
+      await loadHistory();
       document.querySelector('[data-tab="history"]').click();
     } catch (err) {
       errorEl.textContent = err.message;
@@ -228,27 +555,288 @@
   async function loadHistory() {
     try {
       const data = await Trovee.api("/api/withdraw/history");
-      const ledger = document.getElementById("history-ledger");
-      if (!data.withdrawals.length) {
-        ledger.innerHTML = '<div class="empty-state small">No withdrawals yet.</div>';
-        return;
-      }
-      ledger.innerHTML = data.withdrawals.map(w => {
-        const rate = methodsData.exchange_rate || 1;
-        const amountLocal = (w.amount_usd_cents / 100) * rate;
-        return `
-        <div class="ledger-row">
-          <div>
-            <div class="ledger-label">${METHOD_META[w.method]?.name || w.method}</div>
-            <div class="ledger-sub">${new Date(w.requested_at).toLocaleDateString()} · <span class="pill pill-${w.status}">${w.status}</span></div>
-          </div>
-          <div class="ledger-amount negative">-${userInfo.currency_symbol}${amountLocal.toFixed(2)}</div>
-        </div>
-      `;
-      }).join("");
+      allWithdrawals = data.withdrawals || [];
+      renderHistory(allWithdrawals);
     } catch (err) {
       Trovee.showToast(err.message, "error");
     }
+  }
+
+  function renderHistory(withdrawals) {
+    const ledger = document.getElementById("history-ledger");
+    if (!withdrawals.length) {
+      ledger.innerHTML = '<div class="empty-state small">No withdrawals yet.</div>';
+      return;
+    }
+
+    ledger.innerHTML = withdrawals.map((w, index) => {
+      const rate = methodsData?.exchange_rate || 1;
+      const amountLocal = (w.amount_usd_cents / 100) * rate;
+      const methodName = METHOD_META[w.method]?.name || w.method;
+      const txId = `TRV-WD-${String(w.id).padStart(6, '0')}`;
+      const dateStr = new Date(w.requested_at).toLocaleString();
+      const shortDate = new Date(w.requested_at).toLocaleDateString();
+
+      return `
+        <div class="receipt-card" id="receipt-${w.id}">
+          <div class="receipt-header">
+            <div class="receipt-brand">
+              <h3>${methodName}</h3>
+              <small>${txId} · ${shortDate}</small>
+            </div>
+            <span class="receipt-status ${w.status}">${w.status}</span>
+          </div>
+
+          <div class="receipt-body">
+            <div class="receipt-item">
+              <span class="label">Amount</span>
+              <span class="value amount negative">-${userInfo?.currency_symbol || '$'}${amountLocal.toFixed(2)}</span>
+            </div>
+            <div class="receipt-item">
+              <span class="label">Destination</span>
+              <span class="value mono">${w.destination_details}</span>
+            </div>
+            <div class="receipt-item">
+              <span class="label">Transaction ID</span>
+              <span class="value mono" style="font-size:12px;">${txId}</span>
+            </div>
+            <div class="receipt-item">
+              <span class="label">Date</span>
+              <span class="value">${dateStr}</span>
+            </div>
+          </div>
+
+          <div class="receipt-qr">
+            <div class="qr-box">${txId.slice(-6)}</div>
+            <span class="qr-text">${txId}</span>
+          </div>
+
+          <div class="receipt-actions no-print">
+            <button class="download-btn" onclick="downloadReceipt(${w.id})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download PDF
+            </button>
+            <button class="copy-btn" onclick="copyReceipt(${w.id})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <button class="receipt-toggle" onclick="toggleReceipt(${w.id})">▼ View receipt</button>
+          </div>
+
+          <div class="receipt-expanded" id="receipt-expanded-${w.id}">
+            <div class="receipt-print-area" id="print-area-${w.id}">
+              <div class="print-header">
+                <h2>Trovee</h2>
+                <p>Withdrawal Receipt</p>
+              </div>
+              <div class="print-body">
+                <span class="pl">Transaction ID</span>
+                <span class="pv mono">${txId}</span>
+                <span class="pl">Date & Time</span>
+                <span class="pv">${dateStr}</span>
+                <span class="pl">Amount</span>
+                <span class="pv">${userInfo?.currency_symbol || '$'}${amountLocal.toFixed(2)}</span>
+                <span class="pl">Method</span>
+                <span class="pv">${methodName}</span>
+                <span class="pl">Destination</span>
+                <span class="pv mono">${w.destination_details}</span>
+                <span class="pl">Status</span>
+                <span class="pv" style="text-transform:capitalize;">${w.status}</span>
+              </div>
+              <div class="print-footer">
+                <p>Thank you for using Trovee.</p>
+                <span class="hash">${txId}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleReceipt(id) {
+    const el = document.getElementById(`receipt-expanded-${id}`);
+    el.classList.toggle('show');
+    const btn = el.parentElement.querySelector('.receipt-toggle');
+    btn.textContent = el.classList.contains('show') ? '▲ Hide receipt' : '▼ View receipt';
+  }
+
+  function copyReceipt(id) {
+    const withdrawal = allWithdrawals.find(w => w.id === id);
+    if (!withdrawal) return;
+    const rate = methodsData?.exchange_rate || 1;
+    const amountLocal = (withdrawal.amount_usd_cents / 100) * rate;
+    const txId = `TRV-WD-${String(id).padStart(6, '0')}`;
+    const text = `
+Trovee Withdrawal Receipt
+-------------------------
+Transaction ID: ${txId}
+Date: ${new Date(withdrawal.requested_at).toLocaleString()}
+Amount: ${userInfo?.currency_symbol || '$'}${amountLocal.toFixed(2)}
+Method: ${METHOD_META[withdrawal.method]?.name || withdrawal.method}
+Destination: ${withdrawal.destination_details}
+Status: ${withdrawal.status}
+-------------------------
+Thank you for using Trovee.
+    `.trim();
+
+    navigator.clipboard.writeText(text).then(() => {
+      Trovee.showToast('Receipt copied to clipboard!');
+    }).catch(() => {
+      Trovee.showToast('Failed to copy.', 'error');
+    });
+  }
+
+  function downloadReceipt(id) {
+    const withdrawal = allWithdrawals.find(w => w.id === id);
+    if (!withdrawal) return;
+
+    const rate = methodsData?.exchange_rate || 1;
+    const amountLocal = (withdrawal.amount_usd_cents / 100) * rate;
+    const txId = `TRV-WD-${String(id).padStart(6, '0')}`;
+    const dateStr = new Date(withdrawal.requested_at).toLocaleString();
+    const methodName = METHOD_META[withdrawal.method]?.name || withdrawal.method;
+    const symbol = userInfo?.currency_symbol || '$';
+
+    // Use the print area HTML for the PDF
+    const printContent = document.getElementById(`print-area-${id}`).cloneNode(true);
+    const win = window.open('', '_blank', 'width=600,height=800');
+    if (!win) {
+      Trovee.showToast('Please allow popups to download the receipt.', 'error');
+      return;
+    }
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt ${txId}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+          <style>
+            body {
+              margin: 0;
+              padding: 40px 20px;
+              background: #f5f5f5;
+              display: flex;
+              justify-content: center;
+              font-family: 'Inter', sans-serif;
+            }
+            .receipt-print-area {
+              max-width: 400px;
+              width: 100%;
+              background: white;
+              padding: 32px 28px;
+              border-radius: 16px;
+              box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+            }
+            .print-header {
+              text-align: center;
+              border-bottom: 2px dashed #e5e5e5;
+              padding-bottom: 16px;
+              margin-bottom: 16px;
+            }
+            .print-header h2 {
+              font-size: 22px;
+              font-weight: 700;
+              color: #0B1220;
+              margin: 0;
+            }
+            .print-header p {
+              font-size: 13px;
+              color: #888;
+              margin: 4px 0 0;
+            }
+            .print-body {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 8px 16px;
+              margin-bottom: 16px;
+            }
+            .print-body .pl {
+              font-size: 11px;
+              color: #999;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+            .print-body .pv {
+              font-size: 14px;
+              font-weight: 600;
+              color: #0B1220;
+              word-break: break-word;
+            }
+            .print-body .pv.mono {
+              font-family: 'JetBrains Mono', monospace;
+              font-size: 12px;
+            }
+            .print-footer {
+              text-align: center;
+              border-top: 2px dashed #e5e5e5;
+              padding-top: 16px;
+              margin-top: 4px;
+              font-size: 12px;
+              color: #999;
+            }
+            .print-footer .hash {
+              font-family: 'JetBrains Mono', monospace;
+              font-size: 11px;
+              display: block;
+              margin-top: 4px;
+              word-break: break-all;
+            }
+            .print-status {
+              display: inline-block;
+              padding: 4px 16px;
+              border-radius: 999px;
+              font-size: 12px;
+              font-weight: 600;
+              text-transform: uppercase;
+              background: #f0f0f0;
+              color: #666;
+            }
+            .print-status.pending { background: #fef3c7; color: #92400e; }
+            .print-status.approved { background: #d1fae5; color: #065f46; }
+            .print-status.paid { background: #dbeafe; color: #1e40af; }
+            .print-status.rejected { background: #fee2e2; color: #991b1b; }
+            @media print {
+              body { background: white; padding: 0; }
+              .receipt-print-area { box-shadow: none; border: 1px solid #ddd; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-print-area">
+            <div class="print-header">
+              <h2>Trovee</h2>
+              <p>Withdrawal Receipt</p>
+            </div>
+            <div class="print-body">
+              <span class="pl">Transaction ID</span>
+              <span class="pv mono">${txId}</span>
+              <span class="pl">Date & Time</span>
+              <span class="pv">${dateStr}</span>
+              <span class="pl">Amount</span>
+              <span class="pv">${symbol}${amountLocal.toFixed(2)}</span>
+              <span class="pl">Method</span>
+              <span class="pv">${methodName}</span>
+              <span class="pl">Destination</span>
+              <span class="pv mono">${withdrawal.destination_details}</span>
+              <span class="pl">Status</span>
+              <span class="pv"><span class="print-status ${withdrawal.status}">${withdrawal.status}</span></span>
+            </div>
+            <div class="print-footer">
+              <p>Thank you for using Trovee.</p>
+              <span class="hash">${txId}</span>
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          <\/script>
+        </body>
+      </html>
+    `);
+    win.document.close();
   }
 
   document.querySelectorAll(".tab").forEach(tab => {
@@ -259,6 +847,9 @@
       document.getElementById(`panel-${tab.dataset.tab}`).classList.add("active");
     });
   });
+
+  // Refresh history when coming back to tab
+  document.querySelector('[data-tab="history"]').addEventListener("click", loadHistory);
 
   init();
 </script>
