@@ -54,6 +54,57 @@
   .price-change.up { color: #2DD4BF; background: rgba(45, 212, 191, 0.12); }
   .price-change.down { color: #E8604C; background: rgba(232, 96, 76, 0.12); }
 
+  /* ─── REALISTIC GAUGE ─── */
+  .gauge-container {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 20px 20px 10px;
+    margin: 10px 16px 0;
+    border: 1px solid var(--line);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    box-shadow: var(--glass-sheen);
+  }
+  .gauge-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+  }
+  .gauge-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .gauge-needle {
+    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: 100px 100px;
+  }
+  .gauge-needle-circle {
+    transition: fill 0.5s;
+  }
+  .gauge-center-text {
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    transition: fill 0.5s;
+  }
+  .gauge-label-text {
+    font-size: 11px;
+    fill: var(--slate-soft);
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+  .gauge-tick-label {
+    font-size: 9px;
+    fill: var(--slate-soft);
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  /* ─── TRADE FORM ─── */
   .trade-form {
     padding: 0 16px;
     display: flex;
@@ -197,39 +248,6 @@
   .trade-btn.up-btn { background: #16a34a; color: #fff; }
   .trade-btn.down-btn { background: #b91c1c; color: #fff; }
   .trade-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .gauge-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px 0;
-  }
-  .gauge-svg { width: 200px; height: 110px; }
-  .gauge-bg {
-    fill: none;
-    stroke: var(--surface-raised);
-    stroke-width: 18;
-    stroke-linecap: round;
-  }
-  .gauge-fill {
-    fill: none;
-    stroke: #4ade80;
-    stroke-width: 18;
-    stroke-linecap: round;
-    transition: stroke-dashoffset 0.5s;
-  }
-  .gauge-center {
-    font-family: var(--font-mono);
-    font-size: 30px;
-    font-weight: 700;
-    fill: #4ade80;
-    text-anchor: middle;
-  }
-  .gauge-label {
-    font-size: 11px;
-    fill: var(--slate-soft);
-    text-anchor: middle;
-  }
 
   .trade-modal {
     position: fixed;
@@ -402,8 +420,8 @@
     .asset-price-info { justify-content: center; }
     .trade-form { padding: 0 12px; gap: 8px; }
     .trade-modal-card { padding: 20px 16px; }
-    .gauge-svg { width: 160px; height: 88px; }
-    .gauge-center { font-size: 24px; }
+    .gauge-wrapper { max-width: 280px; }
+    .gauge-center-text { font-size: 22px; }
   }
 </style>
 </head>
@@ -422,6 +440,54 @@
     <div class="asset-price-info">
       <span class="asset-price" id="asset-price-display">--</span>
       <span class="price-change" id="price-change-display">+0.00%</span>
+    </div>
+  </div>
+
+  <!-- ─── REALISTIC GAUGE ─── -->
+  <div class="gauge-container">
+    <div class="gauge-wrapper">
+      <svg class="gauge-svg" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+        <!-- Arc background -->
+        <path d="M 20 105 A 80 80 0 0 1 180 105" stroke="#1A2535" stroke-width="16" fill="none" stroke-linecap="round"/>
+        
+        <!-- Colored arc segments -->
+        <path id="gauge-arc-red" d="M 20 105 A 80 80 0 0 1 49.86 39.81" stroke="#E8604C" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.6"/>
+        <path id="gauge-arc-yellow" d="M 49.86 39.81 A 80 80 0 0 1 100 26.54" stroke="#FACC15" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.6"/>
+        <path id="gauge-arc-green" d="M 100 26.54 A 80 80 0 0 1 150.14 39.81" stroke="#4ADE80" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.6"/>
+        <path id="gauge-arc-bright" d="M 150.14 39.81 A 80 80 0 0 1 180 105" stroke="#2DD4BF" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+        <!-- Gauge ticks -->
+        <line x1="20" y1="105" x2="14" y2="105" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="30.65" y1="79.63" x2="25.45" y2="78.23" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="49.86" y1="39.81" x2="46.06" y2="36.01" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="74.93" y1="29.27" x2="72.53" y2="24.47" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="100" y1="26.54" x2="100" y2="20.54" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="125.07" y1="29.27" x2="127.47" y2="24.47" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="150.14" y1="39.81" x2="153.94" y2="36.01" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="169.35" y1="79.63" x2="174.55" y2="78.23" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="180" y1="105" x2="186" y2="105" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+
+        <!-- Tick labels -->
+        <text x="14" y="118" class="gauge-tick-label">-100%</text>
+        <text x="46" y="118" class="gauge-tick-label">-50%</text>
+        <text x="100" y="118" class="gauge-tick-label">0%</text>
+        <text x="154" y="118" class="gauge-tick-label">+50%</text>
+        <text x="186" y="118" class="gauge-tick-label">+100%</text>
+
+        <!-- Center label -->
+        <text id="gauge-percent-text" x="100" y="68" class="gauge-center-text" fill="#4ADE80">+0.00%</text>
+        <text x="100" y="86" class="gauge-label-text">change</text>
+
+        <!-- Needle -->
+        <g id="gauge-needle" class="gauge-needle" transform="rotate(0, 100, 100)">
+          <line x1="100" y1="100" x2="100" y2="35" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="100" cy="100" r="6" class="gauge-needle-circle" fill="#4ADE80"/>
+          <circle cx="100" cy="100" r="3" fill="#0B1220"/>
+        </g>
+
+        <!-- Center dot glow -->
+        <circle cx="100" cy="100" r="8" fill="none" stroke="#4ADE80" stroke-width="1" opacity="0.3"/>
+      </svg>
     </div>
   </div>
 
@@ -559,15 +625,62 @@
   let tradeInterval = null;
   let priceInterval = null;
   let lastPrice = 0;
-  const GAUGE_LEN = 251.3;
+  let referencePrice = 0;
+  let gaugeNeedle = null;
+  let gaugePercentText = null;
+  let gaugeCircle = null;
 
+  // ─── GAUGE HELPERS ───
+  function getGaugeElements() {
+    gaugeNeedle = document.getElementById('gauge-needle');
+    gaugePercentText = document.getElementById('gauge-percent-text');
+    gaugeCircle = document.querySelector('.gauge-needle-circle');
+  }
+
+  function updateGauge(percent) {
+    if (!gaugeNeedle) getGaugeElements();
+    if (!gaugeNeedle) return;
+
+    // Clamp percent between -100 and 100
+    const clamped = Math.max(-100, Math.min(100, percent));
+    
+    // Map percent to angle: -100% = -90°, 0% = 0°, 100% = 90°
+    const angle = (clamped / 100) * 90;
+    
+    // Apply rotation with smooth transition
+    gaugeNeedle.style.transform = `rotate(${angle}deg)`;
+    
+    // Update color based on percent
+    let color = '#8E96A6';
+    if (clamped > 15) color = '#4ADE80';
+    else if (clamped > 5) color = '#FACC15';
+    else if (clamped < -15) color = '#E8604C';
+    else if (clamped < -5) color = '#FACC15';
+    else color = '#8E96A6';
+    
+    gaugePercentText.style.fill = color;
+    if (gaugeCircle) gaugeCircle.style.fill = color;
+    
+    // Update text
+    const sign = clamped > 0 ? '+' : '';
+    gaugePercentText.textContent = `${sign}${clamped.toFixed(2)}%`;
+  }
+
+  // ─── PRICE SIMULATION ───
   function tickPrice() {
     const asset = ASSETS.find(a => a.key === currentAsset);
     if (!asset) return;
+    
     const change = (Math.random() - 0.49) * asset.base * asset.vol;
     const newPrice = Math.max(lastPrice + change, asset.base * 0.8);
     lastPrice = newPrice;
-    updatePriceDisplay(newPrice);
+    
+    // Calculate percent change from reference
+    const percentChange = ((lastPrice - referencePrice) / referencePrice) * 100;
+    updateGauge(percentChange);
+    
+    updatePriceDisplay(newPrice, percentChange);
+    
     if (activeTrade) {
       document.getElementById("modal-live-price").textContent = "Live: " + formatPrice(newPrice);
     }
@@ -580,21 +693,24 @@
     return p.toFixed(4);
   }
 
-  function updatePriceDisplay(price) {
-    const asset = ASSETS.find(a => a.key === currentAsset);
-    if (!asset) return;
-    const open = asset.base;
-    const pct = ((price - open) / open) * 100;
+  function updatePriceDisplay(price, percentChange) {
+    if (percentChange === undefined) {
+      const asset = ASSETS.find(a => a.key === currentAsset);
+      if (asset) {
+        percentChange = ((price - referencePrice) / referencePrice) * 100;
+      }
+    }
     const el = document.getElementById("asset-price-display");
     el.textContent = formatPrice(price);
-    el.className = "asset-price " + (pct >= 0 ? "up" : "down");
+    el.className = "asset-price " + (percentChange >= 0 ? "up" : "down");
 
     const changeEl = document.getElementById("price-change-display");
-    const sign = pct >= 0 ? "+" : "";
-    changeEl.textContent = sign + pct.toFixed(2) + "%";
-    changeEl.className = "price-change " + (pct >= 0 ? "up" : "down");
+    const sign = percentChange >= 0 ? "+" : "";
+    changeEl.textContent = sign + percentChange.toFixed(2) + "%";
+    changeEl.className = "price-change " + (percentChange >= 0 ? "up" : "down");
   }
 
+  // ─── TRADE FORM ───
   function setDirection(d) {
     direction = d;
     document.getElementById("dir-up").className = "dir-btn up" + (d === "up" ? " active" : "");
@@ -737,7 +853,7 @@
     function tick() {
       remaining--;
       const pct = remaining / total;
-      const offset = GAUGE_LEN * (1 - pct);
+      const offset = 251.3 * (1 - pct);
       modalGauge.style.strokeDashoffset = offset;
       modalNum.textContent = remaining;
       const color = remaining > total * 0.5 ? "#4ade80" : remaining > total * 0.25 ? "#facc15" : "#f87171";
@@ -782,6 +898,7 @@
     }
   }
 
+  // ─── ASSET SELECTOR ───
   document.getElementById("asset-selector-btn").addEventListener("click", () => {
     const listEl = document.getElementById("asset-option-list");
     listEl.innerHTML = ASSETS.map(a => {
@@ -807,16 +924,22 @@
     document.getElementById("asset-dropdown").classList.remove("show");
     const asset = ASSETS.find(a => a.key === key);
     if (asset) {
-      lastPrice = asset.base + (Math.random() - 0.5) * asset.base * 0.002;
-      updatePriceDisplay(lastPrice);
+      referencePrice = asset.base + (Math.random() - 0.5) * asset.base * 0.002;
+      lastPrice = referencePrice;
+      updatePriceDisplay(lastPrice, 0);
+      updateGauge(0);
     }
   }
 
+  // ─── INIT ───
   function startApp() {
+    getGaugeElements();
     const asset = ASSETS.find(a => a.key === currentAsset);
     if (asset) {
-      lastPrice = asset.base + (Math.random() - 0.5) * asset.base * 0.002;
-      updatePriceDisplay(lastPrice);
+      referencePrice = asset.base + (Math.random() - 0.5) * asset.base * 0.002;
+      lastPrice = referencePrice;
+      updatePriceDisplay(lastPrice, 0);
+      updateGauge(0);
     }
     priceInterval = setInterval(tickPrice, 1000);
     loadBalance();
