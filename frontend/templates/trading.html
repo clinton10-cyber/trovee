@@ -58,7 +58,7 @@
   .gauge-container {
     background: var(--surface);
     border-radius: var(--radius-lg);
-    padding: 20px 20px 10px;
+    padding: 20px 20px 15px;
     margin: 10px 16px 0;
     border: 1px solid var(--line);
     backdrop-filter: var(--blur);
@@ -75,9 +75,10 @@
     width: 100%;
     height: auto;
     display: block;
+    overflow: visible;
   }
   .gauge-needle {
-    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
     transform-origin: 100px 100px;
   }
   .gauge-needle-circle {
@@ -85,23 +86,19 @@
   }
   .gauge-center-text {
     font-family: var(--font-mono);
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 700;
     text-anchor: middle;
     dominant-baseline: central;
     transition: fill 0.5s;
   }
   .gauge-label-text {
-    font-size: 11px;
+    font-size: 10px;
     fill: var(--slate-soft);
     text-anchor: middle;
     dominant-baseline: central;
-  }
-  .gauge-tick-label {
-    font-size: 9px;
-    fill: var(--slate-soft);
-    text-anchor: middle;
-    dominant-baseline: central;
+    letter-spacing: 0.1em;
+    font-weight: 600;
   }
 
   /* ─── TRADE FORM ─── */
@@ -443,50 +440,38 @@
     </div>
   </div>
 
-  <!-- ─── REALISTIC GAUGE ─── -->
   <div class="gauge-container">
     <div class="gauge-wrapper">
-      <svg class="gauge-svg" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
-        <!-- Arc background -->
-        <path d="M 20 105 A 80 80 0 0 1 180 105" stroke="#1A2535" stroke-width="16" fill="none" stroke-linecap="round"/>
+      <svg class="gauge-svg" viewBox="0 0 200 125" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#E8604C"/>
+            <stop offset="50%" stop-color="#FACC15"/>
+            <stop offset="100%" stop-color="#4ADE80"/>
+          </linearGradient>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+          </filter>
+        </defs>
+
+        <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="#1A2535" stroke-width="12" fill="none" stroke-linecap="round"/>
         
-        <!-- Colored arc segments -->
-        <path id="gauge-arc-red" d="M 20 105 A 80 80 0 0 1 49.86 39.81" stroke="#E8604C" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.6"/>
-        <path id="gauge-arc-yellow" d="M 49.86 39.81 A 80 80 0 0 1 100 26.54" stroke="#FACC15" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.6"/>
-        <path id="gauge-arc-green" d="M 100 26.54 A 80 80 0 0 1 150.14 39.81" stroke="#4ADE80" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.6"/>
-        <path id="gauge-arc-bright" d="M 150.14 39.81 A 80 80 0 0 1 180 105" stroke="#2DD4BF" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.6"/>
+        <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="url(#gauge-grad)" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.9"/>
 
-        <!-- Gauge ticks -->
-        <line x1="20" y1="105" x2="14" y2="105" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="30.65" y1="79.63" x2="25.45" y2="78.23" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="49.86" y1="39.81" x2="46.06" y2="36.01" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="74.93" y1="29.27" x2="72.53" y2="24.47" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="100" y1="26.54" x2="100" y2="20.54" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="125.07" y1="29.27" x2="127.47" y2="24.47" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="150.14" y1="39.81" x2="153.94" y2="36.01" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="169.35" y1="79.63" x2="174.55" y2="78.23" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="180" y1="105" x2="186" y2="105" stroke="#8E96A6" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="100" y1="20" x2="100" y2="28" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+        <line x1="43.4" y1="43.4" x2="49" y2="49" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+        <line x1="156.6" y1="43.4" x2="151" y2="49" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
 
-        <!-- Tick labels -->
-        <text x="14" y="118" class="gauge-tick-label">-100%</text>
-        <text x="46" y="118" class="gauge-tick-label">-50%</text>
-        <text x="100" y="118" class="gauge-tick-label">0%</text>
-        <text x="154" y="118" class="gauge-tick-label">+50%</text>
-        <text x="186" y="118" class="gauge-tick-label">+100%</text>
+        <text x="25" y="118" font-size="9" fill="#E8604C" font-weight="700" letter-spacing="1">STRONG SELL</text>
+        <text x="175" y="118" font-size="9" fill="#4ADE80" font-weight="700" letter-spacing="1" text-anchor="end">STRONG BUY</text>
+        <text id="gauge-percent-text" x="100" y="72" class="gauge-center-text" fill="#4ADE80">+0.00%</text>
+        <text x="100" y="90" class="gauge-label-text">MOMENTUM</text>
 
-        <!-- Center label -->
-        <text id="gauge-percent-text" x="100" y="68" class="gauge-center-text" fill="#4ADE80">+0.00%</text>
-        <text x="100" y="86" class="gauge-label-text">change</text>
-
-        <!-- Needle -->
-        <g id="gauge-needle" class="gauge-needle" transform="rotate(0, 100, 100)">
-          <line x1="100" y1="100" x2="100" y2="35" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="100" cy="100" r="6" class="gauge-needle-circle" fill="#4ADE80"/>
-          <circle cx="100" cy="100" r="3" fill="#0B1220"/>
+        <g id="gauge-needle" class="gauge-needle" style="transform-origin: 100px 100px;">
+          <path d="M 97 100 L 100 25 L 103 100 Z" fill="#FFFFFF" filter="url(#shadow)"/>
+          <circle cx="100" cy="100" r="7" fill="#0B1220" stroke="#FFFFFF" stroke-width="2" filter="url(#shadow)"/>
+          <circle cx="100" cy="100" r="3" class="gauge-needle-circle" fill="#4ADE80"/>
         </g>
-
-        <!-- Center dot glow -->
-        <circle cx="100" cy="100" r="8" fill="none" stroke="#4ADE80" stroke-width="1" opacity="0.3"/>
       </svg>
     </div>
   </div>
@@ -641,29 +626,33 @@
     if (!gaugeNeedle) getGaugeElements();
     if (!gaugeNeedle) return;
 
-    // Clamp percent between -100 and 100
-    const clamped = Math.max(-100, Math.min(100, percent));
+    // The scale in the old gauge was huge (looking for 100% price movements).
+    // Simulated prices tick by fractions of a percent, so we map smaller changes to the full 90deg swing.
+    const sensitivity = 0.5; // A 0.5% price shift will maximize the gauge left or right.
     
-    // Map percent to angle: -100% = -90°, 0% = 0°, 100% = 90°
-    const angle = (clamped / 100) * 90;
+    // Calculate ratio based on our new high-sensitivity scale and clamp from -1 to 1
+    const ratio = percent / sensitivity;
+    const clampedRatio = Math.max(-1, Math.min(1, ratio));
     
-    // Apply rotation with smooth transition
+    // Map ratio to angle: -90° (full left) to 90° (full right)
+    const angle = clampedRatio * 90;
+    
+    // Apply smooth rotation
     gaugeNeedle.style.transform = `rotate(${angle}deg)`;
     
-    // Update color based on percent
-    let color = '#8E96A6';
-    if (clamped > 15) color = '#4ADE80';
-    else if (clamped > 5) color = '#FACC15';
-    else if (clamped < -15) color = '#E8604C';
-    else if (clamped < -5) color = '#FACC15';
-    else color = '#8E96A6';
+    // Dynamic coloring based on intensity
+    let color = '#8E96A6'; // Default neutral
+    if (percent > 0.1) color = '#4ADE80';       // Strong Green
+    else if (percent > 0.02) color = '#FACC15'; // Yellow
+    else if (percent < -0.1) color = '#E8604C'; // Strong Red
+    else if (percent < -0.02) color = '#FACC15';// Yellow
     
     gaugePercentText.style.fill = color;
     if (gaugeCircle) gaugeCircle.style.fill = color;
     
-    // Update text
-    const sign = clamped > 0 ? '+' : '';
-    gaugePercentText.textContent = `${sign}${clamped.toFixed(2)}%`;
+    // Update center text display
+    const sign = percent > 0 ? '+' : '';
+    gaugePercentText.textContent = `${sign}${percent.toFixed(2)}%`;
   }
 
   // ─── PRICE SIMULATION ───
