@@ -202,23 +202,28 @@ def _seed_defaults(conn):
         insert_wallet(*w)
 
     # ─── Share Companies ─────────────────────────────────────────
+    # Using reliable logo URLs that work without hotlinking issues
     companies = [
         ("Tesla, Inc.", "TSLA",
          "Electric vehicles and clean energy",
-         "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Tesla_Motors.svg/200px-Tesla_Motors.svg.png",
+         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tesla.svg",
          "Automotive"),
         ("NVIDIA Corporation", "NVDA",
          "Graphics processing units and AI",
-         "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Nvidia_logo.svg/200px-Nvidia_logo.svg.png",
+         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/nvidia.svg",
          "Technology"),
         ("Microsoft Corporation", "MSFT",
          "Software and cloud computing",
-         "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Microsoft_logo_%282012%29.svg/200px-Microsoft_logo_%282012%29.svg.png",
+         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoft.svg",
          "Technology"),
         ("Apple Inc.", "AAPL",
          "Consumer electronics and software",
-         "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/200px-Apple_logo_black.svg.png",
+         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/apple.svg",
          "Technology"),
+        ("SpaceX", "SPX",
+         "Space exploration, satellite internet, and aerospace",
+         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/spacex.svg",
+         "Aerospace"),
     ]
     company_ids = {}
     for name, ticker, desc, logo, sector in companies:
@@ -265,7 +270,6 @@ def _seed_defaults(conn):
             )
 
     # ─── Progressive Plans (for all companies) ──────────────────
-    # These are inserted first so they appear at the top of the list
     progressive_plans = [
         ("Starter", 1, 100, 8.0, 6),
         ("Basic", 5, 500, 9.0, 6),
@@ -283,7 +287,7 @@ def _seed_defaults(conn):
 
     # ─── Company-Specific High-End Plans ──────────────────────
 
-    # Tesla: car models (continued from progressive plans)
+    # Tesla: car models
     tesla_plans = [
         ("Model 3", 10, 45000, 12.0, 12),
         ("Model Y", 15, 55000, 13.5, 12),
@@ -320,6 +324,18 @@ def _seed_defaults(conn):
     ]
     for plan_name, shares, price_usd, rate, months in aa_plans:
         insert_plan("Apple Inc.", plan_name, shares, price_usd, rate, months)
+
+    # ─── SpaceX: Mission-Based Plans ──────────────────────────
+    spacex_plans = [
+        ("Falcon 9", 10, 50000, 13.0, 12),
+        ("Starlink", 15, 75000, 14.0, 12),
+        ("Falcon Heavy", 20, 100000, 16.0, 18),
+        ("Dragon", 25, 150000, 18.0, 18),
+        ("Starship", 30, 200000, 20.0, 24),
+        ("Mars Mission", 50, 300000, 22.0, 24),
+    ]
+    for plan_name, shares, price_usd, rate, months in spacex_plans:
+        insert_plan("SpaceX", plan_name, shares, price_usd, rate, months)
 
     conn.commit()
 
