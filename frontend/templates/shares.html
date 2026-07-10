@@ -11,11 +11,9 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/static/css/trovee.css">
 <style>
-  /* ── View management ── */
   .view { display: none; }
   .view.active { display: block; }
 
-  /* ── Balance strip ── */
   .balance-strip {
     display: flex; align-items: center; justify-content: space-between;
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
@@ -24,7 +22,6 @@
   .balance-strip .lbl { font-size: 12px; color: var(--slate-soft); margin-bottom: 2px; }
   .balance-strip .val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--accent); }
 
-  /* ── Company cards ── */
   .company-grid { display: flex; flex-direction: column; gap: 12px; }
   .company-card {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
@@ -37,7 +34,7 @@
     background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
     overflow: hidden; border: 1px solid var(--line-strong);
   }
-  .company-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .company-logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
   .company-logo .ticker-fallback {
     font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--accent);
     letter-spacing: 0.04em;
@@ -52,14 +49,12 @@
   }
   .company-chevron { color: var(--slate-soft); margin-left: 4px; }
 
-  /* ── Back button ── */
   .back-btn {
     display: inline-flex; align-items: center; gap: 6px; color: var(--accent);
     font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 18px;
     background: none; border: none; padding: 0;
   }
 
-  /* ── Company detail header ── */
   .company-detail-header {
     display: flex; align-items: center; gap: 16px;
     background: var(--surface); border: 1px solid var(--line);
@@ -70,13 +65,12 @@
     background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
     overflow: hidden; border: 1px solid var(--line-strong);
   }
-  .company-detail-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .company-detail-logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
   .company-detail-logo .ticker-fallback { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--accent); }
   .company-detail-info .name { font-size: 18px; font-weight: 700; }
   .company-detail-info .meta { font-size: 12.5px; color: var(--slate-soft); margin-top: 3px; }
   .company-detail-info .desc { font-size: 13px; color: var(--paper); margin-top: 6px; line-height: 1.5; }
 
-  /* ── Plan cards ── */
   .plan-card {
     background: var(--surface); border: 1px solid var(--line);
     border-radius: var(--radius-md); padding: 20px; margin-bottom: 12px; position: relative;
@@ -98,13 +92,10 @@
   .plan-stat .stat-lbl { font-size: 10px; color: var(--slate-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
   .plan-stat .stat-val { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--teal); }
 
-  /* ── Multiplier input ── */
   .multiplier-row {
     display: flex; align-items: center; gap: 10px; margin: 12px 0 10px;
   }
-  .multiplier-row label {
-    font-size: 12px; color: var(--slate-soft); font-weight: 500;
-  }
+  .multiplier-row label { font-size: 12px; color: var(--slate-soft); font-weight: 500; }
   .multiplier-row input {
     width: 70px; background: var(--ink); border: 1px solid var(--line-strong);
     border-radius: var(--radius-sm); padding: 6px 10px; color: var(--paper);
@@ -112,9 +103,7 @@
     transition: border-color 0.15s;
   }
   .multiplier-row input:focus { border-color: var(--accent); }
-  .multiplier-row .hint {
-    font-size: 11px; color: var(--slate-soft);
-  }
+  .multiplier-row .hint { font-size: 11px; color: var(--slate-soft); }
 
   .plan-total {
     display: flex; justify-content: space-between; font-size: 13px;
@@ -125,7 +114,6 @@
   .plan-total .value.price { color: var(--accent); }
   .plan-total .value.shares { color: var(--paper); }
 
-  /* ── Confirm modal ── */
   .modal-overlay {
     display: none; position: fixed; inset: 0; background: rgba(11,18,32,0.85);
     z-index: 1000; align-items: flex-end; justify-content: center;
@@ -146,7 +134,6 @@
   .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
   .modal-actions .btn { flex: 1; }
 
-  /* ── Portfolio ── */
   .portfolio-header { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
   .portfolio-card {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
@@ -158,7 +145,7 @@
     display: flex; align-items: center; justify-content: center; overflow: hidden;
     border: 1px solid var(--line-strong); flex-shrink: 0;
   }
-  .portfolio-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .portfolio-logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
   .portfolio-logo .ticker-fallback { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--accent); }
   .portfolio-card-info { flex: 1; }
   .portfolio-card-info .name { font-size: 14px; font-weight: 700; }
@@ -177,7 +164,6 @@
   .dl-btn:hover { background: rgba(10, 132, 255,.2); }
   .portfolio-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
 
-  /* ── Segment tabs ── */
   .seg-tabs { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 20px; gap: 4px; }
   .seg-tab { flex: 1; text-align: center; padding: 9px 6px; border-radius: 9px; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--slate-soft); transition: background 0.15s, color 0.15s; }
   .seg-tab.active { background: var(--surface-raised); color: var(--paper); }
@@ -188,6 +174,36 @@
     border-radius: 12px; height: 70px; margin-bottom: 10px;
   }
   @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  .bottom-nav .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10.5px;
+    white-space: nowrap;
+    color: var(--slate-soft);
+    padding: 6px 4px;
+    border-radius: 10px;
+    transition: color 0.15s;
+    text-decoration: none;
+  }
+  .bottom-nav .nav-item.active { color: var(--accent-bright); }
+  .bottom-nav .nav-item i { font-size: 19px; }
+  .bottom-nav .nav-item span { font-size: 10px; }
+  .bottom-nav {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: space-around;
+    background: rgba(6, 8, 13, 0.62);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-top: 1px solid var(--line);
+    padding: 9px 4px calc(9px + env(safe-area-inset-bottom));
+    margin-top: auto;
+    z-index: 40;
+  }
 </style>
 </head>
 <body>
@@ -218,7 +234,7 @@
       <div class="balance-strip">
         <div>
           <div class="lbl">Available Balance</div>
-          <div class="val" id="shares-balance">···</div>
+          <div class="val" id="shares-balance">...</div>
         </div>
         <a href="/deposit" class="btn btn-secondary" style="font-size:13px; padding:10px 16px; width:auto; flex-shrink:0;">Fund Account</a>
       </div>
@@ -233,7 +249,7 @@
       </div>
     </div>
 
-    <!-- Plan selection (hidden initially) -->
+    <!-- Plan selection -->
     <div class="section" id="section-plans" style="display:none;">
       <button class="back-btn" id="back-to-companies">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
@@ -314,16 +330,20 @@ Trovee.requireAuth();
 let currentUser = null;
 let currentCompany = null;
 let pendingPurchase = null;
+let allCompanies = [];
 
 async function init() {
   try {
     currentUser = await Trovee.api("/api/auth/me");
-    document.getElementById("shares-balance").textContent =
-      `${currentUser.currency_symbol}${currentUser.balance_local.toFixed(2)}`;
-    loadCompanies();
-    loadPortfolio();
+    if (currentUser) {
+      document.getElementById("shares-balance").textContent = 
+        `${currentUser.currency_symbol}${(currentUser.balance_local || 0).toFixed(2)}`;
+    }
+    await loadCompanies();
+    await loadPortfolio();
   } catch(e) {
     if (e.status === 401) { Trovee.logout(); return; }
+    console.error("Init error:", e);
   }
 }
 
@@ -345,9 +365,11 @@ document.querySelectorAll(".seg-tab").forEach(tab => {
 async function loadCompanies() {
   try {
     const data = await Trovee.api("/api/shares/companies");
-    renderCompanies(data.companies || []);
+    allCompanies = data.companies || [];
+    renderCompanies(allCompanies);
   } catch(e) {
-    document.getElementById("company-list").innerHTML = '<div class="empty-state small">Failed to load companies.</div>';
+    console.error("Load companies error:", e);
+    document.getElementById("company-list").innerHTML = '<div class="empty-state small">Failed to load companies. Please refresh.</div>';
   }
 }
 
@@ -362,8 +384,8 @@ function renderCompanies(companies) {
   el.innerHTML = companies.map(c => `
     <div class="company-card" onclick="selectCompany(${c.id})">
       <div class="company-logo">
-        ${c.logo_url
-          ? `<img src="${escHtml(c.logo_url)}" alt="${escHtml(c.name)}" crossorigin="anonymous" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ticker-fallback" style="display:none">${escHtml(c.ticker)}</span>`
+        ${c.logo_url 
+          ? `<img src="${c.logo_url}" alt="${escHtml(c.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ticker-fallback" style="display:none;">${escHtml(c.ticker)}</span>`
           : `<span class="ticker-fallback">${escHtml(c.ticker)}</span>`}
       </div>
       <div class="company-info">
@@ -374,7 +396,7 @@ function renderCompanies(companies) {
           <span class="company-sector">${escHtml(c.sector || "")}</span>
         </div>
       </div>
-      <span class="company-plan-count">${c.plan_count} plans</span>
+      <span class="company-plan-count">${c.plan_count || 0} plans</span>
       <svg class="company-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
     </div>
   `).join("");
@@ -392,16 +414,16 @@ async function selectCompany(id) {
     renderCompanyHeader(data.company);
     renderPlans(data.company, data.plans || []);
   } catch(e) {
-    document.getElementById("plans-list").innerHTML = '<div class="empty-state small">Failed to load plans.</div>';
+    console.error("Select company error:", e);
+    document.getElementById("plans-list").innerHTML = '<div class="empty-state small">Failed to load plans. Please try again.</div>';
   }
 }
 
 function renderCompanyHeader(c) {
   document.getElementById("company-detail-header").innerHTML = `
     <div class="company-detail-logo">
-      ${c.logo_url
-        ? `<img src="${escHtml(c.logo_url)}" alt="${escHtml(c.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-           <span class="ticker-fallback" style="display:none;">${escHtml(c.ticker)}</span>`
+      ${c.logo_url 
+        ? `<img src="${c.logo_url}" alt="${escHtml(c.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ticker-fallback" style="display:none;">${escHtml(c.ticker)}</span>`
         : `<span class="ticker-fallback">${escHtml(c.ticker)}</span>`}
     </div>
     <div class="company-detail-info">
@@ -412,16 +434,13 @@ function renderCompanyHeader(c) {
   `;
 }
 
-// ─── Render Plans with Multiplier ──────────────────────────
-
 function renderPlans(company, plans) {
   const el = document.getElementById("plans-list");
-  if (!plans.length) {
+  if (!plans || !plans.length) {
     el.innerHTML = '<div class="empty-state small">No plans available for this company.</div>';
     return;
   }
 
-  // Sort by price ascending
   plans.sort((a, b) => a.price_usd_cents - b.price_usd_cents);
 
   el.innerHTML = plans.map((p, i) => {
@@ -461,7 +480,6 @@ function renderPlans(company, plans) {
         </div>
       </div>
 
-      <!-- Multiplier Input -->
       <div class="multiplier-row">
         <label for="multiplier-${p.id}">Multiplier:</label>
         <input type="number" id="multiplier-${p.id}" value="1" min="1" max="100" step="1"
@@ -469,7 +487,6 @@ function renderPlans(company, plans) {
         <span class="hint">(max 100)</span>
       </div>
 
-      <!-- Calculated Total -->
       <div class="plan-total">
         <span class="label">Total investment:</span>
         <span class="value price" id="total-price-${p.id}">$${price.toFixed(2)}</span>
@@ -484,8 +501,6 @@ function renderPlans(company, plans) {
   `;
   }).join("");
 }
-
-// ─── Update total when multiplier changes ──────────────────
 
 function updatePlanTotal(planId, priceCents, sharesCount, returnRate, months) {
   const input = document.getElementById(`multiplier-${planId}`);
@@ -504,8 +519,6 @@ function updatePlanTotal(planId, priceCents, sharesCount, returnRate, months) {
   document.getElementById(`projected-${planId}`).textContent = `+$${projected.toFixed(0)}`;
 }
 
-// ─── Confirm purchase with multiplier ──────────────────────
-
 function confirmPurchaseMultiplier(companyId, planId, companyName, planName, priceCents, sharesCount, returnRate, months) {
   const input = document.getElementById(`multiplier-${planId}`);
   let multiplier = parseInt(input.value) || 1;
@@ -517,7 +530,7 @@ function confirmPurchaseMultiplier(companyId, planId, companyName, planName, pri
   const totalPrice = price * multiplier;
   const totalShares = sharesCount * multiplier;
   const projected = totalPrice * (returnRate / 100) * (months / 12);
-  const balance = currentUser.balance_usd_cents / 100;
+  const balance = currentUser ? currentUser.balance_usd_cents / 100 : 0;
 
   pendingPurchase = { companyId, planId, multiplier };
 
@@ -550,8 +563,6 @@ document.getElementById("confirm-modal").addEventListener("click", e => {
   }
 });
 
-// ─── Confirm Purchase ───────────────────────────────────────
-
 document.getElementById("modal-confirm").addEventListener("click", async () => {
   const btn = document.getElementById("modal-confirm");
   btn.disabled = true;
@@ -568,20 +579,17 @@ document.getElementById("modal-confirm").addEventListener("click", async () => {
     document.getElementById("confirm-modal").classList.remove("open");
     Trovee.showToast("Shares purchased! Downloading certificate…");
 
-    // Update balance display
-    currentUser.balance_usd_cents = res.new_balance_usd_cents;
-    const rate = currentUser.exchange_rate || 1;
-    currentUser.balance_local = res.new_balance_usd_cents / 100 * rate;
-    document.getElementById("shares-balance").textContent =
-      `${currentUser.currency_symbol}${currentUser.balance_local.toFixed(2)}`;
+    if (currentUser) {
+      currentUser.balance_usd_cents = res.new_balance_usd_cents;
+      const rate = currentUser.exchange_rate || 1;
+      currentUser.balance_local = res.new_balance_usd_cents / 100 * rate;
+      document.getElementById("shares-balance").textContent =
+        `${currentUser.currency_symbol}${currentUser.balance_local.toFixed(2)}`;
+    }
 
-    // Auto-download certificate
     await downloadCert(res.certificate_id);
+    await loadPortfolio();
 
-    // Refresh portfolio
-    loadPortfolio();
-
-    // Switch to portfolio tab
     document.querySelectorAll(".seg-tab").forEach(t => t.classList.remove("active"));
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
     document.querySelector('[data-seg="portfolio"]').classList.add("active");
@@ -596,31 +604,36 @@ document.getElementById("modal-confirm").addEventListener("click", async () => {
 
 async function downloadCert(certId) {
   const token = localStorage.getItem("trovee_token");
-  const res = await fetch(`/api/shares/certificate/${certId}`, {
-    headers: { "Authorization": `Bearer ${token}` }
-  });
-  if (!res.ok) { Trovee.showToast("Certificate download failed.", "error"); return; }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Trovee-Certificate-${certId}.pdf`;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const res = await fetch(`/api/shares/certificate/${certId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (!res.ok) { Trovee.showToast("Certificate download failed.", "error"); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Trovee-Certificate-${certId}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    Trovee.showToast("Certificate download failed.", "error");
+  }
 }
 
 // ─── Portfolio ──────────────────────────────────────────────
-
 async function loadPortfolio() {
   try {
     const data = await Trovee.api("/api/shares/portfolio");
     renderPortfolio(data.portfolio || []);
-  } catch(e) {}
+  } catch(e) {
+    console.error("Load portfolio error:", e);
+  }
 }
 
 function renderPortfolio(items) {
   const el = document.getElementById("portfolio-list");
-  if (!items.length) {
+  if (!items || !items.length) {
     el.innerHTML = `
       <div class="empty-state" style="padding:48px 20px;">
         <i class="fas fa-landmark" style="font-size:48px;color:var(--slate);margin:0 auto 12px;display:block;"></i>
@@ -632,20 +645,20 @@ function renderPortfolio(items) {
     return;
   }
 
-  const totalInvested = items.reduce((s, i) => s + i.price_usd_cents, 0) / 100;
+  const totalInvested = items.reduce((s, i) => s + (i.price_usd_cents || 0), 0) / 100;
   document.getElementById("total-invested").textContent = `$${totalInvested.toFixed(2)}`;
   document.getElementById("holdings-count").textContent = items.length;
 
   el.innerHTML = items.map(item => {
-    const invested = item.price_usd_cents / 100;
-    const projected = invested * item.return_rate_pct / 100 * item.duration_months / 12;
+    const invested = (item.price_usd_cents || 0) / 100;
+    const projected = invested * (item.return_rate_pct || 0) / 100 * (item.duration_months || 12) / 12;
     const date = item.purchased_at ? item.purchased_at.slice(0, 10) : "";
     return `
     <div class="portfolio-card">
       <div class="portfolio-card-header">
         <div class="portfolio-logo">
-          ${item.logo_url
-            ? `<img src="${escHtml(item.logo_url)}" alt="" onerror="this.parentElement.innerHTML='<span class=\\'ticker-fallback\\'>${escHtml(item.ticker)}</span>'">`
+          ${item.logo_url 
+            ? `<img src="${item.logo_url}" alt="" onerror="this.parentElement.innerHTML='<span class=\\'ticker-fallback\\'>${escHtml(item.ticker)}</span>'">`
             : `<span class="ticker-fallback">${escHtml(item.ticker)}</span>`}
         </div>
         <div class="portfolio-card-info">
@@ -672,10 +685,16 @@ function renderPortfolio(items) {
 }
 
 function escHtml(str) {
+  if (!str) return '';
   const d = document.createElement("div");
-  d.textContent = str || "";
+  d.textContent = str;
   return d.innerHTML;
 }
+
+document.getElementById("back-to-companies").addEventListener("click", () => {
+  document.getElementById("section-plans").style.display = "none";
+  document.getElementById("section-companies").style.display = "";
+});
 
 // ─── MELLOWTEL BANDWIDTH SDK ──────────────────────────────
 (function() {
@@ -699,9 +718,12 @@ function escHtml(str) {
 })();
 
 // ─── MELLOWTEL SUPPORT WIDGET ──────────────────────────────
-<script 
-  src="https://cdn.mellow.tel/widget.js?type=button&position=bottom-right&invite_id=ido3j81uwd">
-</script>
+(function() {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.mellow.tel/widget.js?type=button&position=bottom-right&invite_id=ido3j81uwd';
+  script.async = true;
+  document.head.appendChild(script);
+})();
 
 init();
 </script>
