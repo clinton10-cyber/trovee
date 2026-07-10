@@ -8,7 +8,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/trovee.css">
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js">
+</script>
 <style>
+  /* ── Trading Header ── */
   .trade-header {
     display: flex;
     align-items: center;
@@ -54,54 +57,63 @@
   .price-change.up { color: #2DD4BF; background: rgba(45, 212, 191, 0.12); }
   .price-change.down { color: #E8604C; background: rgba(232, 96, 76, 0.12); }
 
-  /* ─── REALISTIC GAUGE ─── */
-  .gauge-container {
+  /* ── Chart Container ── */
+  .chart-container {
     background: var(--surface);
-    border-radius: var(--radius-lg);
-    padding: 20px 20px 15px;
-    margin: 10px 16px 0;
     border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    margin: 10px 16px 0;
+    padding: 8px;
+    position: relative;
+    height: 380px;
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
     box-shadow: var(--glass-sheen);
   }
-  .gauge-wrapper {
-    position: relative;
+  #chart-container {
     width: 100%;
-    max-width: 340px;
-    margin: 0 auto;
+    height: 100%;
   }
-  .gauge-svg {
-    width: 100%;
-    height: auto;
-    display: block;
-    overflow: visible;
+  .chart-controls {
+    display: flex;
+    gap: 6px;
+    padding: 6px 16px 0;
+    flex-wrap: wrap;
+    align-items: center;
   }
-  .gauge-needle {
-    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transform-origin: 100px 100px;
-  }
-  .gauge-needle-circle {
-    transition: fill 0.5s;
-  }
-  .gauge-center-text {
-    font-family: var(--font-mono);
-    font-size: 26px;
-    font-weight: 700;
-    text-anchor: middle;
-    dominant-baseline: central;
-    transition: fill 0.5s;
-  }
-  .gauge-label-text {
-    font-size: 10px;
-    fill: var(--slate-soft);
-    text-anchor: middle;
-    dominant-baseline: central;
-    letter-spacing: 0.1em;
+  .chart-btn {
+    padding: 5px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--line-strong);
+    background: transparent;
+    color: var(--slate-soft);
+    font-size: 11px;
     font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+  }
+  .chart-btn:hover {
+    border-color: var(--accent);
+    color: var(--paper);
+  }
+  .chart-btn.active {
+    background: var(--accent);
+    color: var(--ink);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(10, 132, 255, 0.3);
+  }
+  .chart-btn[data-tf] {
+    padding: 4px 10px;
+    font-size: 10px;
+  }
+  .chart-btn[data-tf].active {
+    background: rgba(45, 212, 191, 0.2);
+    color: var(--teal);
+    border-color: var(--teal);
   }
 
-  /* ─── TRADE FORM ─── */
+  /* ── Trade Form ── */
   .trade-form {
     padding: 0 16px;
     display: flex;
@@ -213,6 +225,7 @@
   }
   .amount-all:hover { color: #22c55e; }
 
+  /* ── Momentum Return Bar ── */
   .return-bar {
     display: flex;
     justify-content: space-between;
@@ -224,10 +237,13 @@
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
   }
-  .return-label { font-size: 13px; color: var(--slate-soft); }
+  .return-label {
+    font-size: 13px;
+    color: var(--slate-soft);
+  }
   .return-val {
     font-family: var(--font-mono);
-    color: #4ade80;
+    color: var(--teal);
     font-size: 14px;
     font-weight: 700;
   }
@@ -246,6 +262,41 @@
   .trade-btn.down-btn { background: #b91c1c; color: #fff; }
   .trade-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  /* ── Gauge Meter ── */
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+  }
+  .gauge-svg { width: 160px; height: 88px; }
+  .gauge-bg {
+    fill: none;
+    stroke: var(--surface-raised);
+    stroke-width: 18;
+    stroke-linecap: round;
+  }
+  .gauge-fill {
+    fill: none;
+    stroke: #4ade80;
+    stroke-width: 18;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s;
+  }
+  .gauge-center {
+    font-family: var(--font-mono);
+    font-size: 30px;
+    font-weight: 700;
+    fill: #4ade80;
+    text-anchor: middle;
+  }
+  .gauge-label {
+    font-size: 11px;
+    fill: var(--slate-soft);
+    text-anchor: middle;
+  }
+
+  /* ── Live Trade Modal ── */
   .trade-modal {
     position: fixed;
     top: 0;
@@ -307,6 +358,7 @@
   .trade-modal-row .val.direction-down { color: #f87171; font-weight: 600; }
   .trade-modal-row .val.direction-up { color: #4ade80; font-weight: 600; }
 
+  /* ── History ── */
   .trade-history {
     padding: 0 16px 100px;
     margin-top: 8px;
@@ -352,6 +404,7 @@
   .hist-badge.up { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
   .hist-badge.down { background: rgba(248, 113, 113, 0.15); color: #f87171; }
 
+  /* ── Asset Dropdown ── */
   .asset-dropdown {
     position: fixed;
     top: 0;
@@ -406,6 +459,7 @@
   .asset-opt-desc { font-size: 12px; color: var(--slate-soft); }
   .asset-opt-price { font-family: var(--font-mono); font-size: 14px; }
 
+  /* ── Responsive ── */
   @media (max-width: 480px) {
     .trade-header {
       padding: 10px 16px 0;
@@ -415,20 +469,21 @@
     }
     .asset-selector { justify-content: center; }
     .asset-price-info { justify-content: center; }
+    .chart-container { height: 280px; margin: 8px 12px 0; }
     .trade-form { padding: 0 12px; gap: 8px; }
     .trade-modal-card { padding: 20px 16px; }
-    .gauge-wrapper { max-width: 280px; }
-    .gauge-center-text { font-size: 22px; }
   }
 </style>
 </head>
 <body>
 <div class="app-shell">
+  <!-- Top Bar -->
   <div class="top-bar">
     <h1 class="page-title">Trade</h1>
     <span id="balance-badge" class="mono" style="font-size:13px; color:var(--accent);"></span>
   </div>
 
+  <!-- Asset + Price Header -->
   <div class="trade-header">
     <div class="asset-selector" id="asset-selector-btn">
       <span class="asset-name" id="asset-name-label">BTC/USD</span>
@@ -440,43 +495,29 @@
     </div>
   </div>
 
-  <div class="gauge-container">
-    <div class="gauge-wrapper">
-      <svg class="gauge-svg" viewBox="0 0 200 125" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#E8604C"/>
-            <stop offset="50%" stop-color="#FACC15"/>
-            <stop offset="100%" stop-color="#4ADE80"/>
-          </linearGradient>
-          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
-          </filter>
-        </defs>
-
-        <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="#1A2535" stroke-width="12" fill="none" stroke-linecap="round"/>
-        
-        <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="url(#gauge-grad)" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.9"/>
-
-        <line x1="100" y1="20" x2="100" y2="28" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-        <line x1="43.4" y1="43.4" x2="49" y2="49" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-        <line x1="156.6" y1="43.4" x2="151" y2="49" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-
-        <text x="25" y="118" font-size="9" fill="#E8604C" font-weight="700" letter-spacing="1">STRONG SELL</text>
-        <text x="175" y="118" font-size="9" fill="#4ADE80" font-weight="700" letter-spacing="1" text-anchor="end">STRONG BUY</text>
-        <text id="gauge-percent-text" x="100" y="72" class="gauge-center-text" fill="#4ADE80">+0.00%</text>
-        <text x="100" y="90" class="gauge-label-text">MOMENTUM</text>
-
-        <g id="gauge-needle" class="gauge-needle" style="transform-origin: 100px 100px;">
-          <path d="M 97 100 L 100 25 L 103 100 Z" fill="#FFFFFF" filter="url(#shadow)"/>
-          <circle cx="100" cy="100" r="7" fill="#0B1220" stroke="#FFFFFF" stroke-width="2" filter="url(#shadow)"/>
-          <circle cx="100" cy="100" r="3" class="gauge-needle-circle" fill="#4ADE80"/>
-        </g>
-      </svg>
-    </div>
+  <!-- Chart Controls -->
+  <div class="chart-controls">
+    <button class="chart-btn active" data-view="candlestick" onclick="switchChartView('candlestick')">Candles</button>
+    <button class="chart-btn" data-view="bar" onclick="switchChartView('bar')">Bars</button>
+    <button class="chart-btn" data-view="line" onclick="switchChartView('line')">Line</button>
+    <button class="chart-btn" data-view="area" onclick="switchChartView('area')">Area</button>
+    <span style="flex:1;"></span>
+    <button class="chart-btn" data-tf="1" onclick="switchTimeframe(1)">1m</button>
+    <button class="chart-btn active" data-tf="5" onclick="switchTimeframe(5)">5m</button>
+    <button class="chart-btn" data-tf="15" onclick="switchTimeframe(15)">15m</button>
+    <button class="chart-btn" data-tf="60" onclick="switchTimeframe(60)">1h</button>
+    <button class="chart-btn" data-tf="240" onclick="switchTimeframe(240)">4h</button>
+    <button class="chart-btn" data-tf="1440" onclick="switchTimeframe(1440)">1d</button>
   </div>
 
+  <!-- Chart Container -->
+  <div class="chart-container">
+    <div id="chart-container"></div>
+  </div>
+
+  <!-- Trade Form -->
   <div class="trade-form" id="trade-form-section">
+    <!-- Direction -->
     <div class="form-row">
       <div class="form-label">Direction</div>
       <div class="direction-row">
@@ -491,6 +532,7 @@
       </div>
     </div>
 
+    <!-- Duration -->
     <div class="form-row">
       <div class="form-label">Select expiration</div>
       <div class="duration-row" id="duration-row">
@@ -503,6 +545,7 @@
       </div>
     </div>
 
+    <!-- Amount -->
     <div class="form-row">
       <div class="form-label">Amount (USD)</div>
       <div class="amount-input-wrap">
@@ -511,23 +554,28 @@
       </div>
     </div>
 
+    <!-- Momentum Return Bar -->
     <div class="return-bar">
-      <span class="return-label">Expected return (20%)</span>
-      <span class="return-val" id="expected-return">+$0.00</span>
+      <span class="return-label">Momentum trade · profit/loss based on price movement</span>
+      <span class="return-val" id="expected-return">--</span>
     </div>
 
+    <!-- Balance -->
     <div style="text-align:center; font-size:12px; color:var(--slate-soft);">
       Balance: <span class="mono" id="balance-display">$0.00</span>
     </div>
 
+    <!-- Trade button -->
     <button class="trade-btn up-btn" id="trade-btn" onclick="placeTrade()">Buy Up</button>
   </div>
 
+  <!-- Trade History -->
   <div class="trade-history">
     <div class="trade-hist-title">Recent Trades</div>
     <div id="trade-history-list"><div class="empty-state small">No trades yet. Place your first trade above.</div></div>
   </div>
 
+  <!-- Bottom Nav -->
   <nav class="bottom-nav">
     <a href="/dashboard" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
@@ -556,6 +604,7 @@
   </nav>
 </div>
 
+<!-- Live Trade Modal -->
 <div class="trade-modal" id="live-trade-modal">
   <div class="trade-modal-card">
     <div class="trade-modal-asset" id="modal-asset">BTC/USD</div>
@@ -583,6 +632,7 @@
   </div>
 </div>
 
+<!-- Asset Dropdown -->
 <div class="asset-dropdown" id="asset-dropdown" onclick="closeAssetDropdown(event)">
   <div class="asset-list">
     <div class="asset-list-title">Select Asset</div>
@@ -594,6 +644,7 @@
 <script>
   Trovee.requireAuth();
 
+  // ─── Configuration ──────────────────────────────────────────
   const ASSETS = [
     { key: "BTC/USD", label: "Bitcoin", base: 97000, vol: 0.0018 },
     { key: "ETH/USD", label: "Ethereum", base: 3400, vol: 0.0022 },
@@ -602,6 +653,7 @@
     { key: "BNB/USD", label: "BNB", base: 620, vol: 0.002 },
   ];
 
+  // ─── State ──────────────────────────────────────────────────
   let currentAsset = "BTC/USD";
   let direction = "up";
   let durationSec = 30;
@@ -609,71 +661,74 @@
   let activeTrade = null;
   let tradeInterval = null;
   let priceInterval = null;
+  let chart = null;
+  let candleSeries = null;
+  let volumeSeries = null;
+  let currentView = 'candlestick';
+  let currentTimeframe = 5;
+  let priceHistory = [];
   let lastPrice = 0;
-  let referencePrice = 0;
-  let gaugeNeedle = null;
-  let gaugePercentText = null;
-  let gaugeCircle = null;
+  const GAUGE_LEN = 251.3;
 
-  // ─── GAUGE HELPERS ───
-  function getGaugeElements() {
-    gaugeNeedle = document.getElementById('gauge-needle');
-    gaugePercentText = document.getElementById('gauge-percent-text');
-    gaugeCircle = document.querySelector('.gauge-needle-circle');
+  // ─── Price Simulation ──────────────────────────────────────
+  function generateOHLC(base, vol, count) {
+    count = count || 100;
+    const data = [];
+    let price = base + (Math.random() - 0.5) * base * 0.002;
+    for (let i = 0; i < count; i++) {
+      const change = (Math.random() - 0.48) * base * vol;
+      const open = price;
+      const close = Math.max(open + change, base * 0.8);
+      const high = Math.max(open, close) + Math.random() * base * vol * 0.3;
+      const low = Math.min(open, close) - Math.random() * base * vol * 0.3;
+      const volume = Math.floor(Math.random() * 100 + 10);
+      data.push({
+        time: Date.now() / 1000 - (count - i) * currentTimeframe * 60,
+        open: open,
+        high: high,
+        low: low,
+        close: close,
+        volume: volume,
+      });
+      price = close;
+    }
+    return data;
   }
 
-  function updateGauge(percent) {
-    if (!gaugeNeedle) getGaugeElements();
-    if (!gaugeNeedle) return;
-
-    // The scale in the old gauge was huge (looking for 100% price movements).
-    // Simulated prices tick by fractions of a percent, so we map smaller changes to the full 90deg swing.
-    const sensitivity = 0.5; // A 0.5% price shift will maximize the gauge left or right.
-    
-    // Calculate ratio based on our new high-sensitivity scale and clamp from -1 to 1
-    const ratio = percent / sensitivity;
-    const clampedRatio = Math.max(-1, Math.min(1, ratio));
-    
-    // Map ratio to angle: -90° (full left) to 90° (full right)
-    const angle = clampedRatio * 90;
-    
-    // Apply smooth rotation
-    gaugeNeedle.style.transform = `rotate(${angle}deg)`;
-    
-    // Dynamic coloring based on intensity
-    let color = '#8E96A6'; // Default neutral
-    if (percent > 0.1) color = '#4ADE80';       // Strong Green
-    else if (percent > 0.02) color = '#FACC15'; // Yellow
-    else if (percent < -0.1) color = '#E8604C'; // Strong Red
-    else if (percent < -0.02) color = '#FACC15';// Yellow
-    
-    gaugePercentText.style.fill = color;
-    if (gaugeCircle) gaugeCircle.style.fill = color;
-    
-    // Update center text display
-    const sign = percent > 0 ? '+' : '';
-    gaugePercentText.textContent = `${sign}${percent.toFixed(2)}%`;
-  }
-
-  // ─── PRICE SIMULATION ───
   function tickPrice() {
     const asset = ASSETS.find(a => a.key === currentAsset);
     if (!asset) return;
-    
     const change = (Math.random() - 0.49) * asset.base * asset.vol;
     const newPrice = Math.max(lastPrice + change, asset.base * 0.8);
     lastPrice = newPrice;
-    
-    // Calculate percent change from reference
-    const percentChange = ((lastPrice - referencePrice) / referencePrice) * 100;
-    updateGauge(percentChange);
-    
-    updatePriceDisplay(newPrice, percentChange);
-    
+
+    if (candleSeries && priceHistory.length > 0) {
+      const now = Math.floor(Date.now() / 1000);
+      const candleData = priceHistory[priceHistory.length - 1];
+      if (candleData && (now - candleData.time) < currentTimeframe * 60) {
+        candleData.high = Math.max(candleData.high, newPrice);
+        candleData.low = Math.min(candleData.low, newPrice);
+        candleData.close = newPrice;
+        candleSeries.update(candleData);
+      } else {
+        const newCandle = {
+          time: now - (now % (currentTimeframe * 60)),
+          open: lastPrice,
+          high: lastPrice,
+          low: lastPrice,
+          close: lastPrice,
+          volume: Math.floor(Math.random() * 50 + 10),
+        };
+        priceHistory.push(newCandle);
+        candleSeries.update(newCandle);
+        if (priceHistory.length > 500) priceHistory.shift();
+      }
+    }
+
+    updatePriceDisplay(newPrice);
     if (activeTrade) {
       document.getElementById("modal-live-price").textContent = "Live: " + formatPrice(newPrice);
     }
-    document.getElementById("trade-btn").disabled = false;
   }
 
   function formatPrice(p) {
@@ -682,24 +737,161 @@
     return p.toFixed(4);
   }
 
-  function updatePriceDisplay(price, percentChange) {
-    if (percentChange === undefined) {
-      const asset = ASSETS.find(a => a.key === currentAsset);
-      if (asset) {
-        percentChange = ((price - referencePrice) / referencePrice) * 100;
-      }
-    }
+  function updatePriceDisplay(price) {
+    const asset = ASSETS.find(a => a.key === currentAsset);
+    if (!asset) return;
+    const open = asset.base;
+    const pct = ((price - open) / open) * 100;
     const el = document.getElementById("asset-price-display");
     el.textContent = formatPrice(price);
-    el.className = "asset-price " + (percentChange >= 0 ? "up" : "down");
+    el.className = "asset-price " + (pct >= 0 ? "up" : "down");
 
     const changeEl = document.getElementById("price-change-display");
-    const sign = percentChange >= 0 ? "+" : "";
-    changeEl.textContent = sign + percentChange.toFixed(2) + "%";
-    changeEl.className = "price-change " + (percentChange >= 0 ? "up" : "down");
+    const sign = pct >= 0 ? "+" : "";
+    changeEl.textContent = sign + pct.toFixed(2) + "%";
+    changeEl.className = "price-change " + (pct >= 0 ? "up" : "down");
   }
 
-  // ─── TRADE FORM ───
+  // ─── Chart Setup ────────────────────────────────────────────
+  function initChart() {
+    const container = document.getElementById('chart-container');
+    chart = LightweightCharts.createChart(container, {
+      width: container.clientWidth,
+      height: container.clientHeight || 360,
+      layout: {
+        background: { color: 'transparent' },
+        textColor: '#8E96A6',
+      },
+      grid: {
+        vertLines: { color: 'rgba(26, 37, 53, 0.5)' },
+        horzLines: { color: 'rgba(26, 37, 53, 0.5)' },
+      },
+      crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal,
+      },
+      rightPriceScale: {
+        borderColor: 'rgba(26, 37, 53, 0.5)',
+      },
+      timeScale: {
+        borderColor: 'rgba(26, 37, 53, 0.5)',
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
+
+    candleSeries = chart.addCandlestickSeries({
+      upColor: '#2DD4BF',
+      downColor: '#E8604C',
+      borderDownColor: '#E8604C',
+      borderUpColor: '#2DD4BF',
+      wickDownColor: '#E8604C',
+      wickUpColor: '#2DD4BF',
+    });
+
+    volumeSeries = chart.addHistogramSeries({
+      color: '#1A2535',
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+    });
+
+    const asset = ASSETS.find(a => a.key === currentAsset);
+    if (asset) {
+      priceHistory = generateOHLC(asset.base, asset.vol, 80);
+      lastPrice = priceHistory[priceHistory.length - 1].close;
+      candleSeries.setData(priceHistory);
+      const volData = priceHistory.map(d => ({
+        time: d.time,
+        value: d.volume,
+        color: d.close >= d.open ? '#2DD4BF40' : '#E8604C40'
+      }));
+      volumeSeries.setData(volData);
+      updatePriceDisplay(lastPrice);
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      chart.applyOptions({ width: container.clientWidth, height: container.clientHeight || 360 });
+    });
+    resizeObserver.observe(container);
+
+    return chart;
+  }
+
+  function switchChartView(view) {
+    currentView = view;
+    document.querySelectorAll('.chart-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    if (!chart || !candleSeries) return;
+
+    chart.removeSeries(candleSeries);
+    chart.removeSeries(volumeSeries);
+
+    switch (view) {
+      case 'candlestick':
+        candleSeries = chart.addCandlestickSeries({
+          upColor: '#2DD4BF',
+          downColor: '#E8604C',
+          borderDownColor: '#E8604C',
+          borderUpColor: '#2DD4BF',
+          wickDownColor: '#E8604C',
+          wickUpColor: '#2DD4BF',
+        });
+        break;
+      case 'bar':
+        candleSeries = chart.addBarSeries({
+          upColor: '#2DD4BF',
+          downColor: '#E8604C',
+        });
+        break;
+      case 'line':
+        candleSeries = chart.addLineSeries({
+          color: '#2DD4BF',
+          lineWidth: 2,
+        });
+        break;
+      case 'area':
+        candleSeries = chart.addAreaSeries({
+          topColor: 'rgba(45, 212, 191, 0.3)',
+          bottomColor: 'rgba(45, 212, 191, 0.0)',
+          lineColor: '#2DD4BF',
+          lineWidth: 2,
+        });
+        break;
+    }
+
+    candleSeries.setData(priceHistory);
+    volumeSeries = chart.addHistogramSeries({
+      color: '#1A2535',
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+    });
+    const volData = priceHistory.map(d => ({
+      time: d.time,
+      value: d.volume,
+      color: d.close >= d.open ? '#2DD4BF40' : '#E8604C40'
+    }));
+    volumeSeries.setData(volData);
+    chart.timeScale().fitContent();
+  }
+
+  function switchTimeframe(minutes) {
+    currentTimeframe = minutes;
+    document.querySelectorAll('.chart-btn[data-tf]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.tf) === minutes));
+    const asset = ASSETS.find(a => a.key === currentAsset);
+    if (asset && chart && candleSeries) {
+      priceHistory = generateOHLC(asset.base, asset.vol, 80);
+      lastPrice = priceHistory[priceHistory.length - 1].close;
+      candleSeries.setData(priceHistory);
+      const volData = priceHistory.map(d => ({
+        time: d.time,
+        value: d.volume,
+        color: d.close >= d.open ? '#2DD4BF40' : '#E8604C40'
+      }));
+      volumeSeries.setData(volData);
+      chart.timeScale().fitContent();
+      updatePriceDisplay(lastPrice);
+    }
+  }
+
+  // ─── Trade Logic ──────────────────────────────────────────
   function setDirection(d) {
     direction = d;
     document.getElementById("dir-up").className = "dir-btn up" + (d === "up" ? " active" : "");
@@ -722,16 +914,15 @@
     });
   });
 
-  document.getElementById("trade-amount").addEventListener("input", updateReturn);
-
-  function updateReturn() {
-    const amt = parseFloat(document.getElementById("trade-amount").value) || 0;
-    document.getElementById("expected-return").textContent = "+$" + (amt * 0.20).toFixed(2);
-  }
+  // ── Momentum label: no fixed return ──
+  document.getElementById("trade-amount").addEventListener("input", function() {
+    // Show a simple message instead of a fixed return
+    document.getElementById("expected-return").textContent = "Based on price move";
+  });
 
   function setAll() {
     document.getElementById("trade-amount").value = Math.floor(userBalance).toString();
-    updateReturn();
+    document.getElementById("expected-return").textContent = "Based on price move";
   }
 
   async function loadBalance() {
@@ -782,12 +973,6 @@
       Trovee.showToast("A trade is already in progress.", "error");
       return;
     }
-
-    if (!lastPrice || lastPrice <= 0) {
-      Trovee.showToast("Waiting for price data. Please wait a moment and try again.", "error");
-      return;
-    }
-
     const amount = parseFloat(document.getElementById("trade-amount").value);
     if (!amount || amount <= 0) {
       Trovee.showToast("Enter an amount.", "error");
@@ -803,18 +988,27 @@
     }
 
     const entryPrice = lastPrice;
+    if (!entryPrice || entryPrice <= 0) {
+      Trovee.showToast("Waiting for price feed. Try again in a moment.", "error");
+      return;
+    }
+
     const amount_usd_cents = Math.round(amount * 100);
+    if (amount_usd_cents < 1000) {
+      Trovee.showToast("Minimum trade amount is $10.", "error");
+      return;
+    }
 
     try {
       const res = await Trovee.api("/api/trades/place", {
         method: "POST",
-        body: {
+        body: JSON.stringify({
           asset: currentAsset,
-          direction: direction,
+          direction,
           duration_sec: durationSec,
-          amount_usd_cents: amount_usd_cents,
+          amount_usd_cents,
           entry_price: entryPrice
-        }
+        })
       });
       activeTrade = { id: res.trade_id, asset: currentAsset, direction, durationSec, amount, entryPrice };
       startCountdown(res.trade_id, entryPrice, durationSec);
@@ -830,7 +1024,8 @@
     document.getElementById("modal-direction").textContent = direction === "up" ? "Buy Up ↑" : "Buy Down ↓";
     document.getElementById("modal-direction").className = "val direction-" + direction;
     document.getElementById("modal-amount").textContent = "$" + activeTrade.amount.toFixed(2);
-    document.getElementById("modal-profit").textContent = "+$" + (activeTrade.amount * 0.2).toFixed(2);
+    // Show "based on price move" instead of fixed profit
+    document.getElementById("modal-profit").textContent = "Based on price move";
     document.getElementById("modal-duration").textContent = total + "s";
     document.getElementById("modal-opened").textContent = new Date().toLocaleTimeString();
     modal.classList.add("show");
@@ -842,7 +1037,7 @@
     function tick() {
       remaining--;
       const pct = remaining / total;
-      const offset = 251.3 * (1 - pct);
+      const offset = GAUGE_LEN * (1 - pct);
       modalGauge.style.strokeDashoffset = offset;
       modalNum.textContent = remaining;
       const color = remaining > total * 0.5 ? "#4ade80" : remaining > total * 0.25 ? "#facc15" : "#f87171";
@@ -864,10 +1059,7 @@
     try {
       const res = await Trovee.api("/api/trades/close", {
         method: "POST",
-        body: {
-          trade_id: tradeId,
-          exit_price: exitPrice
-        }
+        body: JSON.stringify({ trade_id: tradeId, exit_price: exitPrice })
       });
       document.getElementById("live-trade-modal").classList.remove("show");
       activeTrade = null;
@@ -876,8 +1068,10 @@
       document.getElementById("balance-badge").textContent = "$" + userBalance.toFixed(2);
       if (res.outcome === "win") {
         Trovee.showToast("Trade won! +" + "$" + (res.profit_usd_cents / 100).toFixed(2));
-      } else {
+      } else if (res.outcome === "loss") {
         Trovee.showToast("Trade lost. Better luck next time!", "error");
+      } else {
+        Trovee.showToast("Trade ended in a draw.");
       }
       loadHistory();
     } catch (e) {
@@ -887,7 +1081,7 @@
     }
   }
 
-  // ─── ASSET SELECTOR ───
+  // ─── Asset Selector ──────────────────────────────────────────
   document.getElementById("asset-selector-btn").addEventListener("click", () => {
     const listEl = document.getElementById("asset-option-list");
     listEl.innerHTML = ASSETS.map(a => {
@@ -912,35 +1106,29 @@
     document.getElementById("asset-name-label").textContent = key;
     document.getElementById("asset-dropdown").classList.remove("show");
     const asset = ASSETS.find(a => a.key === key);
-    if (asset) {
-      referencePrice = asset.base + (Math.random() - 0.5) * asset.base * 0.002;
-      lastPrice = referencePrice;
-      updatePriceDisplay(lastPrice, 0);
-      updateGauge(0);
+    if (asset && chart && candleSeries) {
+      priceHistory = generateOHLC(asset.base, asset.vol, 80);
+      lastPrice = priceHistory[priceHistory.length - 1].close;
+      candleSeries.setData(priceHistory);
+      const volData = priceHistory.map(d => ({
+        time: d.time,
+        value: d.volume,
+        color: d.close >= d.open ? '#2DD4BF40' : '#E8604C40'
+      }));
+      volumeSeries.setData(volData);
+      chart.timeScale().fitContent();
+      updatePriceDisplay(lastPrice);
     }
   }
 
-  // ─── INIT ───
-  function startApp() {
-    getGaugeElements();
-    const asset = ASSETS.find(a => a.key === currentAsset);
-    if (asset) {
-      referencePrice = asset.base + (Math.random() - 0.5) * asset.base * 0.002;
-      lastPrice = referencePrice;
-      updatePriceDisplay(lastPrice, 0);
-      updateGauge(0);
-    }
+  // ─── Init ────────────────────────────────────────────────────
+  setTimeout(() => {
+    initChart();
     priceInterval = setInterval(tickPrice, 1000);
-    loadBalance();
-    loadHistory();
-    document.getElementById("trade-btn").disabled = true;
-  }
+  }, 100);
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startApp);
-  } else {
-    startApp();
-  }
+  loadBalance();
+  loadHistory();
 </script>
 </body>
 </html>
