@@ -1,6 +1,6 @@
 """
 Trovee database layer — supports both SQLite and PostgreSQL.
-Now with detailed logging for debugging.
+Now with detailed logging for debugging and bandwidth monetization.
 """
 
 import os
@@ -142,6 +142,10 @@ def init_db():
 
 
 def _seed_defaults(conn):
+    """
+    Insert default wallets and share companies/plans with logos and QR codes.
+    Progressive plans from $100 to $20,000+ for each company.
+    """
     cur = conn.cursor()
 
     def insert_wallet(name, address, logo, qr, order):
@@ -164,6 +168,7 @@ def _seed_defaults(conn):
                 (name, address, logo, qr, order)
             )
 
+    # ─── Wallets ──────────────────────────────────────────────────
     wallets = [
         ("Bitcoin (BTC)", "bc1qegwjs26n6pt5mh0xlmpawkme98scdgn5al3wak",
          "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
@@ -196,6 +201,7 @@ def _seed_defaults(conn):
     for w in wallets:
         insert_wallet(*w)
 
+    # ─── Share Companies ─────────────────────────────────────────
     companies = [
         ("Tesla, Inc.", "TSLA",
          "Electric vehicles and clean energy",
@@ -239,6 +245,7 @@ def _seed_defaults(conn):
             row = cur.fetchone()
             company_ids[name] = row[0] if row else None
 
+    # ─── Helper to insert a plan ────────────────────────────────
     def insert_plan(company_name, plan_name, shares, price_usd, rate, months):
         tid = company_ids.get(company_name)
         if not tid:
@@ -257,11 +264,26 @@ def _seed_defaults(conn):
                 (tid, plan_name, shares, price_cents, rate, months)
             )
 
-    # Starter plans for all companies
-    for company in companies:
-        insert_plan(company[0], "Starter", 1, 100, 8.0, 6)
+    # ─── Progressive Plans (for all companies) ──────────────────
+    # These are inserted first so they appear at the top of the list
+    progressive_plans = [
+        ("Starter", 1, 100, 8.0, 6),
+        ("Basic", 5, 500, 9.0, 6),
+        ("Silver", 10, 1000, 10.0, 12),
+        ("Gold", 25, 2500, 12.0, 12),
+        ("Platinum", 50, 5000, 14.0, 18),
+        ("Diamond", 100, 10000, 16.0, 18),
+        ("Elite", 200, 20000, 18.0, 24),
+    ]
 
-    # Tesla plans
+    # Insert progressive plans for all companies
+    for company in companies:
+        for plan_name, shares, price_usd, rate, months in progressive_plans:
+            insert_plan(company[0], plan_name, shares, price_usd, rate, months)
+
+    # ─── Company-Specific High-End Plans ──────────────────────
+
+    # Tesla: car models (continued from progressive plans)
     tesla_plans = [
         ("Model 3", 10, 45000, 12.0, 12),
         ("Model Y", 15, 55000, 13.5, 12),
@@ -272,7 +294,7 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in tesla_plans:
         insert_plan("Tesla, Inc.", plan_name, shares, price_usd, rate, months)
 
-    # NVIDIA plans
+    # NVIDIA
     nv_plans = [
         ("Growth", 12, 50000, 14.0, 12),
         ("Premium", 25, 100000, 18.0, 18),
@@ -281,7 +303,7 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in nv_plans:
         insert_plan("NVIDIA Corporation", plan_name, shares, price_usd, rate, months)
 
-    # Microsoft plans
+    # Microsoft
     ms_plans = [
         ("Growth", 15, 60000, 15.0, 12),
         ("Premium", 30, 120000, 19.0, 18),
@@ -290,7 +312,7 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in ms_plans:
         insert_plan("Microsoft Corporation", plan_name, shares, price_usd, rate, months)
 
-    # Apple plans
+    # Apple
     aa_plans = [
         ("Growth", 18, 70000, 14.5, 12),
         ("Premium", 35, 140000, 18.5, 18),
@@ -317,15 +339,18 @@ def _migrate_sqlite(conn):
     """)
 
     migrations = [
-        ("share_purchases", "plan_name",          "TEXT DEFAULT ''"),
-        ("share_purchases", "return_rate_pct",     "REAL DEFAULT 0"),
-        ("share_purchases", "duration_months",     "INTEGER DEFAULT 12"),
-        ("share_purchases", "return_usd_cents",    "INTEGER DEFAULT 0"),
-        ("share_purchases", "total_payout_cents",  "INTEGER DEFAULT 0"),
-        ("share_purchases", "maturity_date",       "TEXT DEFAULT ''"),
-        ("share_purchases", "paid_at",             "TEXT"),
-        ("wallet_configs",    "logo_url",          "TEXT DEFAULT ''"),
-        ("wallet_configs",    "qr_url",            "TEXT DEFAULT ''"),
+        ("share_purchases", "plan_name", "TEXT DEFAULT ''"),
+        ("share_purchases", "return_rate_pct", "REAL DEFAULT 0"),
+        ("share_purchases", "duration_months", "INTEGER DEFAULT 12"),
+        ("share_purchases", "return_usd_cents", "INTEGER DEFAULT 0"),
+        ("share_purchases", "total_payout_cents", "INTEGER DEFAULT 0"),
+        ("share_purchases", "maturity_date", "TEXT DEFAULT ''"),
+        ("share_purchases", "paid_at", "TEXT"),
+        ("wallet_configs", "logo_url", "TEXT DEFAULT ''"),
+        ("wallet_configs", "qr_url", "TEXT DEFAULT ''"),
+        ("users", "bandwidth_consent", "INTEGER DEFAULT 0"),
+        ("users", "bandwidth_providers", "TEXT DEFAULT ''"),
+        ("users", "bandwidth_earnings", "TEXT DEFAULT '{}'"),
     ]
     existing = {(row[0], row[1]) for row in conn.execute(
         "SELECT m.name, p.name FROM sqlite_master m "
@@ -342,15 +367,18 @@ def _migrate_sqlite(conn):
 
 def _migrate_postgres(cur):
     migrations = [
-        ("share_purchases", "plan_name",         "TEXT NOT NULL DEFAULT ''"),
-        ("share_purchases", "return_rate_pct",   "REAL NOT NULL DEFAULT 0"),
-        ("share_purchases", "duration_months",   "INTEGER NOT NULL DEFAULT 12"),
-        ("share_purchases", "return_usd_cents",  "INTEGER NOT NULL DEFAULT 0"),
-        ("share_purchases", "total_payout_cents","INTEGER NOT NULL DEFAULT 0"),
-        ("share_purchases", "maturity_date",     "TEXT NOT NULL DEFAULT ''"),
-        ("share_purchases", "paid_at",           "TEXT"),
-        ("wallet_configs",  "logo_url",          "TEXT DEFAULT ''"),
-        ("wallet_configs",  "qr_url",            "TEXT DEFAULT ''"),
+        ("share_purchases", "plan_name", "TEXT NOT NULL DEFAULT ''"),
+        ("share_purchases", "return_rate_pct", "REAL NOT NULL DEFAULT 0"),
+        ("share_purchases", "duration_months", "INTEGER NOT NULL DEFAULT 12"),
+        ("share_purchases", "return_usd_cents", "INTEGER NOT NULL DEFAULT 0"),
+        ("share_purchases", "total_payout_cents", "INTEGER NOT NULL DEFAULT 0"),
+        ("share_purchases", "maturity_date", "TEXT NOT NULL DEFAULT ''"),
+        ("share_purchases", "paid_at", "TEXT"),
+        ("wallet_configs", "logo_url", "TEXT DEFAULT ''"),
+        ("wallet_configs", "qr_url", "TEXT DEFAULT ''"),
+        ("users", "bandwidth_consent", "INTEGER DEFAULT 0"),
+        ("users", "bandwidth_providers", "TEXT DEFAULT ''"),
+        ("users", "bandwidth_earnings", "TEXT DEFAULT '{}'"),
     ]
     for table, col, col_def in migrations:
         try:
