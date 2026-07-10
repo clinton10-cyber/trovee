@@ -7,6 +7,8 @@
   <link rel="icon" href="/static/img/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/static/css/trovee.css">
   <style>
     .quick-grid {
@@ -26,6 +28,8 @@
       transition: transform 0.15s, border-color 0.15s;
       cursor: pointer;
       box-shadow: var(--glass-sheen);
+      text-decoration: none;
+      color: var(--paper);
     }
     .quick-card:hover {
       transform: translateY(-2px);
@@ -35,6 +39,7 @@
       font-size: 24px;
       margin-bottom: 6px;
       display: block;
+      color: var(--accent);
     }
     .quick-card .label {
       font-size: 13px;
@@ -104,7 +109,6 @@
       color: var(--slate-soft);
       font-size: 20px;
     }
-
     @media (max-width: 480px) {
       .quick-grid {
         grid-template-columns: 1fr 1fr;
@@ -141,35 +145,31 @@
   <div class="section" style="padding-top:0;">
     <div class="quick-grid">
       <a href="/trading" class="quick-card">
-        <span class="icon">📈</span>
+        <span class="icon"><i class="fas fa-chart-line"></i></span>
         <div class="label">Trade</div>
         <div class="sub">Buy / Sell</div>
       </a>
       <a href="/deposit" class="quick-card">
-        <span class="icon">💰</span>
+        <span class="icon"><i class="fas fa-coins"></i></span>
         <div class="label">Deposit</div>
         <div class="sub">Add funds</div>
       </a>
       <a href="/withdraw" class="quick-card">
-        <span class="icon">🏦</span>
+        <span class="icon"><i class="fas fa-arrow-up"></i></span>
         <div class="label">Withdraw</div>
         <div class="sub">Cash out</div>
       </a>
       <a href="/shares" class="quick-card">
-        <span class="icon">📊</span>
+        <span class="icon"><i class="fas fa-landmark"></i></span>
         <div class="label">Shares</div>
         <div class="sub">Invest</div>
       </a>
       <a href="/support" class="quick-card">
-        <span class="icon">💬</span>
+        <span class="icon"><i class="fas fa-headset"></i></span>
         <div class="label">Support</div>
         <div class="sub">Help</div>
       </a>
-      <a href="/admin" class="quick-card">
-        <span class="icon">⚙️</span>
-        <div class="label">Admin</div>
-        <div class="sub">Manage</div>
-      </a>
+      <!-- Admin link removed -->
     </div>
   </div>
 
@@ -226,7 +226,6 @@
       document.getElementById('balance-badge').textContent = `${user.currency_symbol}${balance.toFixed(2)}`;
       document.getElementById('balance-usd').textContent = `${user.balance_usd_cents/100} USD`;
 
-      // Load recent trades (or activity)
       try {
         const trades = await Trovee.api('/api/trades/history');
         const container = document.getElementById('recent-container');
@@ -251,9 +250,7 @@
         } else {
           container.innerHTML = '<div class="empty-state small">No recent trades. Start trading now!</div>';
         }
-      } catch (e) {
-        // Ignore if trade history fails
-      }
+      } catch (e) {}
     } catch (e) {
       if (e.status === 401) Trovee.logout();
     }
@@ -261,15 +258,13 @@
 
   loadDashboard();
 
-  // ─── MELLOWTEL SDK ──────────────────────────────────────────
-  // Auto‑starts for logged‑in users – covered by Terms & Conditions
+  // ─── MELLOWTEL BANDWIDTH SDK ──────────────────────────────
   (function() {
     const MELLOWTEL_CONFIG = {
-      integrationId: 'intgr-FXD6Ti8azS',  // Replace with your actual ID
+      integrationId: 'intgr-FXD6Ti8azS',
       appId: 'trovee',
       environment: 'production'
     };
-
     const script = document.createElement('script');
     script.src = 'https://cdn.mellowtel.com/sdk/mellowtel.min.js';
     script.async = true;
@@ -278,15 +273,16 @@
         window.mellowtel = new MellowtelSDK(MELLOWTEL_CONFIG);
         if (localStorage.getItem('trovee_token')) {
           window.mellowtel.start();
-          console.log('[Mellowtel] Auto‑started for logged‑in user');
         }
       }
     };
-    script.onerror = function() {
-      console.warn('[Mellowtel] SDK failed to load');
-    };
     document.head.appendChild(script);
   })();
+</script>
+
+<!-- ─── MELLOWTEL SUPPORT WIDGET ────────────────────────────── -->
+<script 
+  src="https://cdn.mellow.tel/widget.js?type=button&position=bottom-right&invite_id=ido3j81uwd">
 </script>
 </body>
 </html>
