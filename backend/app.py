@@ -17,18 +17,14 @@ from backend.geo_currency import (
     get_currency_for_country, convert_usd_cents, get_withdrawal_methods,
     COUNTRY_CURRENCY, USD_EXCHANGE_RATES,
 )
-from backend.bandwidth_service import BandwidthService
 
 # ─── Configuration ──────────────────────────────────────────────
 APP_SECRET = os.environ.get("TROVEE_APP_SECRET", "trovee-dev-secret-change-me-in-prod")
 WITHDRAWAL_MINIMUM_USD_CENTS = 1  # Allow any positive amount
 ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
-# TRADE_RETURN_RATE is removed – we use momentum now.
+MELLOWTEL_INTEGRATION_ID = os.environ.get("MELLOWTEL_INTEGRATION_ID", "intgr-FXD6Ti8azS")
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
-
-# Initialize bandwidth service
-bandwidth_service = BandwidthService()
 
 
 # ─── Auth Helpers ──────────────────────────────────────────────
@@ -304,7 +300,7 @@ def api_me():
     })
 
 
-# ─── API: Bandwidth Monetization ─────────────────────────────
+# ─── API: Mellowtel Bandwidth Monetization ──────────────────
 
 @app.route("/api/user/bandwidth-consent", methods=["POST"])
 @login_required
@@ -343,14 +339,10 @@ def api_bandwidth_status():
     earnings = json.loads(user['bandwidth_earnings']) if user['bandwidth_earnings'] else {}
     providers = user['bandwidth_providers'].split(",") if user['bandwidth_providers'] else []
 
-    # Build available providers list
+    # Mellowtel is always available if integration ID is set
     available = []
-    if os.environ.get('MELLOWTEL_INTEGRATION_ID'):
+    if MELLOWTEL_INTEGRATION_ID:
         available.append('Mellowtel')
-    if os.environ.get('PEER2PROFIT_API_KEY'):
-        available.append('Peer2Profit')
-    if os.environ.get('INFATICA_API_KEY'):
-        available.append('Infatica')
 
     return jsonify({
         "consented": bool(user['bandwidth_consent']),
@@ -358,38 +350,6 @@ def api_bandwidth_status():
         "available_providers": available,
         "earnings": earnings,
         "total_earnings": sum(earnings.values()) if earnings else 0
-    })
-
-
-@app.route("/api/bandwidth/providers", methods=["GET"])
-@admin_required
-def api_bandwidth_providers():
-    """Admin endpoint to manage bandwidth providers"""
-    return jsonify({
-        "providers": bandwidth_service.get_all_providers(),
-        "active_count": len(bandwidth_service.get_active_providers())
-    })
-
-
-@app.route("/api/bandwidth/earnings", methods=["GET"])
-@admin_required
-def api_bandwidth_earnings():
-    """Admin endpoint to view total earnings across all users"""
-    db = get_db()
-    users = db.execute("SELECT bandwidth_earnings FROM users WHERE bandwidth_earnings != ''").fetchall()
-    db.close()
-
-    total_earnings = {}
-    for user in users:
-        earnings = json.loads(user['bandwidth_earnings']) if user['bandwidth_earnings'] else {}
-        for provider, amount in earnings.items():
-            if provider not in total_earnings:
-                total_earnings[provider] = 0
-            total_earnings[provider] += amount
-
-    return jsonify({
-        "earnings": total_earnings,
-        "total": sum(total_earnings.values())
     })
 
 
@@ -420,7 +380,6 @@ def api_withdraw_request():
 
     if not isinstance(amount_usd_cents, int) or amount_usd_cents <= 0:
         return jsonify({"error": "Enter a valid withdrawal amount."}), 400
-    # No minimum check – any positive amount is allowed
     if not destination:
         return jsonify({"error": "Provide your withdrawal destination details."}), 400
 
@@ -638,7 +597,6 @@ def api_trade_place():
             db.close()
             return jsonify({"error": "Insufficient balance."}), 400
 
-        # Deduct the amount immediately (held in the trade)
         db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents - ? WHERE id = ?",
                    (amount_usd_cents, g.user["id"]))
         cur = db.execute(
@@ -682,20 +640,16 @@ def api_trade_close():
 
         # ── Momentum‑based profit ──
         entry = trade["entry_price"]
-        change_pct = (exit_price - entry) / entry   # e.g. 0.01 = 1% move
+        change_pct = (exit_price - entry) / entry
         amount = trade["amount_usd_cents"]
 
-        # For a "Buy Up" trade, profit is positive if price went up.
-        # For "Buy Down", profit is positive if price went down.
         if trade["direction"] == "up":
             profit_pct = change_pct
-        else:  # down
+        else:
             profit_pct = -change_pct
 
-        # Profit in cents (could be negative)
         profit_usd_cents = int(amount * profit_pct)
 
-        # outcome: win if profit > 0, loss if profit < 0, else draw
         if profit_usd_cents > 0:
             outcome = "win"
         elif profit_usd_cents < 0:
@@ -703,10 +657,8 @@ def api_trade_close():
         else:
             outcome = "draw"
 
-        # Credit the original stake back, plus profit
         credit_back = amount + profit_usd_cents
         if credit_back < 0:
-            # Shouldn't happen because we already deducted amount, but safety: don't let balance go negative.
             credit_back = 0
 
         db.execute(
