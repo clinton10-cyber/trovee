@@ -7,13 +7,15 @@
 <link rel="icon" href="/static/img/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/static/css/trovee.css">
 <style>
-  /* ---- View management ---- */
+  /* ── View management ── */
   .view { display: none; }
   .view.active { display: block; }
 
-  /* ---- Balance strip ---- */
+  /* ── Balance strip ── */
   .balance-strip {
     display: flex; align-items: center; justify-content: space-between;
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
@@ -22,7 +24,7 @@
   .balance-strip .lbl { font-size: 12px; color: var(--slate-soft); margin-bottom: 2px; }
   .balance-strip .val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--accent); }
 
-  /* ---- Company cards ---- */
+  /* ── Company cards ── */
   .company-grid { display: flex; flex-direction: column; gap: 12px; }
   .company-card {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
@@ -50,14 +52,14 @@
   }
   .company-chevron { color: var(--slate-soft); margin-left: 4px; }
 
-  /* ---- Back button ---- */
+  /* ── Back button ── */
   .back-btn {
     display: inline-flex; align-items: center; gap: 6px; color: var(--accent);
     font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 18px;
     background: none; border: none; padding: 0;
   }
 
-  /* ---- Company detail header ---- */
+  /* ── Company detail header ── */
   .company-detail-header {
     display: flex; align-items: center; gap: 16px;
     background: var(--surface); border: 1px solid var(--line);
@@ -74,7 +76,7 @@
   .company-detail-info .meta { font-size: 12.5px; color: var(--slate-soft); margin-top: 3px; }
   .company-detail-info .desc { font-size: 13px; color: var(--paper); margin-top: 6px; line-height: 1.5; }
 
-  /* ---- Plan cards ---- */
+  /* ── Plan cards ── */
   .plan-card {
     background: var(--surface); border: 1px solid var(--line);
     border-radius: var(--radius-md); padding: 20px; margin-bottom: 12px; position: relative;
@@ -90,13 +92,40 @@
   .plan-name { font-size: 15px; font-weight: 700; }
   .plan-price { font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--accent); text-align: right; }
   .plan-price .per { font-size: 11px; color: var(--slate-soft); font-family: var(--font-body); display: block; text-align: right; }
-  .plan-stats { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .plan-stats { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
   .plan-stat { flex: 1; padding: 10px 8px; text-align: center; border-right: 1px solid var(--line); }
   .plan-stat:last-child { border-right: none; }
   .plan-stat .stat-lbl { font-size: 10px; color: var(--slate-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
   .plan-stat .stat-val { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--teal); }
 
-  /* ---- Confirm modal ---- */
+  /* ── Multiplier input ── */
+  .multiplier-row {
+    display: flex; align-items: center; gap: 10px; margin: 12px 0 10px;
+  }
+  .multiplier-row label {
+    font-size: 12px; color: var(--slate-soft); font-weight: 500;
+  }
+  .multiplier-row input {
+    width: 70px; background: var(--ink); border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm); padding: 6px 10px; color: var(--paper);
+    font-size: 14px; text-align: center; outline: none;
+    transition: border-color 0.15s;
+  }
+  .multiplier-row input:focus { border-color: var(--accent); }
+  .multiplier-row .hint {
+    font-size: 11px; color: var(--slate-soft);
+  }
+
+  .plan-total {
+    display: flex; justify-content: space-between; font-size: 13px;
+    padding: 6px 0; border-top: 1px solid var(--line); margin-bottom: 10px;
+  }
+  .plan-total .label { color: var(--slate-soft); }
+  .plan-total .value { font-family: var(--font-mono); font-weight: 700; }
+  .plan-total .value.price { color: var(--accent); }
+  .plan-total .value.shares { color: var(--paper); }
+
+  /* ── Confirm modal ── */
   .modal-overlay {
     display: none; position: fixed; inset: 0; background: rgba(11,18,32,0.85);
     z-index: 1000; align-items: flex-end; justify-content: center;
@@ -117,7 +146,7 @@
   .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
   .modal-actions .btn { flex: 1; }
 
-  /* ---- Portfolio ---- */
+  /* ── Portfolio ── */
   .portfolio-header { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
   .portfolio-card {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
@@ -148,7 +177,7 @@
   .dl-btn:hover { background: rgba(10, 132, 255,.2); }
   .portfolio-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
 
-  /* ---- Segment tabs ---- */
+  /* ── Segment tabs ── */
   .seg-tabs { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 20px; gap: 4px; }
   .seg-tab { flex: 1; text-align: center; padding: 9px 6px; border-radius: 9px; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--slate-soft); transition: background 0.15s, color 0.15s; }
   .seg-tab.active { background: var(--surface-raised); color: var(--paper); }
@@ -237,30 +266,30 @@
   </div>
 
   <!-- BOTTOM NAV -->
-    <nav class="bottom-nav">
+  <nav class="bottom-nav">
     <a href="/dashboard" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
-      Home
+      <i class="fas fa-home"></i>
+      <span>Home</span>
     </a>
     <a href="/trading" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-      Trade
+      <i class="fas fa-chart-line"></i>
+      <span>Trade</span>
     </a>
     <a href="/shares" class="nav-item active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
-      Shares
+      <i class="fas fa-landmark"></i>
+      <span>Shares</span>
     </a>
     <a href="/deposit" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
-      Deposit
+      <i class="fas fa-coins"></i>
+      <span>Deposit</span>
     </a>
     <a href="/withdraw" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
-      Withdraw
+      <i class="fas fa-arrow-up"></i>
+      <span>Withdraw</span>
     </a>
     <a href="/support" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21c5-3 8-6.5 8-11a8 8 0 1 0-16 0c0 4.5 3 8 8 11Z"/><path d="M12 8v4m0 3h.01"/></svg>
-      Support
+      <i class="fas fa-headset"></i>
+      <span>Support</span>
     </a>
   </nav>
 
@@ -298,7 +327,7 @@ async function init() {
   }
 }
 
-// ---- Segment tabs ----
+// ─── Segment tabs ──
 document.querySelectorAll(".seg-tab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".seg-tab").forEach(t => t.classList.remove("active"));
@@ -312,7 +341,7 @@ document.querySelectorAll(".seg-tab").forEach(tab => {
   });
 });
 
-// ---- Companies ----
+// ─── Companies ──
 async function loadCompanies() {
   try {
     const data = await Trovee.api("/api/shares/companies");
@@ -383,27 +412,35 @@ function renderCompanyHeader(c) {
   `;
 }
 
+// ─── Render Plans with Multiplier ──────────────────────────
+
 function renderPlans(company, plans) {
   const el = document.getElementById("plans-list");
   if (!plans.length) {
     el.innerHTML = '<div class="empty-state small">No plans available for this company.</div>';
     return;
   }
-  // Find featured (most popular = middle plan)
-  const featuredIdx = plans.length > 1 ? Math.floor(plans.length / 2) : 0;
+
+  // Sort by price ascending
+  plans.sort((a, b) => a.price_usd_cents - b.price_usd_cents);
+
   el.innerHTML = plans.map((p, i) => {
-    const featured = i === featuredIdx;
-    const projectedReturn = (p.price_usd_cents / 100 * p.return_rate_pct / 100 * p.duration_months / 12);
+    const featured = i === Math.floor(plans.length / 2);
+    const price = p.price_usd_cents / 100;
+    const projected = price * p.return_rate_pct / 100 * p.duration_months / 12;
+
     return `
     <div class="plan-card ${featured ? 'featured' : ''}">
       ${featured ? '<div class="plan-badge">MOST POPULAR</div>' : ''}
       <div class="plan-header">
         <div>
           <div class="plan-name">${escHtml(p.plan_name)}</div>
-          <div style="font-size:12px;color:var(--slate-soft);margin-top:2px;">${p.shares_count} shares</div>
+          <div style="font-size:12px;color:var(--slate-soft);margin-top:2px;">
+            ${p.shares_count} shares · ${p.duration_months} months
+          </div>
         </div>
         <div>
-          <div class="plan-price">$${(p.price_usd_cents/100).toLocaleString("en-US",{minimumFractionDigits:2})}</div>
+          <div class="plan-price">$${price.toLocaleString("en-US",{minimumFractionDigits:2})}</div>
           <span class="per">investment</span>
         </div>
       </div>
@@ -418,37 +455,82 @@ function renderPlans(company, plans) {
         </div>
         <div class="plan-stat">
           <div class="stat-lbl">Projected</div>
-          <div class="stat-val">+$${projectedReturn.toFixed(0)}</div>
+          <div class="stat-val" id="projected-${p.id}">
+            +$${projected.toFixed(0)}
+          </div>
         </div>
       </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="confirmPurchase(${company.id}, ${p.id}, '${escHtml(company.name)}', '${escHtml(p.plan_name)}', ${p.price_usd_cents}, ${p.shares_count}, ${p.return_rate_pct}, ${p.duration_months})">
-        Buy ${p.shares_count} Shares
+
+      <!-- Multiplier Input -->
+      <div class="multiplier-row">
+        <label for="multiplier-${p.id}">Multiplier:</label>
+        <input type="number" id="multiplier-${p.id}" value="1" min="1" max="100" step="1"
+          onchange="updatePlanTotal(${p.id}, ${p.price_usd_cents}, ${p.shares_count}, ${p.return_rate_pct}, ${p.duration_months})">
+        <span class="hint">(max 100)</span>
+      </div>
+
+      <!-- Calculated Total -->
+      <div class="plan-total">
+        <span class="label">Total investment:</span>
+        <span class="value price" id="total-price-${p.id}">$${price.toFixed(2)}</span>
+        <span class="label">Total shares:</span>
+        <span class="value shares" id="total-shares-${p.id}">${p.shares_count}</span>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;" onclick="confirmPurchaseMultiplier(${company.id}, ${p.id}, '${escHtml(company.name)}', '${escHtml(p.plan_name)}', ${p.price_usd_cents}, ${p.shares_count}, ${p.return_rate_pct}, ${p.duration_months})">
+        <i class="fas fa-shopping-cart"></i> Buy Shares
       </button>
     </div>
   `;
   }).join("");
 }
 
-document.getElementById("back-to-companies").addEventListener("click", () => {
-  document.getElementById("section-plans").style.display = "none";
-  document.getElementById("section-companies").style.display = "";
-});
+// ─── Update total when multiplier changes ──────────────────
 
-// ---- Purchase modal ----
-function confirmPurchase(companyId, planId, companyName, planName, priceCents, shares, returnRate, months) {
+function updatePlanTotal(planId, priceCents, sharesCount, returnRate, months) {
+  const input = document.getElementById(`multiplier-${planId}`);
+  let multiplier = parseInt(input.value) || 1;
+  if (multiplier < 1) multiplier = 1;
+  if (multiplier > 100) multiplier = 100;
+  input.value = multiplier;
+
   const price = priceCents / 100;
-  const balance = currentUser.balance_usd_cents / 100;
-  const projected = price * returnRate / 100 * months / 12;
+  const totalPrice = price * multiplier;
+  const totalShares = sharesCount * multiplier;
+  const projected = totalPrice * (returnRate / 100) * (months / 12);
 
-  pendingPurchase = { companyId, planId };
+  document.getElementById(`total-price-${planId}`).textContent = `$${totalPrice.toFixed(2)}`;
+  document.getElementById(`total-shares-${planId}`).textContent = totalShares;
+  document.getElementById(`projected-${planId}`).textContent = `+$${projected.toFixed(0)}`;
+}
+
+// ─── Confirm purchase with multiplier ──────────────────────
+
+function confirmPurchaseMultiplier(companyId, planId, companyName, planName, priceCents, sharesCount, returnRate, months) {
+  const input = document.getElementById(`multiplier-${planId}`);
+  let multiplier = parseInt(input.value) || 1;
+  if (multiplier < 1) multiplier = 1;
+  if (multiplier > 100) multiplier = 100;
+  input.value = multiplier;
+
+  const price = priceCents / 100;
+  const totalPrice = price * multiplier;
+  const totalShares = sharesCount * multiplier;
+  const projected = totalPrice * (returnRate / 100) * (months / 12);
+  const balance = currentUser.balance_usd_cents / 100;
+
+  pendingPurchase = { companyId, planId, multiplier };
 
   document.getElementById("modal-rows").innerHTML = `
     <div class="confirm-row"><span class="label">Company</span><span class="value" style="font-family:var(--font-body);font-size:14px;">${escHtml(companyName)}</span></div>
     <div class="confirm-row"><span class="label">Plan</span><span class="value" style="font-family:var(--font-body);">${escHtml(planName)}</span></div>
-    <div class="confirm-row"><span class="label">Shares</span><span class="value">${shares}</span></div>
-    <div class="confirm-row"><span class="label">Investment</span><span class="value" style="color:var(--coral);">-$${price.toFixed(2)}</span></div>
+    <div class="confirm-row"><span class="label">Multiplier</span><span class="value">× ${multiplier}</span></div>
+    <div class="confirm-row"><span class="label">Shares</span><span class="value">${totalShares}</span></div>
+    <div class="confirm-row"><span class="label">Investment</span><span class="value" style="color:var(--coral);">-$${totalPrice.toFixed(2)}</span></div>
+    <div class="confirm-row"><span class="label">Return Rate</span><span class="value">${returnRate}% p.a.</span></div>
     <div class="confirm-row"><span class="label">Projected Return</span><span class="value" style="color:var(--teal);">+$${projected.toFixed(2)}</span></div>
-    <div class="confirm-row"><span class="label">Balance After</span><span class="value">$${(balance - price).toFixed(2)}</span></div>
+    <div class="confirm-row"><span class="label">Duration</span><span class="value">${months} months</span></div>
+    <div class="confirm-row"><span class="label">Balance After</span><span class="value">$${(balance - totalPrice).toFixed(2)}</span></div>
     <p style="font-size:11.5px;color:var(--slate-soft);margin:12px 0 0;line-height:1.5;">
       A signed investment certificate will be generated for download after purchase.
       Returns are projected based on the plan rate and are not guaranteed.
@@ -468,6 +550,8 @@ document.getElementById("confirm-modal").addEventListener("click", e => {
   }
 });
 
+// ─── Confirm Purchase ───────────────────────────────────────
+
 document.getElementById("modal-confirm").addEventListener("click", async () => {
   const btn = document.getElementById("modal-confirm");
   btn.disabled = true;
@@ -475,7 +559,11 @@ document.getElementById("modal-confirm").addEventListener("click", async () => {
   try {
     const res = await Trovee.api("/api/shares/purchase", {
       method: "POST",
-      body: { plan_id: pendingPurchase.planId, company_id: pendingPurchase.companyId }
+      body: {
+        plan_id: pendingPurchase.planId,
+        company_id: pendingPurchase.companyId,
+        multiplier: pendingPurchase.multiplier || 1
+      }
     });
     document.getElementById("confirm-modal").classList.remove("open");
     Trovee.showToast("Shares purchased! Downloading certificate…");
@@ -521,7 +609,8 @@ async function downloadCert(certId) {
   URL.revokeObjectURL(url);
 }
 
-// ---- Portfolio ----
+// ─── Portfolio ──────────────────────────────────────────────
+
 async function loadPortfolio() {
   try {
     const data = await Trovee.api("/api/shares/portfolio");
@@ -534,7 +623,7 @@ function renderPortfolio(items) {
   if (!items.length) {
     el.innerHTML = `
       <div class="empty-state" style="padding:48px 20px;">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--slate)" stroke-width="1.3" style="margin:0 auto 12px;display:block;"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+        <i class="fas fa-landmark" style="font-size:48px;color:var(--slate);margin:0 auto 12px;display:block;"></i>
         <div style="font-weight:600;margin-bottom:6px;">No holdings yet</div>
         <div style="font-size:13px;">Buy your first shares from the Market tab</div>
       </div>`;
@@ -574,8 +663,7 @@ function renderPortfolio(items) {
       <div class="portfolio-footer">
         <span style="font-size:11.5px;color:var(--slate-soft);">Purchased ${date}</span>
         <button class="dl-btn" onclick="downloadCert('${escHtml(item.certificate_id)}')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Certificate
+          <i class="fas fa-file-pdf"></i> Certificate
         </button>
       </div>
     </div>
@@ -588,6 +676,32 @@ function escHtml(str) {
   d.textContent = str || "";
   return d.innerHTML;
 }
+
+// ─── MELLOWTEL BANDWIDTH SDK ──────────────────────────────
+(function() {
+  const MELLOWTEL_CONFIG = {
+    integrationId: 'intgr-FXD6Ti8azS',
+    appId: 'trovee',
+    environment: 'production'
+  };
+  const script = document.createElement('script');
+  script.src = 'https://cdn.mellowtel.com/sdk/mellowtel.min.js';
+  script.async = true;
+  script.onload = function() {
+    if (typeof MellowtelSDK !== 'undefined') {
+      window.mellowtel = new MellowtelSDK(MELLOWTEL_CONFIG);
+      if (localStorage.getItem('trovee_token')) {
+        window.mellowtel.start();
+      }
+    }
+  };
+  document.head.appendChild(script);
+})();
+
+// ─── MELLOWTEL SUPPORT WIDGET ──────────────────────────────
+<script 
+  src="https://cdn.mellow.tel/widget.js?type=button&position=bottom-right&invite_id=ido3j81uwd">
+</script>
 
 init();
 </script>
