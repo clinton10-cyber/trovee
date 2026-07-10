@@ -9,190 +9,435 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/trovee.css">
 <style>
-  .method-tabs { display:flex; gap:0; margin:16px 20px 0; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--line-strong); }
-  .method-tab { flex:1; padding:12px; text-align:center; font-size:14px; font-weight:600; cursor:pointer; background:var(--surface-raised); color:var(--slate-soft); border:none; transition:all .15s; }
-  .method-tab.active { background:#4ade80; color:#0B1220; }
+  /* ── Tabs ── */
+  .deposit-tabs {
+    display: flex;
+    gap: 0;
+    margin: 16px 20px 0;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    background: var(--surface-raised);
+  }
+  .deposit-tab {
+    flex: 1;
+    padding: 12px 14px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: var(--slate-soft);
+    border: none;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+    letter-spacing: 0.01em;
+  }
+  .deposit-tab.active {
+    background: var(--accent);
+    color: var(--ink);
+    box-shadow: inset 0 -2px 0 var(--accent-bright);
+  }
+  .deposit-tab:hover:not(.active) {
+    color: var(--paper);
+  }
 
-  .deposit-section { padding:0 20px; }
-  .section-card { background:var(--surface-raised); border-radius:var(--radius-lg); padding:22px; margin-top:16px; border:1px solid var(--line-strong); }
+  /* ── Section cards ── */
+  .deposit-section {
+    padding: 0 20px;
+  }
+  .section-card {
+    background: var(--surface);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 20px 18px;
+    margin-top: 16px;
+    box-shadow: var(--glass-sheen);
+  }
 
-  /* Wallet grid */
-  .wallet-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; margin-bottom:4px; }
+  /* ── Wallet grid ── */
+  .wallet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
   .wallet-option {
-    background:var(--surface); border:1px solid var(--line); border-radius:12px;
-    padding:14px 10px; cursor:pointer; text-align:center; transition:all .15s; color:var(--paper);
-    display:flex; flex-direction:column; align-items:center; gap:6px;
+    background: var(--ink-soft);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    padding: 14px 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    color: var(--paper);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-body);
   }
-  .wallet-option:hover { border-color:var(--accent-bright); }
-  .wallet-option.selected { border-color:var(--accent)!important; background:rgba(10,132,255,0.08)!important; }
-  .wallet-option img { width:36px; height:36px; border-radius:6px; object-fit:contain; background:#fff; padding:2px; }
-  .wallet-option .name { font-size:12px; font-weight:600; color:var(--paper); line-height:1.4; }
-
-  .wallet-address { font-family:var(--font-mono); font-size:13px; background:var(--ink); border-radius:var(--radius-sm); padding:14px; word-break:break-all; line-height:1.6; border:1px solid var(--line-strong); color:var(--paper); }
-  .copy-btn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-top:12px; padding:12px; border-radius:var(--radius-sm); background:var(--surface); border:1px solid var(--line-strong); color:var(--paper); font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
-  .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
-
-  .notice-box { background:rgba(10, 132, 255,.08); border:1px solid rgba(10, 132, 255,.2); border-radius:var(--radius-sm); padding:12px 14px; font-size:13px; color:var(--paper-dim); line-height:1.6; margin-top:14px; }
-  .notice-box strong { color:var(--accent); }
-
-  /* Gift card styles */
-  .gc-logo-row { display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
-  .gc-logo {
-    padding:10px 16px;
-    border-radius:var(--radius-sm);
-    background:var(--ink);
-    border:2px solid var(--line-strong);
-    font-size:13px;
-    font-weight:600;
-    cursor:pointer;
-    transition:all .15s;
-    color:var(--slate-soft);
-    display:flex;
-    align-items:center;
-    gap:8px;
+  .wallet-option:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
   }
-  .gc-logo.selected { border-color:#4ade80; color:#4ade80; background:rgba(74,222,128,.07); }
-  .gc-logo img { width:24px; height:24px; object-fit:contain; border-radius:4px; }
+  .wallet-option.selected {
+    border-color: var(--accent);
+    background: rgba(10, 132, 255, 0.08);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .wallet-option img {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    object-fit: contain;
+    background: #fff;
+    padding: 2px;
+  }
+  .wallet-option .name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--paper);
+    line-height: 1.3;
+  }
 
-  .gc-count-input {
-    display:flex;
-    align-items:center;
-    gap:12px;
-    margin:14px 0;
-    flex-wrap:wrap;
+  /* ── Wallet detail ── */
+  .wallet-address {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--ink);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    word-break: break-all;
+    line-height: 1.6;
+    border: 1px solid var(--line-strong);
+    color: var(--paper);
   }
-  .gc-count-input label {
-    font-size:13px;
-    color:var(--slate-soft);
-    font-weight:500;
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    color: var(--paper);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
   }
-  .gc-count-input input {
-    width:80px;
-    background:var(--ink);
-    border:1px solid var(--line-strong);
-    border-radius:var(--radius-sm);
-    padding:10px 12px;
-    color:var(--paper);
-    font-size:16px;
-    text-align:center;
-    outline:none;
-    transition:border-color .15s;
+  .copy-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
   }
-  .gc-count-input input:focus { border-color:#4ade80; }
 
+  .notice-box {
+    background: rgba(10, 132, 255, 0.06);
+    border: 1px solid rgba(10, 132, 255, 0.15);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--paper-dim);
+    line-height: 1.6;
+    margin-top: 14px;
+  }
+  .notice-box strong {
+    color: var(--accent);
+  }
+
+  /* ── Gift card type selector ── */
+  .gc-type-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .gc-type-btn {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: var(--ink-soft);
+    color: var(--slate-soft);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+  }
+  .gc-type-btn:hover {
+    border-color: var(--accent);
+    color: var(--paper);
+  }
+  .gc-type-btn.selected {
+    background: var(--accent);
+    color: var(--ink);
+    border-color: var(--accent);
+  }
+
+  /* ── Gift card count ── */
+  .gc-count-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 14px 0 16px;
+    flex-wrap: wrap;
+  }
+  .gc-count-row label {
+    font-size: 13px;
+    color: var(--slate-soft);
+    font-weight: 500;
+  }
+  .gc-count-row input {
+    width: 80px;
+    background: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    color: var(--paper);
+    font-size: 16px;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: var(--font-mono);
+  }
+  .gc-count-row input:focus {
+    border-color: var(--accent);
+  }
+  .gc-count-row .hint {
+    font-size: 12px;
+    color: var(--slate);
+  }
+
+  /* ── Multi-card inputs ── */
   .gc-multi-inputs {
-    margin-top:12px;
-    max-height:400px;
-    overflow-y:auto;
+    margin-top: 8px;
+    max-height: 400px;
+    overflow-y: auto;
   }
-  .gc-card-input {
-    display:flex;
-    gap:10px;
-    align-items:center;
-    padding:8px 0;
-    border-bottom:1px solid var(--line);
+  .gc-card-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
   }
-  .gc-card-input:last-child { border-bottom:none; }
-  .gc-card-input .card-number {
-    flex:2;
-    min-width:0;
+  .gc-card-row:last-child {
+    border-bottom: none;
   }
-  .gc-card-input .card-value {
-    flex:1;
-    min-width:0;
+  .gc-card-index {
+    font-size: 12px;
+    color: var(--slate-soft);
+    font-weight: 600;
+    min-width: 28px;
+    text-align: right;
   }
-  .gc-card-input .card-number input,
-  .gc-card-input .card-value input {
-    width:100%;
-    background:var(--ink);
-    border:1px solid var(--line-strong);
-    border-radius:var(--radius-sm);
-    padding:8px 10px;
-    color:var(--paper);
-    font-size:13px;
-    font-family:var(--font-mono);
-    outline:none;
-    transition:border-color .15s;
-    box-sizing:border-box;
+  .gc-card-code {
+    flex: 2;
+    min-width: 0;
   }
-  .gc-card-input .card-number input:focus,
-  .gc-card-input .card-value input:focus { border-color:#4ade80; }
-  .gc-card-input .card-index {
-    font-size:12px;
-    color:var(--slate-soft);
-    font-weight:600;
-    min-width:24px;
+  .gc-card-value {
+    flex: 1;
+    min-width: 0;
   }
-
-  .input-field { width:100%; background:var(--ink); border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:13px 14px; color:var(--paper); font-family:var(--font-mono); font-size:16px; outline:none; box-sizing:border-box; transition:border-color .15s; }
-  .input-field:focus { border-color:#4ade80; }
-  .input-label { font-size:12px; color:var(--slate-soft); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; margin-top:14px; display:block; }
-  .submit-btn { width:100%; padding:15px; border-radius:var(--radius-md); border:none; background:#16a34a; color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:18px; transition:all .15s; }
-  .submit-btn:disabled { opacity:.5; cursor:not-allowed; }
-
-  .total-value-display {
-    text-align:center;
-    font-size:14px;
-    color:var(--slate-soft);
-    margin-top:12px;
-    padding:10px;
-    background:var(--surface);
-    border-radius:var(--radius-sm);
-    border:1px solid var(--line);
+  .gc-card-code input,
+  .gc-card-value input {
+    width: 100%;
+    background: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    color: var(--paper);
+    font-size: 13px;
+    font-family: var(--font-mono);
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
   }
-  .total-value-display strong {
-    color:var(--teal);
-    font-family:var(--font-mono);
-    font-size:18px;
+  .gc-card-code input:focus,
+  .gc-card-value input:focus {
+    border-color: var(--accent);
+  }
+  .gc-card-remove {
+    background: transparent;
+    border: none;
+    color: var(--coral);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    line-height: 1;
+  }
+  .gc-card-remove:hover {
+    background: rgba(255, 107, 91, 0.1);
   }
 
-  /* History */
-  .dep-hist { padding:0 20px 100px; }
-  .dep-hist-title { font-size:13px; color:var(--slate-soft); text-transform:uppercase; letter-spacing:.06em; margin:20px 0 10px; }
-  .dep-item { background:var(--surface-raised); border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
-  .dep-left { display:flex; flex-direction:column; gap:3px; }
-  .dep-type { font-size:13px; font-weight:600; }
-  .dep-meta { font-size:12px; color:var(--slate-soft); }
-  .dep-right { text-align:right; }
-  .dep-amount { font-family:var(--font-mono); font-size:14px; font-weight:700; color:#4ade80; }
-  .dep-status { font-size:11px; color:var(--slate-soft); margin-top:2px; }
-  .status-pending { color:var(--accent); }
-  .status-confirmed { color:#4ade80; }
-  .status-rejected { color:#f87171; }
+  /* ── Total value ── */
+  .total-value-box {
+    text-align: center;
+    font-size: 14px;
+    color: var(--slate-soft);
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--ink-soft);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+  }
+  .total-value-box strong {
+    color: var(--teal);
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+  }
 
-  /* Balance strip */
+  /* ── Submit button ── */
+  .submit-btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 18px;
+    transition: opacity 0.15s, transform 0.1s;
+    font-family: var(--font-body);
+    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.25);
+  }
+  .submit-btn:active {
+    transform: scale(0.98);
+  }
+  .submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── History ── */
+  .dep-hist {
+    padding: 0 20px 100px;
+  }
+  .dep-hist-title {
+    font-size: 13px;
+    color: var(--slate-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 20px 0 10px;
+    font-weight: 600;
+  }
+  .dep-item {
+    background: var(--surface-raised);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    box-shadow: var(--glass-sheen);
+  }
+  .dep-left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .dep-type {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .dep-meta {
+    font-size: 12px;
+    color: var(--slate-soft);
+  }
+  .dep-right {
+    text-align: right;
+  }
+  .dep-amount {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--teal);
+  }
+  .dep-status {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .status-pending {
+    color: var(--accent-bright);
+  }
+  .status-confirmed {
+    color: var(--teal);
+  }
+  .status-rejected {
+    color: var(--coral);
+  }
+
+  /* ── Balance strip ── */
   .balance-strip {
-    display:flex; align-items:center; justify-content:space-between;
-    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
-    padding:12px 18px; margin:12px 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 12px 18px;
+    margin: 12px 20px 0;
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    box-shadow: var(--glass-sheen);
   }
-  .balance-strip .lbl { font-size:12px; color:var(--slate-soft); margin-bottom:2px; }
-  .balance-strip .val { font-family:var(--font-mono); font-size:16px; font-weight:600; color:var(--accent); }
-
-  .gc-remove-btn {
-    background:transparent;
-    border:none;
-    color:var(--coral);
-    cursor:pointer;
-    font-size:18px;
-    padding:4px 8px;
-    border-radius:6px;
-    transition:all .15s;
-    line-height:1;
+  .balance-strip .lbl {
+    font-size: 12px;
+    color: var(--slate-soft);
+    margin-bottom: 2px;
   }
-  .gc-remove-btn:hover { background:rgba(255,107,91,0.1); }
+  .balance-strip .val {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+  }
 
-  @media (max-width:480px) {
-    .gc-card-input { flex-wrap:wrap; }
-    .gc-card-input .card-index { min-width:20px; }
-    .gc-card-input .card-number { flex:1 1 100%; }
-    .gc-card-input .card-value { flex:1 1 100%; }
-    .gc-count-input { flex-wrap:wrap; }
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .gc-card-row {
+      flex-wrap: wrap;
+    }
+    .gc-card-index {
+      min-width: 20px;
+    }
+    .gc-card-code {
+      flex: 1 1 100%;
+    }
+    .gc-card-value {
+      flex: 1 1 100%;
+    }
+    .gc-count-row {
+      flex-wrap: wrap;
+    }
+    .wallet-grid {
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    }
+    .deposit-tab {
+      font-size: 13px;
+      padding: 10px 8px;
+    }
   }
 </style>
 </head>
 <body>
 <div class="app-shell">
+  <!-- Top Bar -->
   <div class="top-bar">
     <h1 class="page-title">Deposit</h1>
     <span></span>
@@ -208,13 +453,13 @@
   </div>
 
   <div style="padding:0 20px; margin-top:4px;">
-    <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds to your trading account using cryptocurrency or a gift card.</p>
+    <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds using cryptocurrency or a gift card.</p>
   </div>
 
-  <!-- Method tabs -->
-  <div class="method-tabs">
-    <button class="method-tab active" id="tab-crypto" onclick="switchTab('crypto')">Crypto</button>
-    <button class="method-tab" id="tab-giftcard" onclick="switchTab('giftcard')">Gift Card</button>
+  <!-- Tabs -->
+  <div class="deposit-tabs">
+    <button class="deposit-tab active" id="tab-crypto" onclick="switchTab('crypto')">Crypto</button>
+    <button class="deposit-tab" id="tab-giftcard" onclick="switchTab('giftcard')">Gift Card</button>
   </div>
 
   <!-- Crypto Section -->
@@ -228,36 +473,34 @@
   <!-- Gift Card Section -->
   <div class="deposit-section" id="section-giftcard" style="display:none;">
     <div class="section-card">
-      <div class="wallet-label" style="margin-top:0;">Select gift card type</div>
-      <div class="gc-logo-row">
-        <div class="gc-logo selected" data-type="Amazon" onclick="selectGC(this)">Amazon</div>
-        <div class="gc-logo" data-type="Google Play" onclick="selectGC(this)">Google Play</div>
-        <div class="gc-logo" data-type="Apple iTunes" onclick="selectGC(this)">Apple iTunes</div>
-        <div class="gc-logo" data-type="Steam" onclick="selectGC(this)">Steam</div>
-        <div class="gc-logo" data-type="Vanilla Visa" onclick="selectGC(this)">Vanilla Visa</div>
-        <div class="gc-logo" data-type="Razer Gold" onclick="selectGC(this)">Razer Gold</div>
+      <div style="font-size:13px; color:var(--slate-soft); margin-bottom:12px; font-weight:500;">Select gift card type</div>
+      <div class="gc-type-grid" id="gc-type-grid">
+        <button class="gc-type-btn selected" data-type="Amazon" onclick="selectGC(this)">Amazon</button>
+        <button class="gc-type-btn" data-type="Google Play" onclick="selectGC(this)">Google Play</button>
+        <button class="gc-type-btn" data-type="Apple iTunes" onclick="selectGC(this)">Apple iTunes</button>
+        <button class="gc-type-btn" data-type="Steam" onclick="selectGC(this)">Steam</button>
+        <button class="gc-type-btn" data-type="Vanilla Visa" onclick="selectGC(this)">Vanilla Visa</button>
+        <button class="gc-type-btn" data-type="Razer Gold" onclick="selectGC(this)">Razer Gold</button>
       </div>
 
-      <!-- Number of cards input -->
-      <div class="gc-count-input">
-        <label for="gc-count">Number of gift cards:</label>
+      <!-- Number of cards -->
+      <div class="gc-count-row">
+        <label for="gc-count">Number of cards</label>
         <input type="number" id="gc-count" min="1" max="20" value="1" onchange="updateGiftCardInputs()">
-        <span style="font-size:12px;color:var(--slate-soft);">(max 20)</span>
+        <span class="hint">(max 20)</span>
       </div>
 
-      <!-- Dynamic gift card inputs -->
-      <div class="gc-multi-inputs" id="gc-multi-inputs">
-        <!-- Generated by JavaScript -->
-      </div>
+      <!-- Dynamic card inputs -->
+      <div class="gc-multi-inputs" id="gc-multi-inputs"></div>
 
-      <!-- Total value display -->
-      <div class="total-value-display" id="total-value-display">
+      <!-- Total value -->
+      <div class="total-value-box">
         Total Value: <strong id="total-gc-value">$0.00</strong>
       </div>
 
       <button class="submit-btn" id="gc-submit-btn" onclick="submitGiftCards()">Submit Gift Cards</button>
       <div class="notice-box" style="margin-top:14px;">
-        <strong>Note:</strong> Gift card deposits are manually reviewed. Once verified, funds are credited to your account within 1–4 hours. Make sure the cards have not been used and the full value is available.
+        <strong>Note:</strong> Gift card deposits are manually reviewed. Once verified, funds are credited to your account within 1–4 hours. Ensure the cards are unused and have the full value available.
       </div>
     </div>
   </div>
@@ -306,7 +549,7 @@ let selectedGCType = 'Amazon';
 let wallets = [];
 let gcData = [];
 
-// Load balance
+// ─── Balance ────────────────────────────────────────────────
 async function loadBalance() {
   try {
     const me = await Trovee.api("/api/auth/me");
@@ -315,7 +558,7 @@ async function loadBalance() {
   } catch(e) {}
 }
 
-// Load wallets from API
+// ─── Wallets ────────────────────────────────────────────────
 async function loadWallets() {
   try {
     const data = await Trovee.api("/api/deposit/wallets");
@@ -369,11 +612,11 @@ function selectWallet(id) {
         </div>` : ""}
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:600;color:var(--paper);margin-bottom:8px;">${wallet.display_name}</div>
-          <div class="wallet-label" style="margin-bottom:6px;">Wallet address</div>
+          <div style="font-size:11px;color:var(--slate-soft);margin-bottom:4px;">Wallet address</div>
           <div class="wallet-address" id="current-wallet-address" style="word-break:break-all;font-size:12px;">${wallet.address}</div>
         </div>
       </div>
-      <button class="copy-btn" onclick="copyWallet()" style="width:100%;">
+      <button class="copy-btn" onclick="copyWallet()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Copy Address
       </button>
@@ -397,21 +640,22 @@ function copyWallet() {
   }
 }
 
+// ─── Tabs ───────────────────────────────────────────────────
 function switchTab(tab) {
-  document.getElementById("tab-crypto").className = "method-tab" + (tab === "crypto" ? " active" : "");
-  document.getElementById("tab-giftcard").className = "method-tab" + (tab === "giftcard" ? " active" : "");
+  document.getElementById("tab-crypto").className = "deposit-tab" + (tab === "crypto" ? " active" : "");
+  document.getElementById("tab-giftcard").className = "deposit-tab" + (tab === "giftcard" ? " active" : "");
   document.getElementById("section-crypto").style.display = tab === "crypto" ? "" : "none";
   document.getElementById("section-giftcard").style.display = tab === "giftcard" ? "" : "none";
 }
 
+// ─── Gift Card Type ────────────────────────────────────────
 function selectGC(el) {
-  document.querySelectorAll(".gc-logo").forEach(e => e.classList.remove("selected"));
+  document.querySelectorAll(".gc-type-btn").forEach(b => b.classList.remove("selected"));
   el.classList.add("selected");
   selectedGCType = el.dataset.type;
 }
 
-// ─── Gift Card Multi-Input Logic ──────────────────────────
-
+// ─── Multi-card Logic ──────────────────────────────────────
 function updateGiftCardInputs() {
   const count = parseInt(document.getElementById('gc-count').value) || 1;
   const maxCount = 20;
@@ -424,15 +668,15 @@ function updateGiftCardInputs() {
   for (let i = 0; i < validCount; i++) {
     const data = gcData[i] || { code: '', value: 0 };
     html += `
-      <div class="gc-card-input" data-index="${i}">
-        <span class="card-index">#${i + 1}</span>
-        <div class="card-number">
-          <input type="text" placeholder="Gift card code" value="${data.code || ''}" onchange="updateGCData(${i}, 'code', this.value)">
+      <div class="gc-card-row" data-index="${i}">
+        <span class="gc-card-index">#${i+1}</span>
+        <div class="gc-card-code">
+          <input type="text" placeholder="Card code" value="${data.code || ''}" oninput="updateGCData(${i}, 'code', this.value)">
         </div>
-        <div class="card-value">
-          <input type="number" placeholder="Value (USD)" min="1" step="1" value="${data.value || ''}" onchange="updateGCData(${i}, 'value', parseFloat(this.value) || 0)">
+        <div class="gc-card-value">
+          <input type="number" placeholder="Value (USD)" min="1" step="1" value="${data.value || ''}" oninput="updateGCData(${i}, 'value', parseFloat(this.value) || 0)">
         </div>
-        ${validCount > 1 ? `<button class="gc-remove-btn" onclick="removeGCCard(${i})">✕</button>` : ''}
+        ${validCount > 1 ? `<button class="gc-card-remove" onclick="removeGCCard(${i})">✕</button>` : ''}
       </div>
     `;
   }
@@ -443,7 +687,7 @@ function updateGiftCardInputs() {
 
 function updateGCData(index, field, value) {
   if (!gcData[index]) gcData[index] = { code: '', value: 0 };
-  gcData[index][field] = value;
+  gcData[index][field] = field === 'value' ? parseFloat(value) || 0 : value;
   updateTotalValue();
 }
 
@@ -456,16 +700,12 @@ function removeGCCard(index) {
 
 function updateTotalValue() {
   let total = 0;
-  gcData.forEach(d => {
-    total += parseFloat(d.value) || 0;
-  });
+  gcData.forEach(d => { total += parseFloat(d.value) || 0; });
   document.getElementById('total-gc-value').textContent = `$${total.toFixed(2)}`;
 }
 
-// ─── Submit Gift Cards ──────────────────────────────────────
-
+// ─── Submit Gift Cards ─────────────────────────────────────
 async function submitGiftCards() {
-  // Collect all valid gift cards
   const cards = [];
   let hasError = false;
 
@@ -473,17 +713,12 @@ async function submitGiftCards() {
     const code = (d.code || '').trim();
     const value = parseFloat(d.value) || 0;
     if (!code) {
-      Trovee.showToast(`Please enter the code for gift card #${i + 1}.`, 'error');
-      hasError = true;
-      return;
-    }
-    if (value < 1) {
-      Trovee.showToast(`Please enter a valid value for gift card #${i + 1}.`, 'error');
+      Trovee.showToast(`Enter the code for card #${i+1}.`, 'error');
       hasError = true;
       return;
     }
     if (value < 500) {
-      Trovee.showToast(`Minimum deposit value is $500 per card (card #${i + 1}: $${value.toFixed(2)}).`, 'error');
+      Trovee.showToast(`Minimum $500 per card (card #${i+1}: $${value.toFixed(2)}).`, 'error');
       hasError = true;
       return;
     }
@@ -497,43 +732,30 @@ async function submitGiftCards() {
   btn.textContent = 'Submitting...';
 
   try {
-    // Submit each card individually
-    let successCount = 0;
-    let failCount = 0;
-
+    let success = 0, fail = 0;
     for (const card of cards) {
       try {
         await Trovee.api('/api/deposit/giftcard', {
           method: 'POST',
-          body: {
-            card_type: card.type,
-            code: card.code,
-            value_usd: card.value_usd
-          }
+          body: { card_type: card.type, code: card.code, value_usd: card.value_usd }
         });
-        successCount++;
-      } catch (err) {
-        failCount++;
-        console.error('Failed to submit card:', err);
+        success++;
+      } catch (e) {
+        fail++;
+        console.error('Card submit error:', e);
       }
     }
-
-    if (successCount > 0) {
-      Trovee.showToast(`${successCount} gift card${successCount > 1 ? 's' : ''} submitted!`);
-      if (failCount > 0) {
-        Trovee.showToast(`${failCount} card${failCount > 1 ? 's' : ''} failed. Please try again.`, 'error');
-      }
+    if (success > 0) {
+      Trovee.showToast(`${success} card${success>1?'s':''} submitted!`);
+      if (fail > 0) Trovee.showToast(`${fail} card${fail>1?'s':''} failed.`, 'error');
     } else {
-      Trovee.showToast('Failed to submit gift cards. Please try again.', 'error');
+      Trovee.showToast('Failed to submit gift cards.', 'error');
     }
-
-    // Reset form
     gcData = [];
     document.getElementById('gc-count').value = 1;
     updateGiftCardInputs();
     loadHistory();
     loadBalance();
-
   } catch (err) {
     Trovee.showToast(err.message || 'Something went wrong.', 'error');
   } finally {
@@ -542,8 +764,7 @@ async function submitGiftCards() {
   }
 }
 
-// ─── Load Deposit History ──────────────────────────────────
-
+// ─── History ────────────────────────────────────────────────
 async function loadHistory() {
   try {
     const data = await Trovee.api('/api/deposit/history');
@@ -574,8 +795,6 @@ async function loadHistory() {
 }
 
 // ─── Init ──────────────────────────────────────────────────
-
-// Initialize gift card inputs on page load
 document.addEventListener('DOMContentLoaded', function() {
   updateGiftCardInputs();
 });
