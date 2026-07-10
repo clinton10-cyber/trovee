@@ -23,7 +23,7 @@ from backend.bandwidth_service import BandwidthService
 APP_SECRET = os.environ.get("TROVEE_APP_SECRET", "trovee-dev-secret-change-me-in-prod")
 WITHDRAWAL_MINIMUM_USD_CENTS = 1  # Allow any positive amount
 ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
-TRADE_RETURN_RATE = 0.20  # 20% profit on a winning trade
+# TRADE_RETURN_RATE is removed – we use momentum now.
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 
@@ -607,7 +607,7 @@ def api_admin_users():
     return jsonify({"users": [dict(r) for r in rows]})
 
 
-# ─── API: Trades ──────────────────────────────────────────────
+# ─── API: Trades (Momentum‑Based) ─────────────────────────────
 
 @app.route("/api/trades/place", methods=["POST"])
 @login_required
@@ -638,6 +638,7 @@ def api_trade_place():
             db.close()
             return jsonify({"error": "Insufficient balance."}), 400
 
+        # Deduct the amount immediately (held in the trade)
         db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents - ? WHERE id = ?",
                    (amount_usd_cents, g.user["id"]))
         cur = db.execute(
@@ -679,12 +680,34 @@ def api_trade_close():
             db.close()
             return jsonify({"error": "Trade not found or already closed."}), 404
 
-        price_up = exit_price > trade["entry_price"]
-        won = (trade["direction"] == "up" and price_up) or (trade["direction"] == "down" and not price_up)
-        outcome = "win" if won else "loss"
+        # ── Momentum‑based profit ──
+        entry = trade["entry_price"]
+        change_pct = (exit_price - entry) / entry   # e.g. 0.01 = 1% move
+        amount = trade["amount_usd_cents"]
 
-        profit_usd_cents = int(trade["amount_usd_cents"] * TRADE_RETURN_RATE) if won else 0
-        credit_back = trade["amount_usd_cents"] + profit_usd_cents if won else 0
+        # For a "Buy Up" trade, profit is positive if price went up.
+        # For "Buy Down", profit is positive if price went down.
+        if trade["direction"] == "up":
+            profit_pct = change_pct
+        else:  # down
+            profit_pct = -change_pct
+
+        # Profit in cents (could be negative)
+        profit_usd_cents = int(amount * profit_pct)
+
+        # outcome: win if profit > 0, loss if profit < 0, else draw
+        if profit_usd_cents > 0:
+            outcome = "win"
+        elif profit_usd_cents < 0:
+            outcome = "loss"
+        else:
+            outcome = "draw"
+
+        # Credit the original stake back, plus profit
+        credit_back = amount + profit_usd_cents
+        if credit_back < 0:
+            # Shouldn't happen because we already deducted amount, but safety: don't let balance go negative.
+            credit_back = 0
 
         db.execute(
             "UPDATE trades SET exit_price = ?, outcome = ?, profit_usd_cents = ?, closed_at = datetime('now') WHERE id = ?",
