@@ -1,909 +1,1874 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trovee — Deposit</title>
-<link rel="icon" href="/static/img/favicon.ico">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="/static/css/trovee.css">
-<style>
-  .deposit-tabs {
-    display: flex;
-    gap: 0;
-    margin: 16px 20px 0;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    border: 1px solid var(--line-strong);
-    background: var(--surface-raised);
-  }
-  .deposit-tab {
-    flex: 1;
-    padding: 12px 14px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    background: transparent;
-    color: var(--slate-soft);
-    border: none;
-    transition: all 0.2s;
-    font-family: var(--font-body);
-    letter-spacing: 0.01em;
-  }
-  .deposit-tab.active {
-    background: var(--accent);
-    color: var(--ink);
-    box-shadow: inset 0 -2px 0 var(--accent-bright);
-  }
-  .deposit-tab:hover:not(.active) { color: var(--paper); }
+/* =========================================================================
+   TROVEE — Design tokens
+   Palette: deep ink base with a frosted-glass surface system, iOS system
+   blue accent, teal (positive/success), slate (secondary text), coral
+   (warnings/loss). Soft blurred colour blooms sit fixed behind every page
+   so glass surfaces have something to actually refract.
+   Type: Inter throughout (no serif), JetBrains Mono for monetary figures.
+   Fully responsive for desktop and mobile.
+   ========================================================================= */
 
-  .deposit-section { padding: 0 20px; }
-  .section-card {
-    background: var(--surface);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    padding: 20px 18px;
-    margin-top: 16px;
-    box-shadow: var(--glass-sheen);
-  }
+:root {
+  --ink: #06080D;
+  --ink-soft: rgba(255, 255, 255, 0.055);
+  --surface: rgba(255, 255, 255, 0.055);
+  --surface-raised: rgba(255, 255, 255, 0.09);
+  --paper: #F5F7FA;
+  --paper-dim: #C7CEDA;
+  --accent: #0A84FF;
+  --accent-bright: #409CFF;
+  --teal: #2DD4BF;
+  --slate: #5B6573;
+  --slate-soft: #8E96A6;
+  --coral: #FF6B5B;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-strong: rgba(255, 255, 255, 0.17);
 
-  .wallet-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-  .wallet-option {
-    background: var(--ink-soft);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-sm);
-    padding: 14px 10px;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
-    color: var(--paper);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--font-body);
-  }
-  .wallet-option:hover { border-color: var(--accent); transform: translateY(-1px); }
-  .wallet-option.selected {
-    border-color: var(--accent);
-    background: rgba(10, 132, 255, 0.08);
-    box-shadow: 0 0 0 1px var(--accent);
-  }
-  .wallet-option img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; background: #fff; padding: 2px; }
-  .wallet-option .name { font-size: 12.5px; font-weight: 600; color: var(--paper); line-height: 1.3; }
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Courier New', monospace;
 
-  .wallet-address {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    background: var(--ink);
-    border-radius: var(--radius-sm);
-    padding: 14px;
-    word-break: break-all;
-    line-height: 1.6;
-    border: 1px solid var(--line-strong);
-    color: var(--paper);
-  }
-  .copy-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    margin-top: 12px;
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    border: 1px solid var(--line-strong);
-    color: var(--paper);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: var(--font-body);
-  }
-  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --blur: blur(22px) saturate(160%);
+  --shadow-card: 0 10px 34px rgba(0, 0, 0, 0.38);
+  --glass-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 
-  .notice-box {
-    background: rgba(10, 132, 255, 0.06);
-    border: 1px solid rgba(10, 132, 255, 0.15);
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    font-size: 13px;
-    color: var(--paper-dim);
-    line-height: 1.6;
-    margin-top: 14px;
-  }
-  .notice-box strong { color: var(--accent); }
+  /* Responsive max-widths */
+  --app-max-width: 480px;
+  --app-max-width-desktop: 720px;
+}
 
-  .gc-type-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 18px;
-  }
-  .gc-type-btn {
-    padding: 8px 16px;
-    border-radius: 999px;
-    border: 1px solid var(--line-strong);
-    background: var(--ink-soft);
-    color: var(--slate-soft);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: var(--font-body);
-  }
-  .gc-type-btn:hover { border-color: var(--accent); color: var(--paper); }
-  .gc-type-btn.selected { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+* { box-sizing: border-box; }
 
-  .gc-count-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 14px 0 16px;
-    flex-wrap: wrap;
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+body {
+  position: relative;
+}
+
+/* Fixed, blurred colour blooms behind every screen — this is what the
+   frosted glass surfaces above are actually picking up tint/blur from. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -15%;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(10, 132, 255, 0.32), transparent 38%),
+    radial-gradient(circle at 88% 16%, rgba(45, 212, 191, 0.20), transparent 36%),
+    radial-gradient(circle at 25% 88%, rgba(94, 92, 230, 0.18), transparent 40%),
+    radial-gradient(circle at 92% 80%, rgba(10, 132, 255, 0.14), transparent 36%);
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+a { color: inherit; text-decoration: none; }
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.mono { font-family: var(--font-mono); }
+
+button, input, select, textarea { font-family: var(--font-body); }
+
+:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
   }
-  .gc-count-row label { font-size: 13px; color: var(--slate-soft); font-weight: 500; }
-  .gc-count-row input {
-    width: 80px;
-    background: var(--ink);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-sm);
+}
+
+/* =========================================================================
+   LAYOUT – Responsive Shells
+   ========================================================================= */
+
+.app-shell {
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  padding: 0 0 16px;
+}
+
+.page-wide {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.center-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Desktop Breakpoint ─── */
+@media (min-width: 768px) {
+  .app-shell {
+    max-width: var(--app-max-width-desktop);
+    padding: 0 24px 16px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .app-shell {
+    max-width: 960px;
+  }
+}
+
+/* =========================================================================
+   COMPONENTS – Responsive
+   ========================================================================= */
+
+/* ─── Brand Header ─── */
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+}
+
+.brand-word {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+}
+
+.brand-word .accent { color: var(--accent); }
+
+/* ─── Cards ─── */
+
+.card {
+  background: var(--surface);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 19px;
+  box-shadow: var(--shadow-card), var(--glass-sheen);
+}
+
+.card-flat {
+  background: var(--surface);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 15px;
+  box-shadow: var(--glass-sheen);
+}
+
+/* ─── Buttons ─── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  width: 100%;
+}
+
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(10, 132, 255, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 8px 22px rgba(10, 132, 255, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  color: var(--paper);
+  border: 1px solid var(--line-strong);
+}
+.btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+
+.btn-ghost {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  color: var(--slate-soft);
+  width: auto;
+  padding: 8px 12px;
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--coral);
+  border: 1px solid rgba(255, 107, 91, 0.35);
+}
+
+/* ─── Desktop Button Width ─── */
+@media (min-width: 768px) {
+  .btn {
+    width: auto;
+    padding: 12px 28px;
+  }
+}
+
+/* ─── Admin Buttons ─── */
+
+.btn-admin {
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btn-admin:active { opacity: 0.85; }
+
+.btn-sm {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btn-sm:active { opacity: 0.8; }
+.btn-sm-blue  { background: rgba(10,132,255,.14); color: var(--accent); border: 1px solid rgba(10,132,255,.3); }
+.btn-sm-red   { background: rgba(255,107,91,.12); color: var(--coral); border: 1px solid rgba(255,107,91,.3); }
+.btn-sm-ghost { background: none; color: var(--slate-soft); border: 1px solid var(--line-strong); }
+.btn-sm-teal  { background: rgba(45,212,191,.12); color: var(--teal); border: 1px solid rgba(45,212,191,.3); }
+.btn-sm-warning { background: rgba(245,158,11,.12); color: #F59E0B; border: 1px solid rgba(245,158,11,.3); }
+
+/* ─── Form Fields ─── */
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  color: var(--slate-soft);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.field input, .field select {
+  width: 100%;
+  background: var(--ink-soft);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  color: var(--paper);
+  font-size: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field input::placeholder { color: var(--slate); }
+
+.field input:focus, .field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.16);
+  outline: none;
+}
+
+.field-error {
+  color: var(--coral);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.field-hint {
+  color: var(--slate-soft);
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+
+/* ─── Ledger ─── */
+
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ledger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ledger-row:last-child { border-bottom: none; }
+
+.ledger-label {
+  font-size: 14.5px;
+  color: var(--paper);
+}
+
+.ledger-sub {
+  font-size: 12.5px;
+  color: var(--slate-soft);
+  margin-top: 2px;
+}
+
+.ledger-amount {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ledger-amount.positive { color: var(--teal); }
+.ledger-amount.negative { color: var(--coral); }
+.ledger-amount.neutral { color: var(--slate-soft); }
+
+/* ─── Status Pills ─── */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+
+.pill-pending { background: rgba(10, 132, 255, 0.16); color: var(--accent-bright); }
+.pill-approved, .pill-paid { background: rgba(45, 212, 191, 0.15); color: var(--teal); }
+.pill-rejected { background: rgba(255, 107, 91, 0.15); color: var(--coral); }
+
+/* ─── Balance Hero ─── */
+
+.balance-hero {
+  text-align: left;
+  padding: 22px 20px;
+  background: var(--surface-raised);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card), var(--glass-sheen);
+}
+
+.balance-label {
+  font-size: 13px;
+  color: var(--slate-soft);
+  margin-bottom: 8px;
+}
+
+.balance-figure {
+  font-family: var(--font-mono);
+  font-size: 33px;
+  font-weight: 600;
+  color: var(--paper);
+  letter-spacing: -0.01em;
+}
+
+.balance-figure .cents { color: var(--slate-soft); font-size: 20px; }
+
+@media (min-width: 768px) {
+  .balance-figure {
+    font-size: 42px;
+  }
+}
+
+/* ─── Progress Bar ─── */
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--ink-soft);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.progress-fill.full { background: var(--coral); }
+
+/* ─── Bottom Nav (Sticky, Responsive) ─── */
+
+.bottom-nav {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  background: rgba(6, 8, 13, 0.62);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-top: 1px solid var(--line);
+  padding: 9px 4px calc(9px + env(safe-area-inset-bottom));
+  margin-top: auto;
+  z-index: 40;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  color: var(--slate-soft);
+  padding: 6px 4px;
+  border-radius: 10px;
+  transition: color 0.15s;
+  text-decoration: none;
+}
+
+.nav-item.active { color: var(--accent-bright); }
+.nav-item svg { width: 19px; height: 19px; }
+.nav-item i { font-size: 19px; }
+.nav-item span { font-size: 10px; }
+
+/* ─── Desktop Nav ─── */
+@media (min-width: 768px) {
+  .bottom-nav {
+    padding: 12px 8px calc(12px + env(safe-area-inset-bottom));
+    max-width: var(--app-max-width-desktop);
+    margin: 0 auto;
+  }
+  .nav-item {
+    font-size: 11.5px;
     padding: 8px 12px;
-    color: var(--paper);
-    font-size: 16px;
-    text-align: center;
-    outline: none;
-    transition: border-color 0.15s;
-    font-family: var(--font-mono);
   }
-  .gc-count-row input:focus { border-color: var(--accent); }
-  .gc-count-row .hint { font-size: 12px; color: var(--slate); }
+  .nav-item svg { width: 22px; height: 22px; }
+  .nav-item i { font-size: 22px; }
+}
 
-  .gc-multi-inputs { margin-top: 8px; max-height: 400px; overflow-y: auto; }
-  .gc-card-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--line);
+/* ─── Toast ─── */
+
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(20, 26, 38, 0.72);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 999;
+  max-width: 90%;
+  text-align: center;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.toast.error { border-color: rgba(255, 107, 91, 0.45); }
+
+/* ─── Top Bar ─── */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 6px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(6, 8, 13, 0.5);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-bottom: 3px;
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--slate-soft);
+  margin-bottom: 16px;
+}
+
+.section {
+  padding: 0 18px 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-heading h2 { font-size: 16px; }
+.section-heading .see-all { font-size: 13px; color: var(--accent-bright); }
+
+/* ─── Desktop Section Padding ─── */
+@media (min-width: 768px) {
+  .section {
+    padding: 0 0 24px;
   }
-  .gc-card-row:last-child { border-bottom: none; }
-  .gc-card-index { font-size: 12px; color: var(--slate-soft); font-weight: 600; min-width: 28px; text-align: right; }
-  .gc-card-code { flex: 2; min-width: 0; }
-  .gc-card-value { flex: 1; min-width: 0; }
-  .gc-card-code input, .gc-card-value input {
-    width: 100%;
-    background: var(--ink);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-sm);
-    padding: 8px 10px;
-    color: var(--paper);
-    font-size: 13px;
-    font-family: var(--font-mono);
-    outline: none;
-    transition: border-color 0.15s;
-    box-sizing: border-box;
+}
+
+/* ─── Misc Utility ─── */
+
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.muted { color: var(--slate-soft); }
+.center-text { text-align: center; }
+.small { font-size: 12.5px; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  margin: 20px 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--slate-soft);
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.btn-secondary .spinner, .btn-ghost .spinner {
+  border: 2px solid rgba(245, 247, 250, 0.25);
+  border-top-color: var(--paper);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* =========================================================================
+   GLASS TREATMENT — page-specific surface classes
+   Each page defines its own card-like classes locally but doesn't repeat
+   the blur/sheen properties. This one block applies the frosted-glass
+   effect to all of them centrally.
+   ========================================================================= */
+
+.hero-card,
+.fund-panel,
+.stat-box,
+.trade-row,
+.holding-pill,
+.asset-selector,
+.dir-btn,
+.dur-chip,
+.amount-input-wrap,
+.return-bar,
+.trade-modal-card,
+.hist-item,
+.asset-list,
+.asset-option:hover,
+.asset-option.selected,
+.balance-strip,
+.company-card,
+.company-detail-header,
+.plan-card,
+.modal-sheet,
+.portfolio-card,
+.seg-tabs,
+.method-tab,
+.section-card,
+.copy-btn,
+.dep-item,
+.method-card,
+.tabs,
+.tab.active,
+.ticket-card,
+.otp-box,
+.wallet-address,
+.gc-logo,
+.input-field,
+.data-card,
+.admin-form-card,
+.gc-type-btn,
+.gc-card-row,
+.image-upload-box,
+.wallet-option {
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--glass-sheen);
+}
+
+/* =========================================================================
+   RESPONSIVE GRID HELPERS
+   ========================================================================= */
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+
+@media (max-width: 768px) {
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr 1fr;
   }
-  .gc-card-code input:focus, .gc-card-value input:focus { border-color: var(--accent); }
-  .gc-card-remove {
-    background: transparent;
-    border: none;
-    color: var(--coral);
-    cursor: pointer;
-    font-size: 16px;
-    padding: 4px 6px;
-    border-radius: 4px;
-    transition: background 0.15s;
-    line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr;
   }
-  .gc-card-remove:hover { background: rgba(255, 107, 91, 0.1); }
+}
 
-  .image-upload-row {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-top: 12px;
-  }
-  .image-upload-box {
-    flex: 1;
-    min-width: 140px;
-    background: var(--ink-soft);
-    border: 1px dashed var(--line-strong);
-    border-radius: var(--radius-sm);
-    padding: 12px;
-    text-align: center;
-    transition: border-color 0.2s;
-    cursor: pointer;
-  }
-  .image-upload-box:hover { border-color: var(--accent); }
-  .image-upload-box label {
-    display: block;
-    font-size: 12px;
-    color: var(--slate-soft);
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .image-upload-box input[type="file"] { display: none; }
-  .image-preview {
-    max-width: 100%;
-    max-height: 120px;
-    margin-top: 8px;
-    border-radius: 6px;
-    object-fit: contain;
-    background: #fff;
-    display: none;
-  }
-  .image-preview.show { display: block; }
-  .image-upload-box .icon { font-size: 28px; color: var(--accent); margin-bottom: 4px; display: block; }
+/* =========================================================================
+   HIDE ON DESKTOP / MOBILE
+   ========================================================================= */
 
-  .total-value-box {
-    text-align: center;
-    font-size: 14px;
-    color: var(--slate-soft);
-    margin-top: 16px;
-    padding: 12px;
-    background: var(--ink-soft);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--line);
-  }
-  .total-value-box strong {
-    color: var(--teal);
-    font-family: var(--font-mono);
-    font-size: 20px;
-    font-weight: 700;
-  }
+@media (min-width: 768px) {
+  .hide-desktop { display: none !important; }
+}
 
-  .submit-btn {
-    width: 100%;
-    padding: 15px;
-    border-radius: var(--radius-md);
-    border: none;
-    background: linear-gradient(180deg, var(--accent-bright), var(--accent));
-    color: #fff;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 18px;
-    transition: opacity 0.15s, transform 0.1s;
-    font-family: var(--font-body);
-    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.25);
-  }
-  .submit-btn:active { transform: scale(0.98); }
-  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+@media (max-width: 767px) {
+  .hide-mobile { display: none !important; }
+}
 
-  /* Paystack card-only button */
-  .paystack-pay-btn {
-    background: linear-gradient(180deg, #00B8E2, #0066A1);
-    box-shadow: 0 4px 14px rgba(0, 102, 161, 0.3);
-    width: 100%;
-    padding: 15px;
-    border-radius: var(--radius-md);
-    border: none;
-    color: #fff;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 12px;
-    transition: opacity 0.15s, transform 0.1s;
-    font-family: var(--font-body);
-  }
-  .paystack-pay-btn:active { transform: scale(0.98); }
-  .paystack-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+/* =========================================================================
+   ADMIN PANEL SPECIFIC STYLES
+   ========================================================================= */
 
-  .paystack-input {
-    background: var(--ink);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    color: var(--paper);
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.15s;
-    font-family: var(--font-body);
-  }
-  .paystack-input:focus { border-color: var(--accent); }
+.admin-shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
 
-  .dep-hist { padding: 0 20px 100px; }
-  .dep-hist-title {
-    font-size: 13px;
-    color: var(--slate-soft);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 20px 0 10px;
-    font-weight: 600;
-  }
-  .dep-item {
-    background: var(--surface-raised);
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    margin-bottom: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    box-shadow: var(--glass-sheen);
-  }
-  .dep-left { display: flex; flex-direction: column; gap: 3px; }
-  .dep-type { font-size: 13px; font-weight: 600; }
-  .dep-meta { font-size: 12px; color: var(--slate-soft); }
-  .dep-right { text-align: right; }
-  .dep-amount { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--teal); }
-  .dep-status { font-size: 11px; margin-top: 2px; }
-  .status-pending { color: var(--accent-bright); }
-  .status-confirmed { color: var(--teal); }
-  .status-rejected { color: var(--coral); }
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  margin: 20px 0 0;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
 
-  .balance-strip {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    padding: 12px 18px;
-    margin: 12px 20px 0;
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    box-shadow: var(--glass-sheen);
-  }
-  .balance-strip .lbl { font-size: 12px; color: var(--slate-soft); margin-bottom: 2px; }
-  .balance-strip .val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--accent); }
+.admin-tab {
+  padding: 10px 14px;
+  white-space: nowrap;
+  font-size: 13.5px;
+  color: var(--slate-soft);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.admin-tab.active { color: var(--paper); border-bottom-color: var(--accent); }
 
-  .card-icons {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin: 6px 0;
-  }
-  .card-icons i {
-    font-size: 24px;
-    color: var(--slate-soft);
-    opacity: 0.7;
-  }
-  .card-icons i:hover { opacity: 1; }
-  .card-icons .fa-cc-visa { color: #1a1f71; }
-  .card-icons .fa-cc-mastercard { color: #eb001b; }
-  .card-icons .fa-cc-amex { color: #006fcf; }
+.admin-panel { display: none; padding-top: 20px; }
+.admin-panel.active { display: block; }
 
-  @media (max-width: 480px) {
-    .gc-card-row { flex-wrap: wrap; }
-    .gc-card-index { min-width: 20px; }
-    .gc-card-code { flex: 1 1 100%; }
-    .gc-card-value { flex: 1 1 100%; }
-    .gc-count-row { flex-wrap: wrap; }
-    .wallet-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-    .deposit-tab { font-size: 13px; padding: 10px 8px; }
-    .image-upload-row { flex-direction: column; }
-  }
-</style>
-</head>
-<body>
-<div class="app-shell">
-  <div class="top-bar">
-    <h1 class="page-title">Deposit</h1>
-    <span></span>
-  </div>
+.admin-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.admin-section-title { font-size: 15px; font-weight: 600; }
 
-  <div class="balance-strip" id="balance-strip">
-    <div>
-      <div class="lbl">Available Balance</div>
-      <div class="val" id="balance-display">$0.00</div>
-    </div>
-    <a href="/withdraw" class="btn-ghost" style="font-size:13px;">Withdraw</a>
-  </div>
+.admin-form-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.admin-form-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0 0 12px;
+}
 
-  <div style="padding:0 20px; margin-top:4px;">
-    <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds using cryptocurrency, gift card, or card payment.</p>
-  </div>
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 500px) { .form-grid-2 { grid-template-columns: 1fr; } }
 
-  <div class="deposit-tabs">
-    <button class="deposit-tab active" id="tab-crypto" onclick="switchTab('crypto')">Crypto</button>
-    <button class="deposit-tab" id="tab-giftcard" onclick="switchTab('giftcard')">Gift Card</button>
-    <button class="deposit-tab" id="tab-paystack" onclick="switchTab('paystack')">Pay with Card</button>
-  </div>
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.form-msg { font-size: 12.5px; }
 
-  <!-- ─── CRYPTO SECTION ─── -->
-  <div class="deposit-section" id="section-crypto">
-    <div class="section-card" id="crypto-loading">
-      <p class="muted small" style="text-align:center;padding:20px 0;">Loading wallet options...</p>
-    </div>
-    <div id="crypto-wallets" style="display:none;"></div>
-  </div>
+#login-gate { max-width: 360px; margin: 80px auto; }
 
-  <!-- ─── GIFT CARD SECTION ─── -->
-  <div class="deposit-section" id="section-giftcard" style="display:none;">
-    <div class="section-card">
-      <div style="font-size:13px; color:var(--slate-soft); margin-bottom:12px; font-weight:500;">Select gift card type</div>
-      <div class="gc-type-grid" id="gc-type-grid">
-        <button class="gc-type-btn selected" data-type="Amazon" onclick="selectGC(this)">Amazon</button>
-        <button class="gc-type-btn" data-type="Google Play" onclick="selectGC(this)">Google Play</button>
-        <button class="gc-type-btn" data-type="Apple iTunes" onclick="selectGC(this)">Apple iTunes</button>
-        <button class="gc-type-btn" data-type="Steam" onclick="selectGC(this)">Steam</button>
-        <button class="gc-type-btn" data-type="Vanilla Visa" onclick="selectGC(this)">Vanilla Visa</button>
-        <button class="gc-type-btn" data-type="Razer Gold" onclick="selectGC(this)">Razer Gold</button>
-      </div>
+.data-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.data-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.data-card-row:last-child { margin-bottom: 0; }
+.data-card-label { font-size: 11.5px; color: var(--slate-soft); flex-shrink: 0; }
+.data-card-value { font-size: 13px; color: var(--paper); text-align: right; word-break: break-word; }
+.data-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 
-      <div class="gc-count-row">
-        <label for="gc-count">Number of cards</label>
-        <input type="number" id="gc-count" min="1" max="20" value="1" onchange="updateGiftCardInputs()">
-        <span class="hint">(max 20)</span>
-      </div>
+.data-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.data-card-head-title { font-size: 14px; font-weight: 600; color: var(--paper); }
+.data-card-head-sub { font-size: 12px; color: var(--slate-soft); }
 
-      <div class="gc-multi-inputs" id="gc-multi-inputs"></div>
+.status-select {
+  background: var(--ink-soft);
+  color: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: var(--font-body);
+}
 
-      <!-- Image Upload -->
-      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--line);">
-        <div style="font-size:13px; color:var(--slate-soft); margin-bottom:8px; font-weight:500;">Upload gift card images</div>
-        <div class="image-upload-row">
-          <div class="image-upload-box" onclick="document.getElementById('front-image-input').click()">
-            <span class="icon"><i class="fas fa-camera"></i></span>
-            <label for="front-image-input">Front Image</label>
-            <input type="file" id="front-image-input" accept="image/*" capture="environment" onchange="previewImage(this, 'front-preview')">
-            <img id="front-preview" class="image-preview" alt="Front preview">
-          </div>
-          <div class="image-upload-box" onclick="document.getElementById('back-image-input').click()">
-            <span class="icon"><i class="fas fa-camera"></i></span>
-            <label for="back-image-input">Back Image</label>
-            <input type="file" id="back-image-input" accept="image/*" capture="environment" onchange="previewImage(this, 'back-preview')">
-            <img id="back-preview" class="image-preview" alt="Back preview">
-          </div>
-        </div>
-        <div style="font-size:11px; color:var(--slate); margin-top:6px;">
-          <i class="fas fa-info-circle"></i> You can take a photo or select from gallery. Images help us verify your gift card faster.
-        </div>
-      </div>
+.ticker-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
 
-      <div class="total-value-box">
-        Total Value: <strong id="total-gc-value">$0.00</strong>
-      </div>
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+@media (max-width: 420px) { .plans-grid { grid-template-columns: 1fr 1fr; } }
 
-      <button class="submit-btn" id="gc-submit-btn" onclick="submitGiftCards()">Submit Gift Cards</button>
-      <div class="notice-box" style="margin-top:14px;">
-        <strong>Note:</strong> Gift card deposits are manually reviewed. Once verified, funds are credited to your account within 1–4 hours. Ensure the cards are unused and have the full value available.
-      </div>
-    </div>
-  </div>
+.plan-mini-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  position: relative;
+}
+.plan-mini-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.plan-mini-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--slate-soft);
+  margin-bottom: 3px;
+}
+.plan-mini-row span:last-child { color: var(--paper); font-family: var(--font-mono); }
+.plan-mini-remove { display: flex; justify-content: flex-end; margin-top: 10px; }
 
-  <!-- ─── PAYSTACK SECTION (Card Only, No Dropdown) ─── -->
-  <div class="deposit-section" id="section-paystack" style="display:none;">
-    <div class="section-card">
-      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-        <span style="font-size:20px;"><i class="fas fa-credit-card"></i></span>
-        <h3 style="font-size:15px; margin:0;">Pay with Card</h3>
-        <span class="pill pill-approved" style="font-size:9px;">Visa · Mastercard · Verve</span>
-      </div>
-      <p style="color:var(--slate-soft); font-size:13px; margin-bottom:12px;">
-        Enter the amount in <strong>USD</strong>. It will be charged in your local currency.
-        <span id="paystack-status" style="display:block; font-size:11px; margin-top:4px;"></span>
-      </p>
+.add-form-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 10px 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  user-select: none;
+}
+.add-form-toggle .toggle-icon { font-size: 18px; line-height: 1; transition: transform 0.2s; }
+.add-form-toggle.open .toggle-icon { transform: rotate(45deg); }
+.add-form-body { display: none; }
+.add-form-body.open { display: block; }
 
-      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
-        <input type="number" id="paystack-amount" class="paystack-input" placeholder="Amount (USD)" min="1" step="1" style="flex:1; min-width:150px;">
-        <button class="paystack-pay-btn" onclick="payWithPaystack()" style="flex:0 0 auto; padding:10px 24px;">
-          <i class="fas fa-bolt"></i> Pay Now
-        </button>
-      </div>
+.image-link {
+  color: var(--accent);
+  text-decoration: underline;
+  font-size: 12px;
+  display: inline-block;
+  margin-right: 8px;
+}
+.image-link:hover { color: var(--accent-bright); }
+.no-images { color: var(--slate-soft); font-size: 12px; }
 
-      <div class="card-icons">
-        <i class="fab fa-cc-visa" title="Visa"></i>
-        <i class="fab fa-cc-mastercard" title="Mastercard"></i>
-        <i class="fab fa-cc-amex" title="American Express"></i>
-        <i class="fab fa-cc-apple-pay" title="Apple Pay"></i>
-        <i class="fas fa-credit-card" title="Verve"></i>
-      </div>
+.section-desc {
+  font-size: 13px;
+  color: var(--slate-soft);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
 
-      <div class="notice-box" style="margin-top:14px;">
-        <strong>Note:</strong> Card payments are processed instantly. Funds are credited to your account immediately after successful payment.
-      </div>
-    </div>
-  </div>
+.inline-edit {
+  display: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.inline-edit.show { display: block; }
+.inline-edit .form-field { margin-bottom: 8px; }
+.inline-edit .form-field label { font-size: 11px; }
+.inline-edit .form-field input,
+.inline-edit .form-field textarea { font-size: 12px; padding: 6px 10px; }
 
-  <!-- ─── DEPOSIT HISTORY ─── -->
-  <div class="dep-hist">
-    <div class="dep-hist-title">Deposit History</div>
-    <div id="deposit-history-list"><div class="empty-state small">No deposits yet.</div></div>
-  </div>
+/* =========================================================================
+   DEPOSIT PAGE SPECIFIC STYLES
+   ========================================================================= */
 
-  <!-- ─── BOTTOM NAV ─── -->
-  <nav class="bottom-nav">
-    <a href="/dashboard" class="nav-item">
-      <i class="fas fa-home"></i><span>Home</span>
-    </a>
-    <a href="/trading" class="nav-item">
-      <i class="fas fa-chart-line"></i><span>Trade</span>
-    </a>
-    <a href="/shares" class="nav-item">
-      <i class="fas fa-landmark"></i><span>Shares</span>
-    </a>
-    <a href="/deposit" class="nav-item active">
-      <i class="fas fa-coins"></i><span>Deposit</span>
-    </a>
-    <a href="/withdraw" class="nav-item">
-      <i class="fas fa-arrow-up"></i><span>Withdraw</span>
-    </a>
-    <a href="/support" class="nav-item">
-      <i class="fas fa-headset"></i><span>Support</span>
-    </a>
-  </nav>
-</div>
+.deposit-tabs {
+  display: flex;
+  gap: 0;
+  margin: 16px 20px 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-raised);
+}
+.deposit-tab {
+  flex: 1;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--slate-soft);
+  border: none;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+  letter-spacing: 0.01em;
+}
+.deposit-tab.active {
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--accent-bright);
+}
+.deposit-tab:hover:not(.active) { color: var(--paper); }
 
-<script src="/static/js/trovee.js"></script>
-<script>
-  Trovee.requireAuth();
+.wallet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.wallet-option {
+  background: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 14px 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  color: var(--paper);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+}
+.wallet-option:hover { border-color: var(--accent); transform: translateY(-1px); }
+.wallet-option.selected {
+  border-color: var(--accent);
+  background: rgba(10, 132, 255, 0.08);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.wallet-option img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; background: #fff; padding: 2px; }
+.wallet-option .name { font-size: 12.5px; font-weight: 600; color: var(--paper); line-height: 1.3; }
 
-  // ─── State ─────────────────────────────────────────────────────
-  let selectedWalletId = null;
-  let selectedGCType = 'Amazon';
-  let wallets = [];
-  let gcData = [];
-  let frontImageFile = null;
-  let backImageFile = null;
+.wallet-address {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  word-break: break-all;
+  line-height: 1.6;
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+}
 
-  // ─── Balance ──────────────────────────────────────────────────
-  async function loadBalance() {
-    try {
-      const me = await Trovee.api("/api/auth/me");
-      const bal = me.balance_local || 0;
-      document.getElementById("balance-display").textContent = `${me.currency_symbol}${bal.toFixed(2)}`;
-    } catch(e) {}
-  }
+.copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-body);
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-  // ─── Wallets ──────────────────────────────────────────────────
-  async function loadWallets() {
-    try {
-      const data = await Trovee.api("/api/deposit/wallets");
-      wallets = data.wallets || [];
-      document.getElementById("crypto-loading").style.display = "none";
-      const container = document.getElementById("crypto-wallets");
-      container.style.display = "";
+.notice-box {
+  background: rgba(10, 132, 255, 0.06);
+  border: 1px solid rgba(10, 132, 255, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--paper-dim);
+  line-height: 1.6;
+  margin-top: 14px;
+}
+.notice-box strong { color: var(--accent); }
 
-      if (!wallets.length) {
-        container.innerHTML = '<div class="section-card"><p class="muted small" style="text-align:center;padding:16px 0;">No crypto wallets configured yet. Contact support.</p></div>';
-        return;
-      }
+.gc-type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.gc-type-btn {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--ink-soft);
+  color: var(--slate-soft);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+}
+.gc-type-btn:hover { border-color: var(--accent); color: var(--paper); }
+.gc-type-btn.selected { background: var(--accent); color: var(--ink); border-color: var(--accent); }
 
-      let html = `<div class="wallet-grid">`;
-      wallets.forEach(w => {
-        html += `
-          <button class="wallet-option" data-id="${w.id}" onclick="selectWallet(${w.id})">
-            ${w.logo_url ? `<img src="${w.logo_url}" alt="${w.display_name}" onerror="this.style.display='none'">` : ''}
-            <span class="name">${w.display_name}</span>
-          </button>
-        `;
-      });
-      html += `</div>`;
-      html += `<div id="wallet-detail" style="display:none;"></div>`;
-      container.innerHTML = html;
+.gc-count-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 16px;
+  flex-wrap: wrap;
+}
+.gc-count-row label { font-size: 13px; color: var(--slate-soft); font-weight: 500; }
+.gc-count-row input {
+  width: 80px;
+  background: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--paper);
+  font-size: 16px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: var(--font-mono);
+}
+.gc-count-row input:focus { border-color: var(--accent); }
+.gc-count-row .hint { font-size: 12px; color: var(--slate); }
 
-      if (wallets.length > 0) selectWallet(wallets[0].id);
-    } catch(e) {
-      document.getElementById("crypto-loading").innerHTML = '<p class="muted small" style="text-align:center;padding:20px;">Unable to load wallets. Please refresh.</p>';
-    }
-  }
+.gc-multi-inputs { margin-top: 8px; max-height: 400px; overflow-y: auto; }
+.gc-card-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.gc-card-row:last-child { border-bottom: none; }
+.gc-card-index { font-size: 12px; color: var(--slate-soft); font-weight: 600; min-width: 28px; text-align: right; }
+.gc-card-code { flex: 2; min-width: 0; }
+.gc-card-value { flex: 1; min-width: 0; }
+.gc-card-code input, .gc-card-value input {
+  width: 100%;
+  background: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  color: var(--paper);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.gc-card-code input:focus, .gc-card-value input:focus { border-color: var(--accent); }
+.gc-card-remove {
+  background: transparent;
+  border: none;
+  color: var(--coral);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  line-height: 1;
+}
+.gc-card-remove:hover { background: rgba(255, 107, 91, 0.1); }
 
-  function selectWallet(id) {
-    selectedWalletId = id;
-    document.querySelectorAll(".wallet-option").forEach(el => {
-      el.classList.toggle("selected", parseInt(el.dataset.id) === id);
-    });
-    const detail = document.getElementById("wallet-detail");
-    const wallet = wallets.find(w => w.id === id);
-    if (!wallet) return;
-    detail.style.display = "";
-    detail.innerHTML = `
-      <div class="section-card" style="margin-top:14px;">
-        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;">
-          ${wallet.qr_url ? `
-          <div style="flex-shrink:0;">
-            <img src="${wallet.qr_url}" alt="QR Code"
-              style="width:120px;height:120px;border-radius:10px;object-fit:contain;background:#fff;padding:6px;"
-              onerror="this.parentElement.style.display='none'">
-            <div style="font-size:10px;color:var(--slate-soft);text-align:center;margin-top:4px;">Scan to deposit</div>
-          </div>` : ""}
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;color:var(--paper);margin-bottom:8px;">${wallet.display_name}</div>
-            <div style="font-size:11px;color:var(--slate-soft);margin-bottom:4px;">Wallet address</div>
-            <div class="wallet-address" id="current-wallet-address" style="word-break:break-all;font-size:12px;">${wallet.address}</div>
-          </div>
-        </div>
-        <button class="copy-btn" onclick="copyWallet()">
-          <i class="fas fa-copy"></i> Copy Address
-        </button>
-        <div class="notice-box" style="margin-top:10px;">
-          <strong>Important:</strong> Only send <strong>${wallet.display_name}</strong> to this address.
-          Sending the wrong cryptocurrency will result in permanent loss.
-          Deposits are credited after network confirmation.
-        </div>
-      </div>`;
-  }
+.image-upload-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.image-upload-box {
+  flex: 1;
+  min-width: 140px;
+  background: var(--ink-soft);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  text-align: center;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+.image-upload-box:hover { border-color: var(--accent); }
+.image-upload-box label {
+  display: block;
+  font-size: 12px;
+  color: var(--slate-soft);
+  font-weight: 500;
+  cursor: pointer;
+}
+.image-upload-box input[type="file"] { display: none; }
+.image-preview {
+  max-width: 100%;
+  max-height: 120px;
+  margin-top: 8px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #fff;
+  display: none;
+}
+.image-preview.show { display: block; }
+.image-upload-box .icon { font-size: 28px; color: var(--accent); margin-bottom: 4px; display: block; }
 
-  function copyWallet() {
-    const el = document.getElementById("current-wallet-address");
-    const addr = el ? el.textContent : "";
-    if (addr) {
-      navigator.clipboard.writeText(addr).then(() => {
-        Trovee.showToast("Address copied to clipboard!");
-      }).catch(() => {
-        Trovee.showToast("Copy failed — please copy manually.", "error");
-      });
-    }
-  }
+.total-value-box {
+  text-align: center;
+  font-size: 14px;
+  color: var(--slate-soft);
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--ink-soft);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+.total-value-box strong {
+  color: var(--teal);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+}
 
-  // ─── Tabs ──────────────────────────────────────────────────────
-  function switchTab(tab) {
-    document.getElementById("tab-crypto").className = "deposit-tab" + (tab === "crypto" ? " active" : "");
-    document.getElementById("tab-giftcard").className = "deposit-tab" + (tab === "giftcard" ? " active" : "");
-    document.getElementById("tab-paystack").className = "deposit-tab" + (tab === "paystack" ? " active" : "");
-    document.getElementById("section-crypto").style.display = tab === "crypto" ? "" : "none";
-    document.getElementById("section-giftcard").style.display = tab === "giftcard" ? "" : "none";
-    document.getElementById("section-paystack").style.display = tab === "paystack" ? "" : "none";
-  }
+.submit-btn {
+  width: 100%;
+  padding: 15px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 18px;
+  transition: opacity 0.15s, transform 0.1s;
+  font-family: var(--font-body);
+  box-shadow: 0 4px 14px rgba(10, 132, 255, 0.25);
+}
+.submit-btn:active { transform: scale(0.98); }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-  // ─── Gift Card Type ──────────────────────────────────────────
-  function selectGC(el) {
-    document.querySelectorAll(".gc-type-btn").forEach(b => b.classList.remove("selected"));
-    el.classList.add("selected");
-    selectedGCType = el.dataset.type;
-  }
+.paystack-pay-btn {
+  background: linear-gradient(180deg, #00B8E2, #0066A1);
+  box-shadow: 0 4px 14px rgba(0, 102, 161, 0.3);
+  width: 100%;
+  padding: 15px;
+  border-radius: var(--radius-md);
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: opacity 0.15s, transform 0.1s;
+  font-family: var(--font-body);
+}
+.paystack-pay-btn:active { transform: scale(0.98); }
+.paystack-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-  // ─── Image Preview ───────────────────────────────────────────
-  function previewImage(input, previewId) {
-    const preview = document.getElementById(previewId);
-    if (input.files && input.files[0]) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        preview.src = e.target.result;
-        preview.classList.add('show');
-      };
-      reader.readAsDataURL(input.files[0]);
-      if (previewId === 'front-preview') frontImageFile = input.files[0];
-      else backImageFile = input.files[0];
-    } else {
-      preview.classList.remove('show');
-      preview.src = '';
-      if (previewId === 'front-preview') frontImageFile = null;
-      else backImageFile = null;
-    }
-  }
+.paystack-input {
+  background: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--paper);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: var(--font-body);
+}
+.paystack-input:focus { border-color: var(--accent); }
 
-  // ─── Multi-card Logic ────────────────────────────────────────
-  function updateGiftCardInputs() {
-    const count = parseInt(document.getElementById('gc-count').value) || 1;
-    const maxCount = 20;
-    const validCount = Math.min(Math.max(count, 1), maxCount);
-    document.getElementById('gc-count').value = validCount;
+.card-icons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+.card-icons i {
+  font-size: 24px;
+  color: var(--slate-soft);
+  opacity: 0.7;
+}
+.card-icons i:hover { opacity: 1; }
+.card-icons .fa-cc-visa { color: #1a1f71; }
+.card-icons .fa-cc-mastercard { color: #eb001b; }
+.card-icons .fa-cc-amex { color: #006fcf; }
 
-    const container = document.getElementById('gc-multi-inputs');
-    let html = '';
+.dep-hist { padding: 0 20px 100px; }
+.dep-hist-title {
+  font-size: 13px;
+  color: var(--slate-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 20px 0 10px;
+  font-weight: 600;
+}
+.dep-item {
+  background: var(--surface-raised);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--glass-sheen);
+}
+.dep-left { display: flex; flex-direction: column; gap: 3px; }
+.dep-type { font-size: 13px; font-weight: 600; }
+.dep-meta { font-size: 12px; color: var(--slate-soft); }
+.dep-right { text-align: right; }
+.dep-amount { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--teal); }
+.dep-status { font-size: 11px; margin-top: 2px; }
+.status-pending { color: var(--accent-bright); }
+.status-confirmed { color: var(--teal); }
+.status-rejected { color: var(--coral); }
 
-    for (let i = 0; i < validCount; i++) {
-      const data = gcData[i] || { code: '', value: 0 };
-      html += `
-        <div class="gc-card-row" data-index="${i}">
-          <span class="gc-card-index">#${i+1}</span>
-          <div class="gc-card-code">
-            <input type="text" placeholder="Card code" value="${data.code || ''}" oninput="updateGCData(${i}, 'code', this.value)">
-          </div>
-          <div class="gc-card-value">
-            <input type="number" placeholder="Value (USD)" min="1" step="1" value="${data.value || ''}" oninput="updateGCData(${i}, 'value', parseFloat(this.value) || 0)">
-          </div>
-          ${validCount > 1 ? `<button class="gc-card-remove" onclick="removeGCCard(${i})">✕</button>` : ''}
-        </div>
-      `;
-    }
+.balance-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  margin: 12px 20px 0;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--glass-sheen);
+}
+.balance-strip .lbl { font-size: 12px; color: var(--slate-soft); margin-bottom: 2px; }
+.balance-strip .val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--accent); }
 
-    container.innerHTML = html;
-    updateTotalValue();
-  }
+/* =========================================================================
+   SHARES PAGE SPECIFIC STYLES
+   ========================================================================= */
 
-  function updateGCData(index, field, value) {
-    if (!gcData[index]) gcData[index] = { code: '', value: 0 };
-    gcData[index][field] = field === 'value' ? parseFloat(value) || 0 : value;
-    updateTotalValue();
-  }
+.view { display: none; }
+.view.active { display: block; }
 
-  function removeGCCard(index) {
-    gcData.splice(index, 1);
-    const count = parseInt(document.getElementById('gc-count').value) || 1;
-    document.getElementById('gc-count').value = Math.max(count - 1, 1);
-    updateGiftCardInputs();
-  }
+.company-grid { display: flex; flex-direction: column; gap: 12px; }
+.company-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 15px 15px 13px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.company-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.company-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+}
+.company-logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.company-logo .ticker-fallback {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.company-info { flex: 1; min-width: 0; }
+.company-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.company-ticker { font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: 0.06em; }
+.company-sector { font-size: 12px; color: var(--slate-soft); margin-top: 2px; }
+.company-plan-count {
+  font-size: 11px;
+  background: rgba(10, 132, 255,.12);
+  color: var(--accent);
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.company-chevron { color: var(--slate-soft); margin-left: 4px; }
 
-  function updateTotalValue() {
-    let total = 0;
-    gcData.forEach(d => { total += parseFloat(d.value) || 0; });
-    document.getElementById('total-gc-value').textContent = `$${total.toFixed(2)}`;
-  }
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 18px;
+  background: none;
+  border: none;
+  padding: 0;
+}
 
-  // ─── Submit Gift Cards ──────────────────────────────────────
-  async function submitGiftCards() {
-    const cards = [];
-    let hasError = false;
+.company-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin-bottom: 18px;
+}
+.company-detail-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  background: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+}
+.company-detail-logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.company-detail-logo .ticker-fallback { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--accent); }
+.company-detail-info .name { font-size: 18px; font-weight: 700; }
+.company-detail-info .meta { font-size: 12.5px; color: var(--slate-soft); margin-top: 3px; }
+.company-detail-info .desc { font-size: 13px; color: var(--paper); margin-top: 6px; line-height: 1.5; }
 
-    gcData.forEach((d, i) => {
-      const code = (d.code || '').trim();
-      const value = parseFloat(d.value) || 0;
-      if (!code) {
-        Trovee.showToast(`Enter the code for card #${i+1}.`, 'error');
-        hasError = true;
-        return;
-      }
-      if (value < 500) {
-        Trovee.showToast(`Minimum $500 per card (card #${i+1}: $${value.toFixed(2)}).`, 'error');
-        hasError = true;
-        return;
-      }
-      cards.push({ type: selectedGCType, code, value_usd: value });
-    });
+.plan-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 12px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+.plan-card.featured { border-color: var(--accent); }
+.plan-badge {
+  position: absolute;
+  top: -10px;
+  right: 18px;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+}
+.plan-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.plan-name { font-size: 15px; font-weight: 700; }
+.plan-price { font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--accent); text-align: right; }
+.plan-price .per { font-size: 11px; color: var(--slate-soft); font-family: var(--font-body); display: block; text-align: right; }
+.plan-stats {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.plan-stat { flex: 1; padding: 10px 8px; text-align: center; border-right: 1px solid var(--line); }
+.plan-stat:last-child { border-right: none; }
+.plan-stat .stat-lbl { font-size: 10px; color: var(--slate-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+.plan-stat .stat-val { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--teal); }
 
-    if (hasError || cards.length === 0) return;
+.multiplier-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 10px;
+}
+.multiplier-row label { font-size: 12px; color: var(--slate-soft); font-weight: 500; }
+.multiplier-row input {
+  width: 70px;
+  background: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  color: var(--paper);
+  font-size: 14px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.multiplier-row input:focus { border-color: var(--accent); }
+.multiplier-row .hint { font-size: 11px; color: var(--slate-soft); }
 
-    const btn = document.getElementById('gc-submit-btn');
-    btn.disabled = true;
-    btn.textContent = 'Submitting...';
+.plan-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+.plan-total .label { color: var(--slate-soft); }
+.plan-total .value { font-family: var(--font-mono); font-weight: 700; }
+.plan-total .value.price { color: var(--accent); }
+.plan-total .value.shares { color: var(--paper); }
 
-    try {
-      let success = 0, fail = 0;
-      const token = localStorage.getItem('trovee_token');
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(11,18,32,0.85);
+  z-index: 1000;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--surface-raised);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 28px 24px 36px;
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  animation: slide-up 0.25s ease;
+}
+@keyframes slide-up { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; text-align: center; }
+.confirm-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.confirm-row:last-of-type { border-bottom: none; }
+.confirm-row .label { color: var(--slate-soft); }
+.confirm-row .value { font-weight: 600; font-family: var(--font-mono); }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-actions .btn { flex: 1; }
 
-      for (const card of cards) {
-        const formData = new FormData();
-        formData.append('card_type', card.type);
-        formData.append('code', card.code);
-        formData.append('value_usd', card.value_usd);
-        if (frontImageFile) formData.append('front_image', frontImageFile);
-        if (backImageFile) formData.append('back_image', backImageFile);
+.portfolio-header { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+.portfolio-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.portfolio-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.portfolio-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  flex-shrink: 0;
+}
+.portfolio-logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.portfolio-logo .ticker-fallback { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--accent); }
+.portfolio-card-info { flex: 1; }
+.portfolio-card-info .name { font-size: 14px; font-weight: 700; }
+.portfolio-card-info .meta { font-size: 12px; color: var(--slate-soft); }
+.portfolio-cert-id { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+.portfolio-stats { display: flex; justify-content: space-between; font-size: 12.5px; }
+.portfolio-stats .stat { text-align: center; }
+.portfolio-stats .stat .sv { font-weight: 700; color: var(--teal); margin-bottom: 1px; }
+.portfolio-stats .stat .sl { color: var(--slate-soft); }
+.dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(10, 132, 255,.1);
+  border: 1px solid rgba(10, 132, 255,.3);
+  color: var(--accent);
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.dl-btn:hover { background: rgba(10, 132, 255,.2); }
+.portfolio-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
 
-        try {
-          const response = await fetch('/api/deposit/giftcard', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || 'Failed');
-          success++;
-        } catch (e) {
-          fail++;
-          console.error('Card submit error:', e);
-        }
-      }
+.seg-tabs {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+.seg-tab {
+  flex: 1;
+  text-align: center;
+  padding: 9px 6px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--slate-soft);
+  transition: background 0.15s, color 0.15s;
+}
+.seg-tab.active { background: var(--surface-raised); color: var(--paper); }
 
-      if (success > 0) {
-        Trovee.showToast(`${success} card${success>1?'s':''} submitted!`);
-        if (fail > 0) Trovee.showToast(`${fail} card${fail>1?'s':''} failed.`, 'error');
-      } else {
-        Trovee.showToast('Failed to submit gift cards.', 'error');
-      }
+.loading-shimmer {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-raised) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 12px;
+  height: 70px;
+  margin-bottom: 10px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-      gcData = [];
-      document.getElementById('gc-count').value = 1;
-      document.getElementById('front-preview').classList.remove('show');
-      document.getElementById('front-preview').src = '';
-      document.getElementById('back-preview').classList.remove('show');
-      document.getElementById('back-preview').src = '';
-      frontImageFile = null;
-      backImageFile = null;
-      document.getElementById('front-image-input').value = '';
-      document.getElementById('back-image-input').value = '';
-      updateGiftCardInputs();
-      loadHistory();
-      loadBalance();
-    } catch (err) {
-      Trovee.showToast(err.message || 'Something went wrong.', 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Submit Gift Cards';
-    }
-  }
+/* =========================================================================
+   TRADING PAGE SPECIFIC STYLES
+   ========================================================================= */
 
-  // ─── Paystack (Card Only, No Dropdown) ──────────────────────
-  async function checkPaystackStatus() {
-    try {
-      const data = await Trovee.api('/api/paystack/status');
-      const statusEl = document.getElementById('paystack-status');
-      if (data.configured) {
-        statusEl.innerHTML = '<span style="color:var(--teal);">✅ Card payments are active</span>';
-      } else {
-        statusEl.innerHTML = '<span style="color:var(--coral);">⚠️ Paystack not configured. Use crypto or gift cards.</span>';
-      }
-    } catch(e) {}
-  }
+.trade-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.asset-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-raised);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border: 1px solid var(--line-strong);
+  transition: border-color 0.2s;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.asset-selector:hover { border-color: var(--accent); }
+.asset-name { font-weight: 700; font-size: 15px; }
+.asset-price-info { display: flex; align-items: baseline; gap: 10px; }
+.asset-price {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  transition: color 0.3s;
+}
+.asset-price.up { color: #2DD4BF; }
+.asset-price.down { color: #E8604C; }
+.price-change {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+.price-change.up { color: #2DD4BF; background: rgba(45, 212, 191, 0.12); }
+.price-change.down { color: #E8604C; background: rgba(232, 96, 76, 0.12); }
 
-  async function payWithPaystack() {
-    const amount = document.getElementById('paystack-amount').value;
-    if (!amount || parseFloat(amount) < 1) {
-      Trovee.showToast('Enter a valid amount (minimum 1 USD).', 'error');
-      return;
-    }
+.gauge-container {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 20px 20px 15px;
+  margin: 10px 16px 0;
+  border: 1px solid var(--line);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--glass-sheen);
+}
+.gauge-wrapper { position: relative; width: 100%; max-width: 340px; margin: 0 auto; }
+.gauge-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.gauge-needle {
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: 100px 100px;
+}
+.gauge-needle-circle { transition: fill 0.5s; }
+.gauge-center-text {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  transition: fill 0.5s;
+}
+.gauge-label-text {
+  font-size: 10px;
+  fill: var(--slate-soft);
+  text-anchor: middle;
+  dominant-baseline: central;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
 
-    const btn = document.querySelector('[onclick="payWithPaystack()"]');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>';
+.trade-form {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+.direction-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.dir-btn {
+  padding: 11px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--line-strong);
+  background: var(--surface-raised);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.dir-btn.up.active { background: #16a34a; border-color: #4ade80; color: #fff; }
+.dir-btn.down.active { background: #b91c1c; border-color: #f87171; color: #fff; }
+.dir-btn:not(.active):hover { border-color: var(--accent); }
 
-    try {
-      // The backend will determine the currency based on the user's country
-      const response = await Trovee.api('/api/paystack/initialize', {
-        method: 'POST',
-        body: {
-          amount: parseFloat(amount),
-          // No currency/country fields – backend uses user's country
-          channels: ['card']
-        }
-      });
+.duration-row {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.dur-chip {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  font-size: 12px;
+  color: var(--slate-soft);
+  cursor: pointer;
+  background: var(--surface-raised);
+  transition: all 0.15s;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.dur-chip.active { background: #4ade80; color: #0B1220; border-color: #4ade80; font-weight: 600; }
+.dur-chip:hover { border-color: var(--accent); }
 
-      if (response.status === 'fallback') {
-        Trovee.showToast('Paystack is not configured. Please use crypto or gift cards.', 'error');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-bolt"></i> Pay Now';
-        return;
-      }
+.return-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-raised);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  border: 1px solid var(--line-strong);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.return-label { font-size: 13px; color: var(--slate-soft); }
+.return-val { font-family: var(--font-mono); color: #4ade80; font-size: 14px; font-weight: 700; }
 
-      if (response.link) {
-        window.location.href = response.link;
-      } else {
-        Trovee.showToast('Payment initialization failed. Please try again.', 'error');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-bolt"></i> Pay Now';
-      }
-    } catch (e) {
-      Trovee.showToast(e.message || 'Something went wrong.', 'error');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-bolt"></i> Pay Now';
-    }
-  }
+.trade-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.trade-btn.up-btn { background: #16a34a; color: #fff; }
+.trade-btn.down-btn { background: #b91c1c; color: #fff; }
+.trade-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  // ─── History ──────────────────────────────────────────────────
-  async function loadHistory() {
-    try {
-      const data = await Trovee.api('/api/deposit/history');
-      const el = document.getElementById('deposit-history-list');
-      if (!data.deposits || !data.deposits.length) {
-        el.innerHTML = '<div class="empty-state small">No deposits yet.</div>';
-        return;
-      }
-      el.innerHTML = data.deposits.map(d => {
-        const statusClass = d.status === 'confirmed' ? 'status-confirmed' : d.status === 'rejected' ? 'status-rejected' : 'status-pending';
-        const statusLabel = d.status === 'confirmed' ? 'Confirmed' : d.status === 'rejected' ? 'Rejected' : 'Pending review';
-        const typeLabel = d.method === 'btc' ? 'Bitcoin' : `Gift Card (${d.card_type || ''})`;
-        const dt = new Date(d.created_at).toLocaleString();
-        const creditedAmt = d.status === 'confirmed' ? `+$${(d.credited_usd_cents/100).toFixed(2)}` : `$${d.value_usd.toFixed(2)}`;
-        return `
-          <div class="dep-item">
-            <div class="dep-left">
-              <div class="dep-type">${typeLabel}</div>
-              <div class="dep-meta">${dt}</div>
-            </div>
-            <div class="dep-right">
-              <div class="dep-amount">${creditedAmt}</div>
-              <div class="dep-status ${statusClass}">${statusLabel}</div>
-            </div>
-          </div>`;
-      }).join('');
-    } catch(e) {}
-  }
+.trade-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.trade-modal.show { display: flex; }
+.trade-modal-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  max-width: 360px;
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  max-height: 90vh;
+  overflow-y: auto;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--glass-sheen);
+}
+.trade-modal-asset { font-size: 26px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+.trade-modal-prices {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--slate-soft);
+  margin-bottom: 16px;
+}
+.trade-modal-prices .live { color: #4ade80; font-weight: 600; }
+.trade-modal-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.trade-modal-row { display: flex; justify-content: space-between; font-size: 14px; }
+.trade-modal-row .label { color: var(--slate-soft); }
+.trade-modal-row .val { font-family: var(--font-mono); }
+.trade-modal-row .val.profit { color: #4ade80; }
+.trade-modal-row .val.direction-down { color: #f87171; font-weight: 600; }
+.trade-modal-row .val.direction-up { color: #4ade80; font-weight: 600; }
 
-  // ─── Init ─────────────────────────────────────────────────────
-  document.addEventListener('DOMContentLoaded', function() {
-    updateGiftCardInputs();
-    checkPaystackStatus();
-  });
+.trade-history { padding: 0 16px 100px; margin-top: 8px; }
+.trade-hist-title {
+  font-size: 13px;
+  color: var(--slate-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 14px 0 10px;
+  font-weight: 600;
+}
+.hist-item {
+  background: var(--surface-raised);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--glass-sheen);
+}
+.hist-left { display: flex; flex-direction: column; gap: 2px; }
+.hist-asset { font-size: 14px; font-weight: 600; }
+.hist-meta { font-size: 11px; color: var(--slate-soft); }
+.hist-right { text-align: right; }
+.hist-amount { font-family: var(--font-mono); font-size: 14px; font-weight: 700; }
+.hist-amount.win { color: #4ade80; }
+.hist-amount.loss { color: #f87171; }
+.hist-result { font-size: 11px; color: var(--slate-soft); margin-top: 1px; }
+.hist-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.hist-badge.up { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+.hist-badge.down { background: rgba(248, 113, 113, 0.15); color: #f87171; }
 
-  loadBalance();
-  loadWallets();
-  loadHistory();
-</script>
-</body>
-</html>
+.asset-dropdown {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  z-index: 8888;
+}
+.asset-dropdown.show { display: flex; align-items: flex-end; justify-content: center; }
+.asset-list {
+  background: var(--surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%;
+  max-width: 480px;
+  padding: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--glass-sheen);
+}
+.asset-list-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+.asset-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+  transition: all 0.15s;
+}
+.asset-option:hover, .asset-option.selected {
+  background: var(--surface-raised);
+  border-color: var(--line-strong);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.asset-opt-name { font-weight: 600; font-size: 14px; }
+.asset-opt-desc { font-size: 12px; color: var(--slate-soft); }
+.asset-opt-price { font-family: var(--font-mono); font-size: 14px; }
+
+/* =========================================================================
+   RESPONSIVE OVERRIDES
+   ========================================================================= */
+
+@media (max-width: 480px) {
+  .trade-header { padding: 10px 16px 0; flex-direction: column; align-items: stretch; gap: 6px; }
+  .asset-selector { justify-content: center; }
+  .asset-price-info { justify-content: center; }
+  .trade-form { padding: 0 12px; gap: 8px; }
+  .trade-modal-card { padding: 20px 16px; }
+  .gauge-wrapper { max-width: 280px; }
+  .gauge-center-text { font-size: 22px; }
+
+  .admin-shell { padding: 16px 12px 60px; }
+  .data-card { padding: 12px 13px; }
+  .data-card-head { flex-wrap: wrap; gap: 6px; }
+  .data-card-head-title { font-size: 13px; }
+  .data-card-actions { gap: 8px; }
+  .data-card-actions .btn-sm { flex: 1; text-align: center; }
+  .btn-admin { width: 100%; }
+  .form-actions { flex-direction: column; align-items: stretch; }
+  .admin-form-card { padding: 13px; }
+  .ticker-badge { width: 32px; height: 32px; font-size: 8px; }
+  .admin-tab { padding: 9px 11px; font-size: 12.5px; }
+
+  .gc-card-row { flex-wrap: wrap; }
+  .gc-card-index { min-width: 20px; }
+  .gc-card-code { flex: 1 1 100%; }
+  .gc-card-value { flex: 1 1 100%; }
+  .gc-count-row { flex-wrap: wrap; }
+  .wallet-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  .deposit-tab { font-size: 13px; padding: 10px 8px; }
+  .image-upload-row { flex-direction: column; }
+  .plans-grid { grid-template-columns: 1fr 1fr; }
+}
