@@ -1,7 +1,5 @@
-
 """
 Paystack integration for Trovee – deposits and withdrawals.
-Supports multiple African countries (Nigeria, Ghana, Kenya, South Africa, etc.)
 If Paystack is not configured, the service gracefully falls back to mock mode.
 """
 
@@ -16,7 +14,6 @@ PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
 PAYSTACK_WEBHOOK_SECRET = os.environ.get("PAYSTACK_WEBHOOK_SECRET", "")
 
-# Paystack API endpoints
 PAYSTACK_API_URL = "https://api.paystack.co"
 
 
@@ -27,32 +24,25 @@ class PaystackService:
             "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
             "Content-Type": "application/json"
         }
-    
+
     def is_configured(self):
-        """Check if Paystack is configured."""
         return self.connected
-    
+
     def get_supported_countries(self):
-        """Return countries supported by Paystack with their currencies."""
         return {
             "NG": {"name": "Nigeria", "currency": "NGN", "code": "NG"},
             "GH": {"name": "Ghana", "currency": "GHS", "code": "GH"},
             "KE": {"name": "Kenya", "currency": "KES", "code": "KE"},
             "ZA": {"name": "South Africa", "currency": "ZAR", "code": "ZA"},
         }
-    
+
     def get_country_info(self, country_code):
-        """Get country-specific payment configuration."""
         countries = self.get_supported_countries()
         return countries.get(country_code.upper(), countries.get("NG"))
-    
-    def initialize_payment(self, user_email, amount, currency="NGN", reference=None, callback_url=None, metadata=None):
-        """
-        Initialize a payment with Paystack.
-        Returns payment URL.
-        """
+
+    def initialize_payment(self, user_email, amount, currency="NGN", reference=None,
+                           callback_url=None, metadata=None, channels=None):
         if not self.connected:
-            # Paystack not configured – fallback
             return {
                 "status": "fallback",
                 "data": {
@@ -60,29 +50,34 @@ class PaystackService:
                     "reference": reference,
                     "amount": amount,
                     "currency": currency,
-                    "message": "Paystack not configured. Please set PAYSTACK_SECRET_KEY."
+                    "message": "Paystack not configured."
                 }
             }
-        
+
         if not reference:
             reference = f"TROVEE-{int(datetime.now().timestamp())}-{user_email.split('@')[0]}"
-        
+
         if not callback_url:
             callback_url = os.environ.get("BASE_URL", "https://yourdomain.com") + "/api/paystack/callback"
-        
-        payload = {
-            "email": user_email,
-            "amount": int(amount * 100),  # Paystack uses kobo (cents)
-            "currency": currency,
-            "reference": reference,
-            "callback_url": callback_url,
-            "metadata": metadata or {
+
+        # Build metadata to store user info
+        if not metadata:
+            metadata = {
                 "custom_fields": [
                     {"display_name": "Trovee Deposit", "variable_name": "trovee_deposit", "value": amount}
                 ]
             }
+
+        payload = {
+            "email": user_email,
+            "amount": int(amount * 100),  # kobo
+            "currency": currency,
+            "reference": reference,
+            "callback_url": callback_url,
+            "channels": channels or ["card"],   # Card only by default
+            "metadata": metadata
         }
-        
+
         try:
             response = requests.post(
                 f"{PAYSTACK_API_URL}/transaction/initialize",
@@ -91,7 +86,6 @@ class PaystackService:
                 timeout=30
             )
             data = response.json()
-            
             if data.get("status"):
                 return {
                     "status": "success",
@@ -110,13 +104,9 @@ class PaystackService:
                 }
         except Exception as e:
             print(f"[trovee] Paystack init error: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
-    
+            return {"status": "error", "message": str(e)}
+
     def verify_payment(self, reference):
-        """Verify a payment by reference."""
         if not self.connected:
             return {
                 "status": "fallback",
@@ -127,7 +117,7 @@ class PaystackService:
                     "currency": "NGN"
                 }
             }
-        
+
         try:
             response = requests.get(
                 f"{PAYSTACK_API_URL}/transaction/verify/{reference}",
@@ -135,14 +125,13 @@ class PaystackService:
                 timeout=30
             )
             data = response.json()
-            
             if data.get("status"):
                 return {
                     "status": "success",
                     "data": {
                         "status": data.get("data", {}).get("status"),
                         "reference": data.get("data", {}).get("reference"),
-                        "amount": data.get("data", {}).get("amount", 0) / 100,  # Convert from kobo
+                        "amount": data.get("data", {}).get("amount", 0) / 100,
                         "currency": data.get("data", {}).get("currency", "NGN"),
                         "metadata": data.get("data", {}).get("metadata", {})
                     }
@@ -154,40 +143,22 @@ class PaystackService:
                 }
         except Exception as e:
             print(f"[trovee] Paystack verify error: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
-    
+            return {"status": "error", "message": str(e)}
+
     def get_banks(self, country_code="NG"):
-        """Get list of banks for a country."""
         if not self.connected:
-            # Fallback banks for testing
             fallback = {
                 "NG": [
                     {"code": "001", "name": "Access Bank"},
                     {"code": "004", "name": "GTBank"},
                     {"code": "011", "name": "First Bank"},
-                    {"code": "033", "name": "UBA"},
-                    {"code": "057", "name": "Zenith Bank"},
-                    {"code": "214", "name": "FCMB"},
-                    {"code": "058", "name": "Guaranty Trust Bank"},
                 ],
-                "GH": [
-                    {"code": "001", "name": "Ghana Commercial Bank"},
-                    {"code": "002", "name": "Access Bank Ghana"},
-                ],
-                "KE": [
-                    {"code": "001", "name": "Equity Bank"},
-                    {"code": "002", "name": "KCB Bank"},
-                ],
-                "ZA": [
-                    {"code": "001", "name": "First National Bank"},
-                    {"code": "002", "name": "Standard Bank"},
-                ],
+                "GH": [{"code": "001", "name": "Ghana Commercial Bank"}],
+                "KE": [{"code": "001", "name": "Equity Bank"}],
+                "ZA": [{"code": "001", "name": "First National Bank"}],
             }
             return fallback.get(country_code.upper(), fallback.get("NG", []))
-        
+
         try:
             response = requests.get(
                 f"{PAYSTACK_API_URL}/bank",
@@ -196,38 +167,27 @@ class PaystackService:
                 timeout=30
             )
             data = response.json()
-            if data.get("status"):
-                return data.get("data", [])
-            return []
+            return data.get("data", []) if data.get("status") else []
         except Exception as e:
             print(f"[trovee] Paystack banks error: {e}")
             return []
-    
+
     def resolve_bank_account(self, bank_code, account_number):
-        """Verify a bank account number."""
         if not self.connected:
-            return {
-                "status": "success",
-                "data": {"account_name": "John Doe"}
-            }
-        
+            return {"status": "success", "data": {"account_name": "John Doe"}}
+
         try:
             response = requests.get(
                 f"{PAYSTACK_API_URL}/bank/resolve",
                 headers=self.headers,
-                params={
-                    "bank_code": bank_code,
-                    "account_number": account_number
-                },
+                params={"bank_code": bank_code, "account_number": account_number},
                 timeout=30
             )
             data = response.json()
             if data.get("status"):
                 return {
                     "status": "success",
-                    "data": {
-                        "account_name": data.get("data", {}).get("account_name")
-                    }
+                    "data": {"account_name": data.get("data", {}).get("account_name")}
                 }
             else:
                 return {
@@ -236,13 +196,10 @@ class PaystackService:
                 }
         except Exception as e:
             print(f"[trovee] Paystack resolve account error: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
-    
-    def initiate_transfer(self, amount, bank_code, account_number, account_name, reference=None, narration=None, currency="NGN"):
-        """Initiate a transfer/payout to a bank account."""
+            return {"status": "error", "message": str(e)}
+
+    def initiate_transfer(self, amount, bank_code, account_number, account_name,
+                          reference=None, narration=None, currency="NGN"):
         if not self.connected:
             return {
                 "status": "fallback",
@@ -251,13 +208,13 @@ class PaystackService:
                     "message": "Paystack not configured. Withdrawal marked as processed."
                 }
             }
-        
+
         if not reference:
             reference = f"TROVEE-TRF-{int(datetime.now().timestamp())}"
-        
+
         payload = {
             "source": "balance",
-            "amount": int(amount * 100),  # Convert to kobo
+            "amount": int(amount * 100),
             "bank_code": bank_code,
             "account_number": account_number,
             "account_name": account_name,
@@ -265,7 +222,7 @@ class PaystackService:
             "narration": narration or f"Trovee withdrawal for account {account_number}",
             "currency": currency
         }
-        
+
         try:
             response = requests.post(
                 f"{PAYSTACK_API_URL}/transfer",
@@ -274,7 +231,6 @@ class PaystackService:
                 timeout=30
             )
             data = response.json()
-            
             if data.get("status"):
                 return {
                     "status": "success",
@@ -292,33 +248,21 @@ class PaystackService:
                 }
         except Exception as e:
             print(f"[trovee] Paystack transfer error: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
-    
+            return {"status": "error", "message": str(e)}
+
     def webhook_verify_signature(self, payload, signature):
-        """Verify webhook signature for security."""
         if not PAYSTACK_WEBHOOK_SECRET:
-            # If no webhook secret is set, skip verification (less secure but works)
             return True
-        
         expected = hmac.new(
             PAYSTACK_WEBHOOK_SECRET.encode(),
             payload.encode(),
             hashlib.sha512
         ).hexdigest()
         return hmac.compare_digest(signature, expected)
-    
+
     def list_banks_with_currency(self, country_code="NG"):
-        """Get banks with their supported currencies."""
         banks = self.get_banks(country_code)
-        currency_map = {
-            "NG": "NGN",
-            "GH": "GHS",
-            "KE": "KES",
-            "ZA": "ZAR"
-        }
+        currency_map = {"NG": "NGN", "GH": "GHS", "KE": "KES", "ZA": "ZAR"}
         currency = currency_map.get(country_code.upper(), "NGN")
         return [
             {
