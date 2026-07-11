@@ -12,6 +12,7 @@
 <style>
   body { background: var(--ink); }
   .admin-shell { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+
   .admin-tabs {
     display: flex; gap: 0; margin: 20px 0 0;
     border-bottom: 1px solid var(--line);
@@ -26,13 +27,16 @@
     flex-shrink: 0;
   }
   .admin-tab.active { color: var(--paper); border-bottom-color: var(--accent); }
+
   .admin-panel { display: none; padding-top: 20px; }
   .admin-panel.active { display: block; }
+
   .admin-section-head {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 14px;
   }
   .admin-section-title { font-size: 15px; font-weight: 600; }
+
   .admin-form-card {
     background: var(--surface-raised); border: 1px solid var(--line);
     border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;
@@ -41,8 +45,10 @@
     font-size: 13px; font-weight: 600; color: var(--accent);
     margin: 0 0 12px;
   }
+
   .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (max-width: 500px) { .form-grid-2 { grid-template-columns: 1fr; } }
+
   .form-field { display: flex; flex-direction: column; gap: 4px; }
   .form-field label { font-size: 11.5px; color: var(--slate-soft); font-weight: 500; }
   .form-field input, .form-field textarea, .form-field select {
@@ -53,8 +59,10 @@
   }
   .form-field input:focus, .form-field textarea:focus { border-color: var(--accent); }
   .form-field textarea { resize: vertical; }
+
   .form-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .form-msg { font-size: 12.5px; }
+
   .btn-admin {
     background: linear-gradient(180deg, var(--accent-bright), var(--accent));
     color: #fff; border: none; border-radius: 8px; padding: 10px 18px;
@@ -62,6 +70,7 @@
     transition: opacity 0.15s; white-space: nowrap;
   }
   .btn-admin:active { opacity: 0.85; }
+
   .btn-sm {
     border: none; border-radius: 6px; padding: 5px 11px;
     font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body);
@@ -71,6 +80,8 @@
   .btn-sm-blue  { background: rgba(10,132,255,.14); color: var(--accent); border: 1px solid rgba(10,132,255,.3); }
   .btn-sm-red   { background: rgba(255,107,91,.12); color: var(--coral); border: 1px solid rgba(255,107,91,.3); }
   .btn-sm-ghost { background: none; color: var(--slate-soft); border: 1px solid var(--line-strong); }
+  .btn-sm-teal  { background: rgba(45,212,191,.12); color: var(--teal); border: 1px solid rgba(45,212,191,.3); }
+  .btn-sm-warning { background: rgba(245,158,11,.12); color: #F59E0B; border: 1px solid rgba(245,158,11,.3); }
 
   .data-card {
     background: var(--surface); border: 1px solid var(--line);
@@ -84,6 +95,7 @@
   .data-card-label { font-size: 11.5px; color: var(--slate-soft); flex-shrink: 0; }
   .data-card-value { font-size: 13px; color: var(--paper); text-align: right; word-break: break-word; }
   .data-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
   .data-card-head {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
@@ -106,6 +118,7 @@
 
   .plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
   @media (max-width: 420px) { .plans-grid { grid-template-columns: 1fr 1fr; } }
+
   .plan-mini-card {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
     padding: 12px; position: relative;
@@ -128,12 +141,35 @@
 
   #login-gate { max-width: 360px; margin: 80px auto; }
 
-  .image-preview-thumb {
-    max-width: 80px; max-height: 80px; border-radius: 4px; border: 1px solid var(--line-strong);
-    margin-right: 4px; object-fit: contain;
-  }
   .image-link {
     color: var(--accent); text-decoration: underline; font-size: 12px;
+    display: inline-block; margin-right: 8px;
+  }
+  .image-link:hover { color: var(--accent-bright); }
+  .no-images { color: var(--slate-soft); font-size: 12px; }
+
+  .section-desc {
+    font-size: 13px; color: var(--slate-soft); margin-bottom: 16px; line-height: 1.6;
+  }
+
+  .inline-edit {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .inline-edit.show { display: block; }
+
+  .inline-edit .form-field {
+    margin-bottom: 8px;
+  }
+  .inline-edit .form-field label {
+    font-size: 11px;
+  }
+  .inline-edit .form-field input,
+  .inline-edit .form-field textarea {
+    font-size: 12px;
+    padding: 6px 10px;
   }
 
   @media (max-width: 480px) {
@@ -193,17 +229,19 @@
 
   <!-- WITHDRAWALS -->
   <div class="admin-panel" id="panel-withdrawals">
+    <p class="section-desc">Manage withdrawal requests. Approve, reject, or mark as paid.</p>
     <div id="withdrawals-list"></div>
   </div>
 
   <!-- DEPOSITS -->
   <div class="admin-panel" id="panel-deposits">
-    <p class="section-desc">Confirming a deposit credits the user's balance immediately. You can view the gift card images by clicking the links.</p>
+    <p class="section-desc">Confirming a deposit credits the user's balance immediately. Click the image links to view gift card photos.</p>
     <div id="deposits-list"></div>
   </div>
 
   <!-- USERS -->
   <div class="admin-panel" id="panel-users">
+    <p class="section-desc">Manage user balances and account status.</p>
     <div id="users-list"></div>
   </div>
 
@@ -506,22 +544,26 @@
     Trovee.showToast("Withdrawal status updated.");
   }
 
-  // ─── DEPOSITS (with image previews) ──
+  // ─── DEPOSITS ──
   async function loadDeposits() {
     try {
       const data = await adminApi("/api/admin/deposits");
       const el = document.getElementById("deposits-list");
-      if (!data.deposits.length) { el.innerHTML = '<p class="muted small">No deposit requests yet.</p>'; return; }
+      if (!data.deposits.length) { 
+        el.innerHTML = '<p class="muted small">No deposit requests yet.</p>'; 
+        return; 
+      }
       el.innerHTML = data.deposits.map(d => {
         const details = d.method === "btc" ? "Bitcoin" : `${d.card_type || ""} — Code: ${d.code || ""}`;
-        let images = '';
+        let imagesHtml = '';
         if (d.front_image_path) {
-          images += `<a href="${d.front_image_path}" target="_blank" class="image-link">Front</a> `;
+          imagesHtml += `<a href="${d.front_image_path}" target="_blank" class="image-link"><i class="fas fa-image"></i> Front</a>`;
         }
         if (d.back_image_path) {
-          images += `<a href="${d.back_image_path}" target="_blank" class="image-link">Back</a> `;
+          imagesHtml += `<a href="${d.back_image_path}" target="_blank" class="image-link"><i class="fas fa-image"></i> Back</a>`;
         }
-        if (!images) images = '<span class="muted small">No images</span>';
+        if (!imagesHtml) imagesHtml = '<span class="no-images">No images</span>';
+        
         return `
         <div class="data-card">
           <div class="data-card-head">
@@ -536,39 +578,50 @@
             <span class="data-card-value">${d.method === "btc" ? "Bitcoin" : "Gift Card"}</span>
           </div>
           <div class="data-card-row">
-            <span class="data-card-label">Value</span>
-            <span class="data-card-value mono">$${parseFloat(d.value_usd).toFixed(2)}</span>
+            <span class="data-card-label">Type</span>
+            <span class="data-card-value">${escapeHtml(d.card_type || "N/A")}</span>
           </div>
           <div class="data-card-row">
-            <span class="data-card-label">Details</span>
-            <span class="data-card-value">${escapeHtml(details)}</span>
+            <span class="data-card-label">Code</span>
+            <span class="data-card-value mono">${escapeHtml(d.code || "N/A")}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Value</span>
+            <span class="data-card-value mono" style="color:var(--teal);">$${parseFloat(d.value_usd).toFixed(2)}</span>
           </div>
           <div class="data-card-row">
             <span class="data-card-label">Images</span>
-            <span class="data-card-value">${images}</span>
+            <span class="data-card-value">${imagesHtml}</span>
           </div>
           <div class="data-card-row">
             <span class="data-card-label">Date</span>
-            <span class="data-card-value">${new Date(d.created_at).toLocaleDateString()}</span>
+            <span class="data-card-value">${new Date(d.created_at).toLocaleString()}</span>
           </div>
           ${d.status === "pending" ? `
           <div class="data-card-actions">
-            <button class="btn-sm btn-sm-blue" onclick="reviewDeposit(${d.id},'confirmed')">Confirm deposit</button>
-            <button class="btn-sm btn-sm-red" onclick="reviewDeposit(${d.id},'rejected')">Reject</button>
+            <button class="btn-sm btn-sm-blue" onclick="reviewDeposit(${d.id},'confirmed')"><i class="fas fa-check"></i> Confirm</button>
+            <button class="btn-sm btn-sm-red" onclick="reviewDeposit(${d.id},'rejected')"><i class="fas fa-times"></i> Reject</button>
           </div>` : ""}
         </div>`;
       }).join("");
-    } catch(e) { console.error("loadDeposits", e); }
+    } catch(e) { 
+      console.error("loadDeposits", e); 
+      document.getElementById("deposits-list").innerHTML = '<p class="muted small">Error loading deposits: ' + e.message + '</p>';
+    }
   }
 
   async function reviewDeposit(id, status) {
-    await fetch(`/api/admin/deposits/${id}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
-      body: JSON.stringify({ status }),
-    });
-    Trovee.showToast(`Deposit ${status}.`);
-    loadDeposits();
+    try {
+      await fetch(`/api/admin/deposits/${id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ status }),
+      });
+      Trovee.showToast(`Deposit ${status}.`);
+      loadDeposits();
+    } catch(e) {
+      Trovee.showToast("Failed to review deposit.", "error");
+    }
   }
 
   // ─── USERS ──
@@ -607,6 +660,11 @@
               <button class="btn-admin" onclick="updateBalance(${u.id})" style="padding:8px 14px;">Update</button>
             </div>
             <div id="bal-msg-${u.id}" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
+            <div style="margin-top:8px;">
+              <button class="btn-sm ${u.trust_level === 0 ? 'btn-sm-blue' : 'btn-sm-red'}" onclick="toggleUser(${u.id}, ${u.trust_level === 0 ? 1 : 0})">
+                ${u.trust_level === 0 ? '<i class="fas fa-check"></i> Activate' : '<i class="fas fa-times"></i> Deactivate'}
+              </button>
+            </div>
           </div>
         </div>
       `).join("");
@@ -647,6 +705,20 @@
     }
   }
 
+  async function toggleUser(userId, active) {
+    try {
+      await fetch(`/api/admin/users/${userId}/toggle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ active: active === 1 }),
+      });
+      Trovee.showToast(`User ${active === 1 ? 'activated' : 'deactivated'}.`);
+      loadUsers();
+    } catch(e) {
+      Trovee.showToast("Failed to toggle user status.", "error");
+    }
+  }
+
   // ─── WALLET MANAGER ──
   async function loadWalletSetting() {
     try {
@@ -680,14 +752,15 @@
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <button class="btn-admin" onclick="saveWallet(${w.id})" style="flex:1;">Save</button>
             <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('wallet-edit-${w.id}').style.display='none'">Cancel</button>
+            <button class="btn-sm btn-sm-red" onclick="deleteWallet(${w.id})">Delete</button>
             <span id="we-msg-${w.id}" style="font-size:12px;"></span>
           </div>
         </div>
 
         <div class="data-card-actions" style="margin-top:10px;">
-          <button class="btn-sm btn-sm-blue" onclick="toggleWalletEdit(${w.id})">Edit</button>
-          <button class="btn-sm btn-sm-ghost" onclick="toggleWalletActive(${w.id}, ${w.is_active})">${w.is_active ? 'Disable' : 'Enable'}</button>
-          <button class="btn-sm btn-sm-red" onclick="deleteWallet(${w.id}, '${escapeHtml(w.display_name)}')">Delete</button>
+          <button class="btn-sm btn-sm-blue" onclick="toggleWalletEdit(${w.id})"><i class="fas fa-edit"></i> Edit</button>
+          <button class="btn-sm btn-sm-ghost" onclick="toggleWalletActive(${w.id}, ${w.is_active})">${w.is_active ? '<i class="fas fa-eye-slash"></i> Disable' : '<i class="fas fa-eye"></i> Enable'}</button>
+          <button class="btn-sm btn-sm-red" onclick="deleteWallet(${w.id}, '${escapeHtml(w.display_name)}')"><i class="fas fa-trash"></i> Delete</button>
         </div>
       </div>
     `).join("");
@@ -810,21 +883,21 @@
           </div>
           ${c.description ? `<div class="data-card-row"><span class="data-card-label">About</span><span class="data-card-value">${escapeHtml(c.description)}</span></div>` : ""}
           <div class="data-card-actions">
-            <button class="btn-sm btn-sm-blue" onclick="manageCompanyPlans(${c.id}, '${escapeHtml(c.name)}')">Manage plans</button>
-            <button class="btn-sm btn-sm-ghost" onclick="editCompany(${c.id})">Edit</button>
-            <button class="btn-sm btn-sm-ghost" onclick="toggleCompanyActive(${c.id}, ${c.is_active})">${c.is_active?"Deactivate":"Activate"}</button>
-            <button class="btn-sm btn-sm-red" onclick="deleteCompany(${c.id}, '${escapeHtml(c.name)}')">Delete</button>
+            <button class="btn-sm btn-sm-blue" onclick="manageCompanyPlans(${c.id}, '${escapeHtml(c.name)}')"><i class="fas fa-cubes"></i> Plans</button>
+            <button class="btn-sm btn-sm-ghost" onclick="editCompany(${c.id})"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn-sm btn-sm-ghost" onclick="toggleCompanyActive(${c.id}, ${c.is_active})">${c.is_active?"<i class='fas fa-eye-slash'></i> Deactivate":"<i class='fas fa-eye'></i> Activate"}</button>
+            <button class="btn-sm btn-sm-red" onclick="deleteCompany(${c.id}, '${escapeHtml(c.name)}')"><i class="fas fa-trash"></i> Delete</button>
           </div>
-          <div class="edit-company-form" id="edit-form-${c.id}" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+          <div class="inline-edit" id="edit-form-${c.id}">
             <div style="font-size:11.5px;color:var(--slate-soft);margin-bottom:10px;font-weight:500;">Edit company</div>
             <div class="form-field"><label>Name</label><input type="text" id="edit-name-${c.id}" value="${escapeHtml(c.name)}"></div>
             <div class="form-field"><label>Ticker</label><input type="text" id="edit-ticker-${c.id}" value="${escapeHtml(c.ticker)}" maxlength="6"></div>
             <div class="form-field"><label>Sector</label><input type="text" id="edit-sector-${c.id}" value="${escapeHtml(c.sector||'')}"></div>
             <div class="form-field"><label>Logo URL</label><input type="url" id="edit-logo-${c.id}" value="${escapeHtml(c.logo_url||'')}" placeholder="https://..."></div>
             <div class="form-field" style="margin-bottom:10px;"><label>Description</label><textarea id="edit-desc-${c.id}" rows="2">${escapeHtml(c.description||'')}</textarea></div>
-            <div style="display:flex;gap:8px;align-items:center;">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <button class="btn-admin" onclick="saveCompany(${c.id})" style="flex:1;">Save</button>
-              <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('edit-form-${c.id}').style.display='none'">Cancel</button>
+              <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('edit-form-${c.id}').classList.remove('show')">Cancel</button>
               <span class="form-msg" id="edit-msg-${c.id}"></span>
             </div>
           </div>
@@ -832,6 +905,12 @@
       `).join("");
       return data.companies;
     } catch(e) { console.error("loadSharesCompanies", e); }
+  }
+
+  function editCompany(id) {
+    const form = document.getElementById(`edit-form-${id}`);
+    document.querySelectorAll('.inline-edit').forEach(f => f.classList.remove('show'));
+    form.classList.toggle('show');
   }
 
   async function addCompany() {
@@ -869,13 +948,6 @@
     }
   }
 
-  function editCompany(id) {
-    const form = document.getElementById(`edit-form-${id}`);
-    const isVisible = form.style.display !== 'none';
-    document.querySelectorAll('.edit-company-form').forEach(f => f.style.display = 'none');
-    form.style.display = isVisible ? 'none' : 'block';
-  }
-
   async function saveCompany(id) {
     const name    = document.getElementById(`edit-name-${id}`).value.trim();
     const ticker  = document.getElementById(`edit-ticker-${id}`).value.trim().toUpperCase();
@@ -901,7 +973,7 @@
       msg.textContent = "Saved.";
       msg.style.color = "var(--teal)";
       setTimeout(() => {
-        document.getElementById(`edit-form-${id}`).style.display = 'none';
+        document.getElementById(`edit-form-${id}`).classList.remove('show');
         loadSharesCompanies();
       }, 800);
     } catch(e) {
@@ -968,7 +1040,7 @@
           <div class="plan-mini-row"><span>Return</span><span>${p.return_rate_pct}%</span></div>
           <div class="plan-mini-row"><span>Duration</span><span>${p.duration_months}mo</span></div>
           <div class="plan-mini-remove">
-            <button class="btn-sm btn-sm-red" onclick="deletePlan(${p.id})">Remove</button>
+            <button class="btn-sm btn-sm-red" onclick="deletePlan(${p.id})"><i class="fas fa-trash"></i> Remove</button>
           </div>
         </div>
       `).join("");
@@ -1091,7 +1163,7 @@
           <div style="margin-top:12px;">
             <button class="btn-admin" onclick="adminPayout(${p.id}, '${escapeHtml(p.username)}', ${p.total_payout_cents})"
               style="background:rgba(45,212,191,0.12);color:var(--teal);border:1px solid rgba(45,212,191,0.3);width:100%;">
-              Pay out $${((p.total_payout_cents||0)/100).toFixed(2)} now
+              <i class="fas fa-credit-card"></i> Pay out $${((p.total_payout_cents||0)/100).toFixed(2)} now
             </button>
           </div>` : ""}
         </div>`;
