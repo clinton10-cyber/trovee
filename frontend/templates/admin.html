@@ -3,1522 +3,1118 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trovee — Admin Panel</title>
+<title>Trovee — Admin</title>
 <link rel="icon" href="/static/img/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/static/css/trovee.css">
 <style>
-  .admin-panel {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 12px;
-  }
-
-  .admin-login {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-width: 400px;
-    margin: 60px auto;
-    padding: 28px 24px;
-    background: var(--surface);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--line);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    box-shadow: var(--glass-sheen);
-  }
-  .admin-login h2 {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 2px;
-    color: var(--paper);
-  }
-  .admin-login .login-sub {
-    color: var(--slate-soft);
-    font-size: 14px;
-    margin-bottom: 8px;
-  }
-  .admin-login input {
-    padding: 12px 16px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--line-strong);
-    background: var(--surface-raised);
-    color: var(--paper);
-    font-size: 14px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  .admin-login input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .admin-login .login-btn {
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    border: none;
-    background: var(--accent);
-    color: var(--ink);
-    font-weight: 700;
-    font-size: 14px;
-    cursor: pointer;
-    width: 100%;
-    transition: opacity 0.2s;
-  }
-  .admin-login .login-btn:hover {
-    opacity: 0.85;
-  }
-
-  .admin-section {
-    background: var(--surface);
-    border-radius: var(--radius-lg);
-    padding: 16px;
-    margin-bottom: 16px;
-    border: 1px solid var(--line);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    box-shadow: var(--glass-sheen);
-    overflow: hidden;
-  }
-  .admin-section .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .admin-section .section-header h2 {
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--paper);
-    margin: 0;
-  }
-  .admin-section .section-header .badge {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--slate-soft);
-    background: var(--surface-raised);
-    padding: 2px 12px;
-    border-radius: 999px;
-  }
-
-  .table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin: 0 -4px;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    min-width: 600px;
-  }
-  th {
-    text-align: left;
-    padding: 10px 8px;
-    color: var(--slate-soft);
-    font-weight: 600;
+  body { background: var(--ink); }
+  .admin-shell { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+  .admin-tabs {
+    display: flex; gap: 0; margin: 20px 0 0;
     border-bottom: 1px solid var(--line);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    position: sticky;
-    top: 0;
-    background: var(--surface);
-    z-index: 2;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
-  td {
-    padding: 10px 8px;
-    border-bottom: 1px solid var(--line-weak);
-    color: var(--paper);
-    vertical-align: middle;
-    word-break: break-word;
-  }
-  td .mono {
-    font-family: var(--font-mono);
-    font-size: 12px;
-  }
-  td .address {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--slate-soft);
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: inline-block;
-  }
-
-  .status-badge {
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 10px;
-    font-weight: 600;
-    white-space: nowrap;
-    display: inline-block;
-    text-transform: capitalize;
-  }
-  .status-badge.pending { background: rgba(250, 204, 21, 0.2); color: #facc15; }
-  .status-badge.approved { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
-  .status-badge.rejected { background: rgba(248, 113, 113, 0.2); color: #f87171; }
-  .status-badge.paid { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
-  .status-badge.confirmed { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
-  .status-badge.open { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
-  .status-badge.active { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
-  .status-badge.inactive { background: rgba(248, 113, 113, 0.2); color: #f87171; }
-
-  .actions {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .actions select {
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--line-strong);
-    background: var(--surface-raised);
-    color: var(--paper);
-    font-size: 11px;
-    min-width: 80px;
-  }
-  .actions select:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .actions input {
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--line-strong);
-    background: var(--surface-raised);
-    color: var(--paper);
-    font-size: 11px;
-    width: 70px;
-  }
-  .actions input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .actions button {
-    padding: 4px 12px;
-    border-radius: 6px;
-    border: none;
-    font-weight: 600;
-    font-size: 11px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: opacity 0.2s;
-  }
-  .actions button:hover {
-    opacity: 0.85;
-  }
-  .actions .btn-primary {
-    background: var(--accent);
-    color: var(--ink);
-  }
-  .actions .btn-danger {
-    background: #b91c1c;
-    color: white;
-  }
-  .actions .btn-danger:hover {
-    background: #7f1d1d;
-  }
-  .actions .btn-success {
-    background: #16a34a;
-    color: white;
-  }
-  .actions .btn-success:hover {
-    background: #15803d;
-  }
-  .actions .btn-warning {
-    background: #facc15;
-    color: #0B1220;
-  }
-  .actions .btn-warning:hover {
-    background: #eab308;
-  }
-  .actions .btn-secondary {
-    background: var(--surface-raised);
-    color: var(--paper);
-    border: 1px solid var(--line-strong);
-  }
-  .actions .btn-secondary:hover {
-    border-color: var(--accent);
-  }
-
-  .empty-state {
-    color: var(--slate-soft);
-    text-align: center;
-    padding: 30px 0;
-    font-size: 14px;
-  }
-
-  .tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
-  }
-  .tab-btn {
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: 1px solid var(--line-strong);
-    background: transparent;
-    color: var(--slate-soft);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
+  .admin-tabs::-webkit-scrollbar { display: none; }
+  .admin-tab {
+    padding: 10px 14px; white-space: nowrap; font-size: 13.5px;
+    color: var(--slate-soft); cursor: pointer;
+    border-bottom: 2px solid transparent; transition: color 0.15s;
     flex-shrink: 0;
   }
-  .tab-btn:hover {
-    border-color: var(--accent);
-    color: var(--paper);
+  .admin-tab.active { color: var(--paper); border-bottom-color: var(--accent); }
+  .admin-panel { display: none; padding-top: 20px; }
+  .admin-panel.active { display: block; }
+  .admin-section-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
   }
-  .tab-btn.active {
-    background: var(--accent);
-    color: var(--ink);
-    border-color: var(--accent);
+  .admin-section-title { font-size: 15px; font-weight: 600; }
+  .admin-form-card {
+    background: var(--surface-raised); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;
   }
-  .tab-content {
-    display: none;
+  .admin-form-card h4 {
+    font-size: 13px; font-weight: 600; color: var(--accent);
+    margin: 0 0 12px;
   }
-  .tab-content.active {
-    display: block;
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 500px) { .form-grid-2 { grid-template-columns: 1fr; } }
+  .form-field { display: flex; flex-direction: column; gap: 4px; }
+  .form-field label { font-size: 11.5px; color: var(--slate-soft); font-weight: 500; }
+  .form-field input, .form-field textarea, .form-field select {
+    background: var(--ink-soft); border: 1px solid var(--line-strong);
+    border-radius: 8px; padding: 9px 11px; color: var(--paper);
+    font-size: 13px; font-family: var(--font-body); outline: none;
+    width: 100%; box-sizing: border-box; transition: border-color 0.15s;
+  }
+  .form-field input:focus, .form-field textarea:focus { border-color: var(--accent); }
+  .form-field textarea { resize: vertical; }
+  .form-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .form-msg { font-size: 12.5px; }
+  .btn-admin {
+    background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+    color: #fff; border: none; border-radius: 8px; padding: 10px 18px;
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-body);
+    transition: opacity 0.15s; white-space: nowrap;
+  }
+  .btn-admin:active { opacity: 0.85; }
+  .btn-sm {
+    border: none; border-radius: 6px; padding: 5px 11px;
+    font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body);
+    transition: opacity 0.15s; white-space: nowrap;
+  }
+  .btn-sm:active { opacity: 0.8; }
+  .btn-sm-blue  { background: rgba(10,132,255,.14); color: var(--accent); border: 1px solid rgba(10,132,255,.3); }
+  .btn-sm-red   { background: rgba(255,107,91,.12); color: var(--coral); border: 1px solid rgba(255,107,91,.3); }
+  .btn-sm-ghost { background: none; color: var(--slate-soft); border: 1px solid var(--line-strong); }
+
+  .data-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px;
+  }
+  .data-card-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 8px; margin-bottom: 6px;
+  }
+  .data-card-row:last-child { margin-bottom: 0; }
+  .data-card-label { font-size: 11.5px; color: var(--slate-soft); flex-shrink: 0; }
+  .data-card-value { font-size: 13px; color: var(--paper); text-align: right; word-break: break-word; }
+  .data-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .data-card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  .data-card-head-title { font-size: 14px; font-weight: 600; color: var(--paper); }
+  .data-card-head-sub { font-size: 12px; color: var(--slate-soft); }
+
+  .status-select {
+    background: var(--ink-soft); color: var(--paper); border: 1px solid var(--line-strong);
+    border-radius: 6px; padding: 5px 8px; font-size: 12px; font-family: var(--font-body);
   }
 
-  .admin-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px 8px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .admin-header h1 {
-    font-size: 20px;
-    font-weight: 700;
-  }
-  .admin-header .logout-btn {
-    background: transparent;
-    border: 1px solid var(--line-strong);
-    color: var(--slate-soft);
-    padding: 6px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.15s;
-  }
-  .admin-header .logout-btn:hover {
-    border-color: #f87171;
-    color: #f87171;
+  .ticker-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--ink-soft); border: 1px solid var(--line-strong);
+    font-family: var(--font-mono); font-size: 9px; color: var(--accent);
+    font-weight: 700; flex-shrink: 0;
   }
 
-  .user-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  .plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+  @media (max-width: 420px) { .plans-grid { grid-template-columns: 1fr 1fr; } }
+  .plan-mini-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
+    padding: 12px; position: relative;
   }
-  .user-cell .username {
-    font-weight: 600;
+  .plan-mini-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .plan-mini-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--slate-soft); margin-bottom: 3px; }
+  .plan-mini-row span:last-child { color: var(--paper); font-family: var(--font-mono); }
+  .plan-mini-remove { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  .add-form-toggle {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    font-size: 13.5px; font-weight: 600; color: var(--accent);
+    padding: 10px 0; border: none; background: none; font-family: var(--font-body);
+    user-select: none;
   }
-  .user-cell .email {
-    font-size: 11px;
-    color: var(--slate-soft);
+  .add-form-toggle .toggle-icon { font-size: 18px; line-height: 1; transition: transform 0.2s; }
+  .add-form-toggle.open .toggle-icon { transform: rotate(45deg); }
+  .add-form-body { display: none; }
+  .add-form-body.open { display: block; }
+
+  #login-gate { max-width: 360px; margin: 80px auto; }
+
+  .image-preview-thumb {
+    max-width: 80px; max-height: 80px; border-radius: 4px; border: 1px solid var(--line-strong);
+    margin-right: 4px; object-fit: contain;
+  }
+  .image-link {
+    color: var(--accent); text-decoration: underline; font-size: 12px;
   }
 
-  .add-btn {
-    padding: 6px 16px;
-    border-radius: 8px;
-    border: 1px solid var(--accent);
-    background: transparent;
-    color: var(--accent);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .add-btn:hover {
-    background: var(--accent);
-    color: var(--ink);
-  }
-
-  /* Modal Styles */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 99999;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-  }
-  .modal-overlay.show {
-    display: flex;
-  }
-  .modal-box {
-    background: var(--surface);
-    border-radius: var(--radius-lg);
-    padding: 24px;
-    max-width: 500px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    border: 1px solid var(--line);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .modal-box h3 {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: var(--paper);
-  }
-  .modal-box .field {
-    margin-bottom: 12px;
-  }
-  .modal-box .field label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--slate-soft);
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .modal-box .field input,
-  .modal-box .field textarea,
-  .modal-box .field select {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--line-strong);
-    background: var(--surface-raised);
-    color: var(--paper);
-    font-size: 14px;
-    box-sizing: border-box;
-  }
-  .modal-box .field input:focus,
-  .modal-box .field textarea:focus,
-  .modal-box .field select:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .modal-box .field textarea {
-    resize: vertical;
-    min-height: 60px;
-  }
-  .modal-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 16px;
-    justify-content: flex-end;
-  }
-  .modal-actions button {
-    padding: 8px 20px;
-    border-radius: var(--radius-sm);
-    border: none;
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-  }
-  .modal-actions button:hover {
-    opacity: 0.85;
-  }
-  .modal-actions .btn-primary {
-    background: var(--accent);
-    color: var(--ink);
-  }
-  .modal-actions .btn-secondary {
-    background: var(--surface-raised);
-    color: var(--paper);
-    border: 1px solid var(--line-strong);
-  }
-  .modal-actions .btn-danger {
-    background: #b91c1c;
-    color: white;
-  }
-
-  @media (max-width: 640px) {
-    .admin-panel { padding: 8px; }
-    .admin-section { padding: 12px; margin-bottom: 12px; }
-    .admin-section .section-header h2 { font-size: 15px; }
-    .admin-login { margin: 30px 12px; padding: 20px; }
-    .admin-login h2 { font-size: 18px; }
-    .tab-btn { font-size: 12px; padding: 6px 12px; }
-    table { font-size: 12px; min-width: 480px; }
-    th, td { padding: 8px 6px; }
-    .actions { gap: 3px; }
-    .actions select { font-size: 10px; min-width: 60px; padding: 3px 6px; }
-    .actions input { font-size: 10px; width: 50px; padding: 3px 6px; }
-    .actions button { font-size: 10px; padding: 3px 8px; }
-    .admin-header h1 { font-size: 17px; }
-    .admin-header .logout-btn { font-size: 12px; padding: 4px 12px; }
-    .status-badge { font-size: 9px; padding: 2px 8px; }
-    .modal-box { padding: 16px; max-width: 100%; }
-  }
-
-  .table-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin: 0 -12px;
-    padding: 0 12px;
-  }
-  @media (max-width: 640px) {
-    .table-scroll { margin: 0 -8px; padding: 0 8px; }
+  @media (max-width: 480px) {
+    .admin-shell { padding: 16px 12px 60px; }
+    .data-card { padding: 12px 13px; }
+    .data-card-head { flex-wrap: wrap; gap: 6px; }
+    .data-card-head-title { font-size: 13px; }
+    .data-card-actions { gap: 8px; }
+    .data-card-actions .btn-sm { flex: 1; text-align: center; }
+    .btn-admin { width: 100%; }
+    .form-actions { flex-direction: column; align-items: stretch; }
+    .admin-form-card { padding: 13px; }
+    .ticker-badge { width: 32px; height: 32px; font-size: 8px; }
+    .admin-tab { padding: 9px 11px; font-size: 12.5px; }
   }
 </style>
 </head>
 <body>
-<div class="app-shell">
-  <div class="admin-header">
-    <h1>Admin Panel</h1>
-    <button class="logout-btn" onclick="logout()">Logout</button>
+
+<!-- LOGIN -->
+<div id="login-gate">
+  <div class="brand-row" style="justify-content:center;margin-bottom:24px;">
+    <img src="/static/img/logo.png" alt="" class="brand-mark">
+    <span class="brand-word">Tro<span class="accent">vee</span> <span class="muted small">Admin</span></span>
+  </div>
+  <div class="card">
+    <div class="field">
+      <label for="admin-password">Admin password</label>
+      <input type="password" id="admin-password" placeholder="••••••••">
+    </div>
+    <div class="field-error" id="admin-login-error" style="display:none;"></div>
+    <button class="btn btn-primary" id="admin-login-btn">Enter</button>
+  </div>
+</div>
+
+<!-- ADMIN CONTENT -->
+<div class="admin-shell" id="admin-content" style="display:none;">
+  <div class="brand-row">
+    <img src="/static/img/logo.png" alt="" class="brand-mark">
+    <span class="brand-word">Tro<span class="accent">vee</span> <span class="muted small">Admin</span></span>
   </div>
 
-  <div class="admin-panel" id="admin-panel">
-    <!-- Login Form -->
-    <div class="admin-login" id="admin-login">
-      <h2>Admin Login</h2>
-      <p class="login-sub">Enter the admin password to access the control panel.</p>
-      <input type="password" id="admin-password" placeholder="Admin Password" autocomplete="off" />
-      <button class="login-btn" onclick="adminLogin()">Login</button>
+  <div class="admin-tabs">
+    <div class="admin-tab active" data-tab="support">Support</div>
+    <div class="admin-tab" data-tab="withdrawals">Withdrawals</div>
+    <div class="admin-tab" data-tab="deposits">Deposits</div>
+    <div class="admin-tab" data-tab="users">Users</div>
+    <div class="admin-tab" data-tab="shares">Shares</div>
+    <div class="admin-tab" data-tab="settings">Settings</div>
+  </div>
+
+  <!-- SUPPORT -->
+  <div class="admin-panel active" id="panel-support">
+    <p class="section-desc">Messages are also emailed to your Gmail inbox as they arrive.</p>
+    <div id="support-list"></div>
+  </div>
+
+  <!-- WITHDRAWALS -->
+  <div class="admin-panel" id="panel-withdrawals">
+    <div id="withdrawals-list"></div>
+  </div>
+
+  <!-- DEPOSITS -->
+  <div class="admin-panel" id="panel-deposits">
+    <p class="section-desc">Confirming a deposit credits the user's balance immediately. You can view the gift card images by clicking the links.</p>
+    <div id="deposits-list"></div>
+  </div>
+
+  <!-- USERS -->
+  <div class="admin-panel" id="panel-users">
+    <div id="users-list"></div>
+  </div>
+
+  <!-- SHARES -->
+  <div class="admin-panel" id="panel-shares">
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto;">
+      <div class="admin-tab active" data-shares-tab="companies" style="flex-shrink:0;">Companies</div>
+      <div class="admin-tab" data-shares-tab="purchases" style="flex-shrink:0;">All Purchases</div>
     </div>
 
-    <!-- Admin Content -->
-    <div id="admin-content" style="display:none;">
-      <div class="tabs" id="tab-nav">
-        <button class="tab-btn active" data-tab="users" onclick="switchTab('users')">Users</button>
-        <button class="tab-btn" data-tab="withdrawals" onclick="switchTab('withdrawals')">Withdrawals</button>
-        <button class="tab-btn" data-tab="deposits" onclick="switchTab('deposits')">Deposits</button>
-        <button class="tab-btn" data-tab="support" onclick="switchTab('support')">Support</button>
-        <button class="tab-btn" data-tab="shares" onclick="switchTab('shares')">Shares</button>
-        <button class="tab-btn" data-tab="companies" onclick="switchTab('companies')">Companies</button>
-        <button class="tab-btn" data-tab="wallets" onclick="switchTab('wallets')">Wallets</button>
-      </div>
-
-      <!-- Users Tab -->
-      <div class="tab-content active" id="tab-users">
-        <div class="admin-section">
-          <div class="section-header">
-            <h2>Users</h2>
-            <span class="badge" id="users-count">0</span>
-          </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Phone</th>
-                  <th>Country</th>
-                  <th>Balance</th>
-                  <th>Trust</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="users-table-body">
-                <tr><td colspan="8" class="empty-state">Loading users...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Withdrawals Tab -->
-      <div class="tab-content" id="tab-withdrawals">
-        <div class="admin-section">
-          <div class="section-header">
-            <h2>Withdrawals</h2>
-            <span class="badge" id="withdrawals-count">0</span>
-          </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Amount</th>
-                  <th>Method</th>
-                  <th>Destination</th>
-                  <th>Status</th>
-                  <th>Requested</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="withdrawals-table-body">
-                <tr><td colspan="8" class="empty-state">Loading withdrawals...</td></tr>
-              </tbody>
-            </table>
+    <!-- Companies sub-panel -->
+    <div id="spanel-companies">
+      <div style="margin-bottom:20px;">
+        <button class="add-form-toggle" id="add-company-toggle" onclick="toggleAddForm('add-company-toggle','add-company-form')">
+          <span class="toggle-icon">+</span> Add New Company
+        </button>
+        <div class="add-form-body" id="add-company-form">
+          <div class="admin-form-card" style="margin-top:8px;">
+            <div class="form-grid-2" style="margin-bottom:10px;">
+              <div class="form-field">
+                <label>Company Name *</label>
+                <input type="text" id="new-company-name" placeholder="e.g. Apex Corp">
+              </div>
+              <div class="form-field">
+                <label>Ticker Symbol *</label>
+                <input type="text" id="new-company-ticker" placeholder="e.g. APX" style="text-transform:uppercase;">
+              </div>
+            </div>
+            <div class="form-grid-2" style="margin-bottom:10px;">
+              <div class="form-field">
+                <label>Sector</label>
+                <input type="text" id="new-company-sector" placeholder="e.g. Technology">
+              </div>
+              <div class="form-field">
+                <label>Logo URL</label>
+                <input type="text" id="new-company-logo" placeholder="https://...">
+              </div>
+            </div>
+            <div class="form-field" style="margin-bottom:10px;">
+              <label>Description</label>
+              <textarea id="new-company-desc" rows="2" placeholder="Short company description..."></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn-admin" onclick="addCompany()">Create Company</button>
+              <span class="form-msg" id="add-company-msg"></span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Deposits Tab -->
-      <div class="tab-content" id="tab-deposits">
-        <div class="admin-section">
-          <div class="section-header">
-            <h2>Deposits</h2>
-            <span class="badge" id="deposits-count">0</span>
-          </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Type</th>
-                  <th>Value</th>
-                  <th>Credited</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="deposits-table-body">
-                <tr><td colspan="8" class="empty-state">Loading deposits...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <div id="companies-list"></div>
 
-      <!-- Support Tab -->
-      <div class="tab-content" id="tab-support">
-        <div class="admin-section">
-          <div class="section-header">
-            <h2>Support Tickets</h2>
-            <span class="badge" id="support-count">0</span>
+      <div id="plans-manager" style="display:none;margin-top:24px;">
+        <div class="data-card-head">
+          <div>
+            <div class="admin-section-title" id="plans-manager-title"></div>
+            <div class="data-card-head-sub">Manage investment plans</div>
           </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Subject</th>
-                  <th>Message</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody id="support-table-body">
-                <tr><td colspan="6" class="empty-state">Loading tickets...</td></tr>
-              </tbody>
-            </table>
-          </div>
+          <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('plans-manager').style.display='none'">Close</button>
         </div>
-      </div>
 
-      <!-- Shares Tab -->
-      <div class="tab-content" id="tab-shares">
-        <div class="admin-section">
-          <div class="section-header">
-            <h2>Share Purchases</h2>
-            <span class="badge" id="shares-count">0</span>
+        <div class="admin-form-card">
+          <h4>Add Plan</h4>
+          <div class="form-grid-2" style="margin-bottom:10px;">
+            <div class="form-field">
+              <label>Plan Name</label>
+              <input type="text" id="np-name" placeholder="e.g. Growth">
+            </div>
+            <div class="form-field">
+              <label>Shares Count</label>
+              <input type="number" id="np-shares" placeholder="100">
+            </div>
           </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Company</th>
-                  <th>Plan</th>
-                  <th>Shares</th>
-                  <th>Price</th>
-                  <th>Return</th>
-                  <th>Status</th>
-                  <th>Maturity</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="shares-table-body">
-                <tr><td colspan="10" class="empty-state">Loading share purchases...</td></tr>
-              </tbody>
-            </table>
+          <div class="form-grid-2" style="margin-bottom:10px;">
+            <div class="form-field">
+              <label>Price (USD)</label>
+              <input type="number" id="np-price" placeholder="500.00" step="0.01">
+            </div>
+            <div class="form-field">
+              <label>Return Rate (%)</label>
+              <input type="number" id="np-return" placeholder="12" step="0.1">
+            </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Companies Tab -->
-      <div class="tab-content" id="tab-companies">
-        <div class="admin-section">
-          <div class="section-header">
-            <h2>Share Companies</h2>
-            <span class="badge" id="companies-count">0</span>
+          <div class="form-field" style="margin-bottom:10px;">
+            <label>Duration (months)</label>
+            <input type="number" id="np-duration" placeholder="12">
           </div>
-          <div style="margin-bottom:12px;">
-            <button class="add-btn" onclick="showAddCompany()">+ Add Company</button>
-          </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Ticker</th>
-                  <th>Sector</th>
-                  <th>Status</th>
-                  <th>Plans</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="companies-table-body">
-                <tr><td colspan="7" class="empty-state">Loading companies...</td></tr>
-              </tbody>
-            </table>
+          <div class="form-actions">
+            <button class="btn-admin" onclick="addPlan()">Add Plan</button>
+            <span class="form-msg" id="add-plan-msg"></span>
           </div>
         </div>
 
-        <!-- Plans Section -->
-        <div class="admin-section">
-          <div class="section-header">
-            <h2>Share Plans</h2>
-            <span class="badge" id="plans-count">0</span>
-          </div>
-          <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <button class="add-btn" onclick="showAddPlan()">+ Add Plan</button>
-            <span style="font-size:12px;color:var(--slate-soft);">Select a company above to filter plans</span>
-          </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Company</th>
-                  <th>Plan Name</th>
-                  <th>Shares</th>
-                  <th>Price</th>
-                  <th>Return %</th>
-                  <th>Duration</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="plans-table-body">
-                <tr><td colspan="9" class="empty-state">Loading plans...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <div class="plans-grid" id="plans-grid"></div>
       </div>
+    </div>
 
-      <!-- Wallets Tab -->
-      <div class="tab-content" id="tab-wallets">
-        <div class="admin-section">
-          <div class="section-header">
-            <h2>Wallet Configurations</h2>
-            <span class="badge" id="wallets-count">0</span>
-          </div>
-          <div style="margin-bottom:12px;">
-            <button class="add-btn" onclick="showAddWallet()">+ Add Wallet</button>
-          </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Address</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="wallets-table-body">
-                <tr><td colspan="5" class="empty-state">Loading wallets...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    <!-- Purchases sub-panel -->
+    <div id="spanel-purchases" style="display:none;">
+      <div id="purchases-list"></div>
     </div>
   </div>
 
-  <!-- Modal -->
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="modal-box" id="modal-box">
-      <h3 id="modal-title">Modal</h3>
-      <div id="modal-body"></div>
-      <div class="modal-actions" id="modal-actions">
-        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn-primary" id="modal-submit">Save</button>
+  <!-- SETTINGS -->
+  <div class="admin-panel" id="panel-settings">
+    <div class="admin-form-card" style="max-width:600px;">
+      <h4>Deposit Wallets</h4>
+      <p class="section-desc" style="margin-bottom:18px;">
+        Add each wallet you accept. Users will see the name, QR code, and address on the deposit page.
+      </p>
+
+      <div style="background:rgba(10,132,255,0.06);border:1px solid rgba(10,132,255,0.18);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:12px;letter-spacing:0.04em;text-transform:uppercase;">Add new wallet</div>
+        <div class="form-field">
+          <label>Wallet name</label>
+          <input type="text" id="new-wallet-name" placeholder="e.g. Bitcoin (BTC), USDT TRC20">
+        </div>
+        <div class="form-field">
+          <label>Wallet address</label>
+          <input type="text" id="new-wallet-address" placeholder="Paste full address here" style="font-family:var(--font-mono);font-size:12px;">
+        </div>
+        <div class="form-field">
+          <label>Logo image URL <span style="color:var(--slate-soft);font-weight:400;">(optional)</span></label>
+          <input type="url" id="new-wallet-logo" placeholder="https://...">
+        </div>
+        <div class="form-field">
+          <label>QR code image URL <span style="color:var(--slate-soft);font-weight:400;">(optional)</span></label>
+          <input type="url" id="new-wallet-qr" placeholder="https://...">
+        </div>
+        <div class="form-field" style="margin-bottom:14px;">
+          <label>Display order <span style="color:var(--slate-soft);font-weight:400;">(lower = shown first)</span></label>
+          <input type="number" id="new-wallet-order" value="0" min="0" style="width:100px;">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-admin" onclick="addWallet()">Add Wallet</button>
+          <span id="add-wallet-msg" style="font-size:12px;"></span>
+        </div>
+      </div>
+
+      <div id="wallets-list">
+        <p class="muted small">Loading...</p>
       </div>
     </div>
   </div>
-
-  <nav class="bottom-nav">
-    <a href="/dashboard" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
-      Home
-    </a>
-    <a href="/trading" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-      Trade
-    </a>
-    <a href="/shares" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
-      Shares
-    </a>
-    <a href="/deposit" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
-      Deposit
-    </a>
-    <a href="/withdraw" class="nav-item active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
-      Withdraw
-    </a>
-    <a href="/support" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21c5-3 8-6.5 8-11a8 8 0 1 0-16 0c0 4.5 3 8 8 11Z"/><path d="M12 8v4m0 3h.01"/></svg>
-      Support
-    </a>
-  </nav>
 </div>
 
 <script src="/static/js/trovee.js"></script>
 <script>
-  var adminToken = localStorage.getItem('trovee_admin_token');
-  var currentTab = 'users';
-  var currentCompanyId = null;
+  let adminToken = sessionStorage.getItem("trovee_admin_token");
+  if (adminToken) showAdmin();
 
-  function logout() {
-    localStorage.removeItem('trovee_admin_token');
-    localStorage.removeItem('trovee_token');
-    window.location.href = '/login';
-  }
-
-  async function adminLogin() {
-    var password = document.getElementById('admin-password').value;
-    if (!password) {
-      Trovee.showToast('Enter the admin password.', 'error');
-      return;
-    }
+  document.getElementById("admin-login-btn").addEventListener("click", async () => {
+    const pw = document.getElementById("admin-password").value;
+    const errorEl = document.getElementById("admin-login-error");
+    errorEl.style.display = "none";
     try {
-      var res = await Trovee.api('/api/admin/login', {
-        method: 'POST',
-        body: { password: password },
-        auth: false
+      const res = await fetch("/api/admin/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
       });
-      adminToken = res.token;
-      localStorage.setItem('trovee_admin_token', adminToken);
-      document.getElementById('admin-login').style.display = 'none';
-      document.getElementById('admin-content').style.display = 'block';
-      Trovee.showToast('Logged in as admin.');
-      loadAllData();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Login failed.', 'error');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      adminToken = data.token;
+      sessionStorage.setItem("trovee_admin_token", adminToken);
+      showAdmin();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = "block";
     }
-  }
-
-  function getAdminHeaders() {
-    return { 'X-Admin-Token': adminToken };
-  }
-
-  function switchTab(tab) {
-    currentTab = tab;
-    var btns = document.querySelectorAll('.tab-btn');
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].classList.toggle('active', btns[i].dataset.tab === tab);
-    }
-    var contents = document.querySelectorAll('.tab-content');
-    for (var i = 0; i < contents.length; i++) {
-      contents[i].classList.toggle('active', contents[i].id === 'tab-' + tab);
-    }
-    if (tab === 'users') loadUsers();
-    else if (tab === 'withdrawals') loadWithdrawals();
-    else if (tab === 'deposits') loadDeposits();
-    else if (tab === 'support') loadSupport();
-    else if (tab === 'shares') loadShares();
-    else if (tab === 'companies') { loadCompanies(); loadPlans(); }
-    else if (tab === 'wallets') loadWallets();
-  }
-
-  async function loadAllData() {
-    await loadUsers();
-    await loadWithdrawals();
-    await loadDeposits();
-    await loadSupport();
-    await loadShares();
-    await loadCompanies();
-    await loadPlans();
-    await loadWallets();
-  }
-
-  // ─── MODAL ──────────────────────────────────────────────────
-  function openModal(title, bodyHTML, submitText, onSubmit) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-body').innerHTML = bodyHTML;
-    document.getElementById('modal-submit').textContent = submitText || 'Save';
-    document.getElementById('modal-overlay').classList.add('show');
-    document.getElementById('modal-submit').onclick = onSubmit;
-  }
-
-  function closeModal() {
-    document.getElementById('modal-overlay').classList.remove('show');
-  }
-
-  document.getElementById('modal-overlay').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
   });
 
-  // ─── USERS ──────────────────────────────────────────────────
-  async function loadUsers() {
+  document.getElementById("admin-password").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("admin-login-btn").click();
+  });
+
+  async function adminApi(path) {
+    const res = await fetch(path, { headers: { "X-Admin-Token": adminToken } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.status);
+    return data;
+  }
+
+  function showAdmin() {
+    document.getElementById("login-gate").style.display = "none";
+    document.getElementById("admin-content").style.display = "block";
+    loadSupport();
+    loadWithdrawals();
+    loadDeposits();
+    loadUsers();
+    loadWalletSetting();
+    loadSharesCompanies();
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement("div");
+    d.textContent = str || "";
+    return d.innerHTML;
+  }
+
+  function toggleAddForm(toggleId, formId) {
+    const btn = document.getElementById(toggleId);
+    const form = document.getElementById(formId);
+    btn.classList.toggle("open");
+    form.classList.toggle("open");
+  }
+
+  // ─── TABS ──
+  document.querySelectorAll(".admin-tab[data-tab]").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".admin-tab[data-tab]").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".admin-panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById(`panel-${tab.dataset.tab}`).classList.add("active");
+    });
+  });
+
+  document.querySelectorAll("[data-shares-tab]").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("[data-shares-tab]").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      const t = tab.dataset.sharesTab;
+      document.getElementById("spanel-companies").style.display = t === "companies" ? "block" : "none";
+      document.getElementById("spanel-purchases").style.display = t === "purchases" ? "block" : "none";
+      if (t === "purchases") loadSharesPurchases();
+    });
+  });
+
+  // ─── SUPPORT ──
+  async function loadSupport() {
     try {
-      var data = await Trovee.api('/api/admin/users', { headers: getAdminHeaders() });
-      renderUsers(data.users || []);
-    } catch (e) {
-      document.getElementById('users-table-body').innerHTML = '<tr><td colspan="8" class="empty-state">Error: ' + e.message + '</td></tr>';
-    }
+      const data = await adminApi("/api/admin/support");
+      const el = document.getElementById("support-list");
+      if (!data.tickets.length) { el.innerHTML = '<p class="muted small">No support messages yet.</p>'; return; }
+      el.innerHTML = data.tickets.map(t => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(t.name)}</div>
+              <div class="data-card-head-sub">${escapeHtml(t.email)} · ${new Date(t.created_at).toLocaleDateString()}</div>
+            </div>
+            ${t.emailed_ok ? '<span class="pill pill-approved">Emailed</span>' : '<span class="pill pill-rejected">Email failed</span>'}
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Subject</span>
+            <span class="data-card-value">${escapeHtml(t.subject)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Message</span>
+            <span class="data-card-value">${escapeHtml(t.message)}</span>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadSupport", e); }
   }
 
-  function renderUsers(users) {
-    var tbody = document.getElementById('users-table-body');
-    document.getElementById('users-count').textContent = users.length;
-    if (!users.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No users found.</td></tr>';
-      return;
-    }
-    var html = '';
-    for (var i = 0; i < users.length; i++) {
-      var u = users[i];
-      var disabled = u.id === 1 ? 'disabled' : '';
-      html += '<tr>' +
-        '<td>' + u.id + '</td>' +
-        '<td><div class="user-cell"><span class="username">' + u.username + '</span><span class="email">' + u.email + '</span></div></td>' +
-        '<td>' + (u.phone || '—') + '</td>' +
-        '<td>' + (u.country_code || '—') + '</td>' +
-        '<td class="mono">$' + (u.balance_usd_cents / 100).toFixed(2) + '</td>' +
-        '<td>' + u.trust_level + '</td>' +
-        '<td style="font-size:11px;color:var(--slate-soft);">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
-        '<td><div class="actions"><button class="btn-danger" onclick="deleteUser(' + u.id + ', \'' + u.username + '\')" ' + disabled + '>Delete</button></div></td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
-  }
-
-  async function deleteUser(userId, username) {
-    if (userId === 1) {
-      Trovee.showToast('Cannot delete the primary admin account.', 'error');
-      return;
-    }
-    if (!confirm('Are you sure you want to delete user "' + username + '"? This action cannot be undone.')) return;
-    try {
-      await Trovee.api('/api/admin/users/' + userId, { method: 'DELETE', headers: getAdminHeaders() });
-      Trovee.showToast('User "' + username + '" deleted successfully.');
-      loadUsers();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Failed to delete user.', 'error');
-    }
-  }
-
-  // ─── WITHDRAWALS ──────────────────────────────────────────
+  // ─── WITHDRAWALS ──
   async function loadWithdrawals() {
     try {
-      var data = await Trovee.api('/api/admin/withdrawals', { headers: getAdminHeaders() });
-      renderWithdrawals(data.withdrawals || []);
-    } catch (e) {
-      document.getElementById('withdrawals-table-body').innerHTML = '<tr><td colspan="8" class="empty-state">Error: ' + e.message + '</td></tr>';
-    }
+      const data = await adminApi("/api/admin/withdrawals");
+      const el = document.getElementById("withdrawals-list");
+      if (!data.withdrawals.length) { el.innerHTML = '<p class="muted small">No withdrawal requests yet.</p>'; return; }
+      el.innerHTML = data.withdrawals.map(w => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(w.username)}</div>
+              <div class="data-card-head-sub">${escapeHtml(w.email)}</div>
+            </div>
+            <span class="mono" style="font-size:15px;color:var(--paper);">$${(w.amount_usd_cents/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Method</span>
+            <span class="data-card-value">${escapeHtml(w.method)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Destination</span>
+            <span class="data-card-value">${escapeHtml(w.destination_details)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Date</span>
+            <span class="data-card-value">${new Date(w.requested_at).toLocaleDateString()}</span>
+          </div>
+          <div class="data-card-row" style="align-items:center;margin-top:6px;">
+            <span class="data-card-label">Status</span>
+            <select class="status-select" data-id="${w.id}" onchange="updateWithdrawalStatus(this)">
+              ${["pending","approved","paid","rejected"].map(s => `<option value="${s}" ${s===w.status?"selected":""}>${s}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadWithdrawals", e); }
   }
 
-  function renderWithdrawals(withdrawals) {
-    var tbody = document.getElementById('withdrawals-table-body');
-    document.getElementById('withdrawals-count').textContent = withdrawals.length;
-    if (!withdrawals.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No withdrawals found.</td></tr>';
-      return;
-    }
-    var html = '';
-    for (var i = 0; i < withdrawals.length; i++) {
-      var w = withdrawals[i];
-      var opts = '';
-      var statuses = ['pending', 'approved', 'paid', 'rejected'];
-      for (var s = 0; s < statuses.length; s++) {
-        var sel = statuses[s] === w.status ? 'selected' : '';
-        opts += '<option value="' + statuses[s] + '" ' + sel + '>' + statuses[s].charAt(0).toUpperCase() + statuses[s].slice(1) + '</option>';
-      }
-      html += '<tr>' +
-        '<td>' + w.id + '</td>' +
-        '<td>' + (w.username || '—') + '</td>' +
-        '<td class="mono">$' + (w.amount_usd_cents / 100).toFixed(2) + '</td>' +
-        '<td>' + w.method + '</td>' +
-        '<td><span class="address">' + (w.destination_details || '—') + '</span></td>' +
-        '<td><span class="status-badge ' + w.status + '">' + w.status + '</span></td>' +
-        '<td style="font-size:11px;color:var(--slate-soft);">' + new Date(w.requested_at).toLocaleDateString() + '</td>' +
-        '<td><div class="actions"><select onchange="updateWithdrawalStatus(' + w.id + ', this.value)">' + opts + '</select></div></td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
+  async function updateWithdrawalStatus(sel) {
+    await fetch(`/api/admin/withdrawals/${sel.dataset.id}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+      body: JSON.stringify({ status: sel.value }),
+    });
+    Trovee.showToast("Withdrawal status updated.");
   }
 
-  async function updateWithdrawalStatus(id, status) {
-    try {
-      await Trovee.api('/api/admin/withdrawals/' + id + '/status', {
-        method: 'POST',
-        body: { status: status },
-        headers: getAdminHeaders()
-      });
-      Trovee.showToast('Withdrawal #' + id + ' updated to ' + status + '.');
-      loadWithdrawals();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Failed to update withdrawal.', 'error');
-    }
-  }
-
-  // ─── DEPOSITS ──────────────────────────────────────────────
+  // ─── DEPOSITS (with image previews) ──
   async function loadDeposits() {
     try {
-      var data = await Trovee.api('/api/admin/deposits', { headers: getAdminHeaders() });
-      renderDeposits(data.deposits || []);
-    } catch (e) {
-      document.getElementById('deposits-table-body').innerHTML = '<tr><td colspan="8" class="empty-state">Error: ' + e.message + '</td></tr>';
-    }
-  }
-
-  function renderDeposits(deposits) {
-    var tbody = document.getElementById('deposits-table-body');
-    document.getElementById('deposits-count').textContent = deposits.length;
-    if (!deposits.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No deposits found.</td></tr>';
-      return;
-    }
-    var html = '';
-    for (var i = 0; i < deposits.length; i++) {
-      var d = deposits[i];
-      var actions = '—';
-      if (d.status === 'pending') {
-        actions = '<div class="actions"><button class="btn-success" onclick="reviewDeposit(' + d.id + ', \'confirmed\')">Confirm</button><button class="btn-danger" onclick="reviewDeposit(' + d.id + ', \'rejected\')">Reject</button></div>';
-      }
-      html += '<tr>' +
-        '<td>' + d.id + '</td>' +
-        '<td>' + (d.username || '—') + '</td>' +
-        '<td>' + (d.card_type || d.method || '—') + '</td>' +
-        '<td class="mono">$' + d.value_usd + '</td>' +
-        '<td class="mono">' + (d.credited_usd_cents ? '$' + (d.credited_usd_cents / 100).toFixed(2) : '—') + '</td>' +
-        '<td><span class="status-badge ' + d.status + '">' + d.status + '</span></td>' +
-        '<td style="font-size:11px;color:var(--slate-soft);">' + new Date(d.created_at).toLocaleDateString() + '</td>' +
-        '<td>' + actions + '</td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
+      const data = await adminApi("/api/admin/deposits");
+      const el = document.getElementById("deposits-list");
+      if (!data.deposits.length) { el.innerHTML = '<p class="muted small">No deposit requests yet.</p>'; return; }
+      el.innerHTML = data.deposits.map(d => {
+        const details = d.method === "btc" ? "Bitcoin" : `${d.card_type || ""} — Code: ${d.code || ""}`;
+        let images = '';
+        if (d.front_image_path) {
+          images += `<a href="${d.front_image_path}" target="_blank" class="image-link">Front</a> `;
+        }
+        if (d.back_image_path) {
+          images += `<a href="${d.back_image_path}" target="_blank" class="image-link">Back</a> `;
+        }
+        if (!images) images = '<span class="muted small">No images</span>';
+        return `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(d.username)}</div>
+              <div class="data-card-head-sub">${escapeHtml(d.email)}</div>
+            </div>
+            <span class="pill ${d.status==="confirmed"?"pill-approved":d.status==="rejected"?"pill-rejected":"pill-pending"}">${d.status}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Method</span>
+            <span class="data-card-value">${d.method === "btc" ? "Bitcoin" : "Gift Card"}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Value</span>
+            <span class="data-card-value mono">$${parseFloat(d.value_usd).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Details</span>
+            <span class="data-card-value">${escapeHtml(details)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Images</span>
+            <span class="data-card-value">${images}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Date</span>
+            <span class="data-card-value">${new Date(d.created_at).toLocaleDateString()}</span>
+          </div>
+          ${d.status === "pending" ? `
+          <div class="data-card-actions">
+            <button class="btn-sm btn-sm-blue" onclick="reviewDeposit(${d.id},'confirmed')">Confirm deposit</button>
+            <button class="btn-sm btn-sm-red" onclick="reviewDeposit(${d.id},'rejected')">Reject</button>
+          </div>` : ""}
+        </div>`;
+      }).join("");
+    } catch(e) { console.error("loadDeposits", e); }
   }
 
   async function reviewDeposit(id, status) {
+    await fetch(`/api/admin/deposits/${id}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+      body: JSON.stringify({ status }),
+    });
+    Trovee.showToast(`Deposit ${status}.`);
+    loadDeposits();
+  }
+
+  // ─── USERS ──
+  async function loadUsers() {
     try {
-      await Trovee.api('/api/admin/deposits/' + id + '/review', {
-        method: 'POST',
-        body: { status: status },
-        headers: getAdminHeaders()
+      const data = await adminApi("/api/admin/users");
+      const el = document.getElementById("users-list");
+      if (!data.users.length) { el.innerHTML = '<p class="muted small">No users yet.</p>'; return; }
+      el.innerHTML = data.users.map(u => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(u.username)}</div>
+              <div class="data-card-head-sub">${escapeHtml(u.email)} · ${u.country_code}</div>
+            </div>
+            <span class="mono" style="font-size:15px;color:var(--teal);" id="bal-display-${u.id}">$${(u.balance_usd_cents/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Phone</span>
+            <span class="data-card-value">${escapeHtml(u.phone)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Joined</span>
+            <span class="data-card-value">${new Date(u.created_at).toLocaleDateString()}</span>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+            <div style="font-size:11.5px;color:var(--slate-soft);margin-bottom:8px;font-weight:500;">Adjust balance</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input type="number" id="bal-input-${u.id}" placeholder="Amount in USD" step="0.01"
+                style="flex:1;min-width:120px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--paper);font-size:13px;outline:none;">
+              <select id="bal-mode-${u.id}"
+                style="background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--paper);font-size:13px;outline:none;">
+                <option value="set">Set to</option>
+                <option value="adjust">Add / subtract</option>
+              </select>
+              <button class="btn-admin" onclick="updateBalance(${u.id})" style="padding:8px 14px;">Update</button>
+            </div>
+            <div id="bal-msg-${u.id}" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadUsers", e); }
+  }
+
+  async function updateBalance(userId) {
+    const input = document.getElementById(`bal-input-${userId}`);
+    const mode = document.getElementById(`bal-mode-${userId}`).value;
+    const msg = document.getElementById(`bal-msg-${userId}`);
+    const raw = parseFloat(input.value);
+
+    if (isNaN(raw)) {
+      msg.textContent = "Enter a valid amount.";
+      msg.style.color = "var(--coral)";
+      return;
+    }
+
+    const amount_usd_cents = Math.round(raw * 100);
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ amount_usd_cents, mode }),
       });
-      Trovee.showToast('Deposit #' + id + ' ' + status + '.');
-      loadDeposits();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Failed to review deposit.', 'error');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      const newBal = (data.new_balance_usd_cents / 100).toFixed(2);
+      document.getElementById(`bal-display-${userId}`).textContent = `$${newBal}`;
+      input.value = "";
+      msg.textContent = `Updated — new balance $${newBal}`;
+      msg.style.color = "var(--teal)";
+      setTimeout(() => msg.textContent = "", 4000);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
     }
   }
 
-  // ─── SUPPORT ───────────────────────────────────────────────
-  async function loadSupport() {
+  // ─── WALLET MANAGER ──
+  async function loadWalletSetting() {
     try {
-      var data = await Trovee.api('/api/admin/support', { headers: getAdminHeaders() });
-      renderSupport(data.tickets || []);
-    } catch (e) {
-      document.getElementById('support-table-body').innerHTML = '<tr><td colspan="6" class="empty-state">Error: ' + e.message + '</td></tr>';
-    }
+      const data = await adminApi("/api/admin/wallets");
+      renderWalletList(data.wallets || []);
+    } catch(e) { console.error("loadWallets", e); }
   }
 
-  function renderSupport(tickets) {
-    var tbody = document.getElementById('support-table-body');
-    document.getElementById('support-count').textContent = tickets.length;
-    if (!tickets.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No support tickets found.</td></tr>';
+  function renderWalletList(wallets) {
+    const el = document.getElementById("wallets-list");
+    if (!wallets.length) {
+      el.innerHTML = '<p class="muted small">No wallets added yet. Add one above.</p>';
       return;
     }
-    var html = '';
-    for (var i = 0; i < tickets.length; i++) {
-      var t = tickets[i];
-      html += '<tr>' +
-        '<td>' + t.id + '</td>' +
-        '<td>' + (t.name || '—') + '</td>' +
-        '<td><strong>' + t.subject + '</strong></td>' +
-        '<td style="max-width:200px;word-break:break-word;">' + t.message + '</td>' +
-        '<td><span class="status-badge ' + t.status + '">' + t.status + '</span></td>' +
-        '<td style="font-size:11px;color:var(--slate-soft);">' + new Date(t.created_at).toLocaleDateString() + '</td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
+    el.innerHTML = wallets.map(w => `
+      <div class="data-card" id="wallet-card-${w.id}" style="margin-bottom:12px;">
+        <div class="data-card-head">
+          <div>
+            <div class="data-card-head-title">${escapeHtml(w.display_name)}</div>
+            <div class="data-card-head-sub" style="font-family:var(--font-mono);font-size:11px;">${escapeHtml(w.address.slice(0,28))}...</div>
+          </div>
+          ${w.qr_url ? `<img src="${escapeHtml(w.qr_url)}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'">` : '<div style="width:52px;height:52px;background:rgba(255,255,255,0.05);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--slate-soft);font-size:10px;">No QR</div>'}
+        </div>
+
+        <div id="wallet-edit-${w.id}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+          <div class="form-field"><label>Name</label><input type="text" id="we-name-${w.id}" value="${escapeHtml(w.display_name)}"></div>
+          <div class="form-field"><label>Address</label><input type="text" id="we-addr-${w.id}" value="${escapeHtml(w.address)}" style="font-family:var(--font-mono);font-size:12px;"></div>
+          <div class="form-field"><label>Logo image URL</label><input type="url" id="we-logo-${w.id}" value="${escapeHtml(w.logo_url||'')}"></div>
+          <div class="form-field"><label>QR code URL</label><input type="url" id="we-qr-${w.id}" value="${escapeHtml(w.qr_url||'')}"></div>
+          <div class="form-field"><label>Order</label><input type="number" id="we-order-${w.id}" value="${w.sort_order}" style="width:80px;"></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn-admin" onclick="saveWallet(${w.id})" style="flex:1;">Save</button>
+            <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('wallet-edit-${w.id}').style.display='none'">Cancel</button>
+            <span id="we-msg-${w.id}" style="font-size:12px;"></span>
+          </div>
+        </div>
+
+        <div class="data-card-actions" style="margin-top:10px;">
+          <button class="btn-sm btn-sm-blue" onclick="toggleWalletEdit(${w.id})">Edit</button>
+          <button class="btn-sm btn-sm-ghost" onclick="toggleWalletActive(${w.id}, ${w.is_active})">${w.is_active ? 'Disable' : 'Enable'}</button>
+          <button class="btn-sm btn-sm-red" onclick="deleteWallet(${w.id}, '${escapeHtml(w.display_name)}')">Delete</button>
+        </div>
+      </div>
+    `).join("");
   }
 
-  // ─── SHARES ─────────────────────────────────────────────────
-  async function loadShares() {
+  function toggleWalletEdit(id) {
+    const el = document.getElementById(`wallet-edit-${id}`);
+    document.querySelectorAll('[id^="wallet-edit-"]').forEach(e => { if (e.id !== `wallet-edit-${id}`) e.style.display='none'; });
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function addWallet() {
+    const name    = document.getElementById("new-wallet-name").value.trim();
+    const address = document.getElementById("new-wallet-address").value.trim();
+    const logo_url= document.getElementById("new-wallet-logo").value.trim();
+    const qr_url  = document.getElementById("new-wallet-qr").value.trim();
+    const order   = parseInt(document.getElementById("new-wallet-order").value) || 0;
+    const msg     = document.getElementById("add-wallet-msg");
+
+    if (!name || !address) {
+      msg.textContent = "Name and address are required.";
+      msg.style.color = "var(--coral)"; return;
+    }
+
     try {
-      var data = await Trovee.api('/api/admin/shares/purchases', { headers: getAdminHeaders() });
-      renderShares(data.purchases || []);
-    } catch (e) {
-      document.getElementById('shares-table-body').innerHTML = '<tr><td colspan="10" class="empty-state">Error: ' + e.message + '</td></tr>';
-    }
-  }
-
-  function renderShares(purchases) {
-    var tbody = document.getElementById('shares-table-body');
-    document.getElementById('shares-count').textContent = purchases.length;
-    if (!purchases.length) {
-      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No share purchases found.</td></tr>';
-      return;
-    }
-    var html = '';
-    for (var i = 0; i < purchases.length; i++) {
-      var p = purchases[i];
-      var actions = '—';
-      if (p.status === 'active') {
-        actions = '<div class="actions"><button class="btn-success" onclick="payoutShares(' + p.id + ')">Payout</button></div>';
-      }
-      html += '<tr>' +
-        '<td>' + p.id + '</td>' +
-        '<td>' + (p.username || '—') + '</td>' +
-        '<td>' + (p.company_name || '—') + '</td>' +
-        '<td>' + (p.plan_name || '—') + '</td>' +
-        '<td>' + p.shares_count + '</td>' +
-        '<td class="mono">$' + (p.price_usd_cents / 100).toFixed(2) + '</td>' +
-        '<td class="mono">' + p.return_rate_pct + '%</td>' +
-        '<td><span class="status-badge ' + p.status + '">' + p.status + '</span></td>' +
-        '<td style="font-size:11px;color:var(--slate-soft);">' + (p.maturity_date || '—') + '</td>' +
-        '<td>' + actions + '</td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
-  }
-
-  async function payoutShares(id) {
-    if (!confirm('Credit the returns to this user\'s balance?')) return;
-    try {
-      var res = await Trovee.api('/api/admin/shares/purchases/' + id + '/payout', {
-        method: 'POST',
-        headers: getAdminHeaders()
+      const res = await fetch("/api/admin/wallets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ display_name: name, address, logo_url, qr_url, sort_order: order }),
       });
-      Trovee.showToast('Payout completed: $' + (res.total_payout_cents / 100).toFixed(2) + ' credited.');
-      loadShares();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Failed to process payout.', 'error');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      msg.textContent = "Wallet added!";
+      msg.style.color = "var(--teal)";
+      ["new-wallet-name","new-wallet-address","new-wallet-logo","new-wallet-qr"].forEach(id => document.getElementById(id).value = "");
+      document.getElementById("new-wallet-order").value = "0";
+      setTimeout(() => { msg.textContent = ""; loadWalletSetting(); }, 800);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
     }
   }
 
-  // ─── COMPANIES ──────────────────────────────────────────────
-  async function loadCompanies() {
+  async function saveWallet(id) {
+    const name    = document.getElementById(`we-name-${id}`).value.trim();
+    const address = document.getElementById(`we-addr-${id}`).value.trim();
+    const logo_url= document.getElementById(`we-logo-${id}`).value.trim();
+    const qr_url  = document.getElementById(`we-qr-${id}`).value.trim();
+    const order   = parseInt(document.getElementById(`we-order-${id}`).value) || 0;
+    const msg     = document.getElementById(`we-msg-${id}`);
+
     try {
-      var data = await Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() });
-      renderCompanies(data.companies || []);
-    } catch (e) {
-      document.getElementById('companies-table-body').innerHTML = '<tr><td colspan="7" class="empty-state">Error: ' + e.message + '</td></tr>';
+      const res = await fetch(`/api/admin/wallets/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ display_name: name, address, logo_url, qr_url, sort_order: order, is_active: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      msg.textContent = "Saved.";
+      msg.style.color = "var(--teal)";
+      setTimeout(() => { document.getElementById(`wallet-edit-${id}`).style.display='none'; loadWalletSetting(); }, 600);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
     }
   }
 
-  function renderCompanies(companies) {
-    var tbody = document.getElementById('companies-table-body');
-    document.getElementById('companies-count').textContent = companies.length;
-    if (!companies.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No companies found.</td></tr>';
-      return;
-    }
-    var html = '';
-    for (var i = 0; i < companies.length; i++) {
-      var c = companies[i];
-      var statusClass = c.is_active ? 'active' : 'inactive';
-      var statusLabel = c.is_active ? 'Active' : 'Inactive';
-      html += '<tr>' +
-        '<td>' + c.id + '</td>' +
-        '<td><strong>' + c.name + '</strong></td>' +
-        '<td>' + c.ticker + '</td>' +
-        '<td>' + (c.sector || '—') + '</td>' +
-        '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-        '<td>' + (c.plan_count || 0) + '</td>' +
-        '<td><div class="actions">' +
-          '<button class="btn-secondary" onclick="editCompany(' + c.id + ')">Edit</button>' +
-          '<button class="btn-danger" onclick="deleteCompany(' + c.id + ')">Delete</button>' +
-        '</div></td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
+  async function toggleWalletActive(id, currentlyActive) {
+    try {
+      const allData = await adminApi("/api/admin/wallets");
+      const w = allData.wallets.find(x => x.id === id);
+      if (!w) return;
+      await fetch(`/api/admin/wallets/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ ...w, is_active: currentlyActive ? 0 : 1 }),
+      });
+      loadWalletSetting();
+    } catch(e) { Trovee.showToast("Failed.", "error"); }
   }
 
-  function showAddCompany() {
-    var body = 
-      '<div class="field"><label>Company Name</label><input id="company-name" placeholder="e.g. Tesla, Inc." /></div>' +
-      '<div class="field"><label>Ticker Symbol</label><input id="company-ticker" placeholder="e.g. TSLA" /></div>' +
-      '<div class="field"><label>Description</label><textarea id="company-desc" placeholder="Company description..."></textarea></div>' +
-      '<div class="field"><label>Sector</label><input id="company-sector" placeholder="e.g. Technology" /></div>' +
-      '<div class="field"><label>Logo URL</label><input id="company-logo" placeholder="https://..." /></div>';
-    openModal('Add Company', body, 'Create', function() {
-      var name = document.getElementById('company-name').value.trim();
-      var ticker = document.getElementById('company-ticker').value.trim().toUpperCase();
-      if (!name || !ticker) {
-        Trovee.showToast('Name and ticker are required.', 'error');
+  async function deleteWallet(id, name) {
+    if (!confirm(`Delete wallet "${name}"? Users will no longer see it on the deposit page.`)) return;
+    try {
+      const res = await fetch(`/api/admin/wallets/${id}`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      Trovee.showToast("Wallet deleted.");
+      loadWalletSetting();
+    } catch(e) { Trovee.showToast(e.message || "Failed.", "error"); }
+  }
+
+  // ─── SHARES: COMPANIES ──
+  let currentManagedCompanyId = null;
+  let currentManagedCompanyName = null;
+
+  async function loadSharesCompanies() {
+    try {
+      const data = await adminApi("/api/admin/shares/companies");
+      const el = document.getElementById("companies-list");
+      if (!data.companies.length) {
+        el.innerHTML = '<p class="muted small">No companies yet. Add one above.</p>';
         return;
       }
-      Trovee.api('/api/admin/shares/companies', {
-        method: 'POST',
-        body: {
-          name: name,
-          ticker: ticker,
-          description: document.getElementById('company-desc').value.trim(),
-          sector: document.getElementById('company-sector').value.trim(),
-          logo_url: document.getElementById('company-logo').value.trim()
-        },
-        headers: getAdminHeaders()
-      }).then(function() {
-        Trovee.showToast('Company created successfully.');
-        closeModal();
-        loadCompanies();
-      }).catch(function(e) {
-        Trovee.showToast(e.message || 'Failed to create company.', 'error');
+      el.innerHTML = data.companies.map(c => `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="ticker-badge">${escapeHtml(c.ticker)}</div>
+              <div>
+                <div class="data-card-head-title">${escapeHtml(c.name)}</div>
+                <div class="data-card-head-sub">${escapeHtml(c.sector || "—")}</div>
+              </div>
+            </div>
+            <span class="pill ${c.is_active?"pill-approved":"pill-rejected"}">${c.is_active?"Active":"Inactive"}</span>
+          </div>
+          ${c.description ? `<div class="data-card-row"><span class="data-card-label">About</span><span class="data-card-value">${escapeHtml(c.description)}</span></div>` : ""}
+          <div class="data-card-actions">
+            <button class="btn-sm btn-sm-blue" onclick="manageCompanyPlans(${c.id}, '${escapeHtml(c.name)}')">Manage plans</button>
+            <button class="btn-sm btn-sm-ghost" onclick="editCompany(${c.id})">Edit</button>
+            <button class="btn-sm btn-sm-ghost" onclick="toggleCompanyActive(${c.id}, ${c.is_active})">${c.is_active?"Deactivate":"Activate"}</button>
+            <button class="btn-sm btn-sm-red" onclick="deleteCompany(${c.id}, '${escapeHtml(c.name)}')">Delete</button>
+          </div>
+          <div class="edit-company-form" id="edit-form-${c.id}" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+            <div style="font-size:11.5px;color:var(--slate-soft);margin-bottom:10px;font-weight:500;">Edit company</div>
+            <div class="form-field"><label>Name</label><input type="text" id="edit-name-${c.id}" value="${escapeHtml(c.name)}"></div>
+            <div class="form-field"><label>Ticker</label><input type="text" id="edit-ticker-${c.id}" value="${escapeHtml(c.ticker)}" maxlength="6"></div>
+            <div class="form-field"><label>Sector</label><input type="text" id="edit-sector-${c.id}" value="${escapeHtml(c.sector||'')}"></div>
+            <div class="form-field"><label>Logo URL</label><input type="url" id="edit-logo-${c.id}" value="${escapeHtml(c.logo_url||'')}" placeholder="https://..."></div>
+            <div class="form-field" style="margin-bottom:10px;"><label>Description</label><textarea id="edit-desc-${c.id}" rows="2">${escapeHtml(c.description||'')}</textarea></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button class="btn-admin" onclick="saveCompany(${c.id})" style="flex:1;">Save</button>
+              <button class="btn-sm btn-sm-ghost" onclick="document.getElementById('edit-form-${c.id}').style.display='none'">Cancel</button>
+              <span class="form-msg" id="edit-msg-${c.id}"></span>
+            </div>
+          </div>
+        </div>
+      `).join("");
+      return data.companies;
+    } catch(e) { console.error("loadSharesCompanies", e); }
+  }
+
+  async function addCompany() {
+    const name = document.getElementById("new-company-name").value.trim();
+    const ticker = document.getElementById("new-company-ticker").value.trim().toUpperCase();
+    const sector = document.getElementById("new-company-sector").value.trim();
+    const logo_url = document.getElementById("new-company-logo").value.trim();
+    const description = document.getElementById("new-company-desc").value.trim();
+    const msg = document.getElementById("add-company-msg");
+
+    if (!name || !ticker) {
+      msg.textContent = "Name and ticker required.";
+      msg.style.color = "var(--coral)";
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/shares/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ name, ticker, sector, logo_url, description }),
       });
-    });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+      msg.textContent = "Company created.";
+      msg.style.color = "var(--teal)";
+      ["new-company-name","new-company-ticker","new-company-sector","new-company-logo","new-company-desc"]
+        .forEach(id => document.getElementById(id).value = "");
+      loadSharesCompanies();
+      setTimeout(() => msg.textContent = "", 3000);
+    } catch(e) {
+      msg.textContent = e.message || "Failed — check your connection.";
+      msg.style.color = "var(--coral)";
+      console.error("addCompany error:", e);
+    }
   }
 
   function editCompany(id) {
-    Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() }).then(function(data) {
-      var company = null;
-      for (var i = 0; i < data.companies.length; i++) {
-        if (data.companies[i].id === id) { company = data.companies[i]; break; }
-      }
-      if (!company) { Trovee.showToast('Company not found.', 'error'); return; }
-      var body = 
-        '<div class="field"><label>Company Name</label><input id="company-name" value="' + company.name + '" /></div>' +
-        '<div class="field"><label>Ticker Symbol</label><input id="company-ticker" value="' + company.ticker + '" /></div>' +
-        '<div class="field"><label>Description</label><textarea id="company-desc">' + (company.description || '') + '</textarea></div>' +
-        '<div class="field"><label>Sector</label><input id="company-sector" value="' + (company.sector || '') + '" /></div>' +
-        '<div class="field"><label>Logo URL</label><input id="company-logo" value="' + (company.logo_url || '') + '" /></div>' +
-        '<div class="field"><label>Active</label><select id="company-active"><option value="1" ' + (company.is_active ? 'selected' : '') + '>Active</option><option value="0" ' + (!company.is_active ? 'selected' : '') + '>Inactive</option></select></div>';
-      openModal('Edit Company', body, 'Update', function() {
-        Trovee.api('/api/admin/shares/companies/' + id, {
-          method: 'PUT',
-          body: {
-            name: document.getElementById('company-name').value.trim(),
-            ticker: document.getElementById('company-ticker').value.trim().toUpperCase(),
-            description: document.getElementById('company-desc').value.trim(),
-            sector: document.getElementById('company-sector').value.trim(),
-            logo_url: document.getElementById('company-logo').value.trim(),
-            is_active: parseInt(document.getElementById('company-active').value) === 1
-          },
-          headers: getAdminHeaders()
-        }).then(function() {
-          Trovee.showToast('Company updated successfully.');
-          closeModal();
-          loadCompanies();
-        }).catch(function(e) {
-          Trovee.showToast(e.message || 'Failed to update company.', 'error');
-        });
-      });
-    });
+    const form = document.getElementById(`edit-form-${id}`);
+    const isVisible = form.style.display !== 'none';
+    document.querySelectorAll('.edit-company-form').forEach(f => f.style.display = 'none');
+    form.style.display = isVisible ? 'none' : 'block';
   }
 
-  async function deleteCompany(id) {
-    if (!confirm('Delete this company? All associated plans will also be removed.')) return;
-    try {
-      await Trovee.api('/api/admin/shares/companies/' + id, { method: 'DELETE', headers: getAdminHeaders() });
-      Trovee.showToast('Company deleted successfully.');
-      loadCompanies();
-      loadPlans();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Failed to delete company.', 'error');
-    }
-  }
+  async function saveCompany(id) {
+    const name    = document.getElementById(`edit-name-${id}`).value.trim();
+    const ticker  = document.getElementById(`edit-ticker-${id}`).value.trim().toUpperCase();
+    const sector  = document.getElementById(`edit-sector-${id}`).value.trim();
+    const logo_url= document.getElementById(`edit-logo-${id}`).value.trim();
+    const description = document.getElementById(`edit-desc-${id}`).value.trim();
+    const msg     = document.getElementById(`edit-msg-${id}`);
 
-  // ─── PLANS ──────────────────────────────────────────────────
-  async function loadPlans() {
-    try {
-      var data = await Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() });
-      var allPlans = [];
-      for (var i = 0; i < data.companies.length; i++) {
-        var c = data.companies[i];
-        var plansData = await Trovee.api('/api/admin/shares/companies/' + c.id + '/plans', { headers: getAdminHeaders() });
-        for (var p = 0; p < plansData.plans.length; p++) {
-          var plan = plansData.plans[p];
-          plan.company_name = c.name;
-          allPlans.push(plan);
-        }
-      }
-      renderPlans(allPlans);
-    } catch (e) {
-      document.getElementById('plans-table-body').innerHTML = '<tr><td colspan="9" class="empty-state">Error: ' + e.message + '</td></tr>';
-    }
-  }
-
-  function renderPlans(plans) {
-    var tbody = document.getElementById('plans-table-body');
-    document.getElementById('plans-count').textContent = plans.length;
-    if (!plans.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No plans found.</td></tr>';
+    if (!name || !ticker) {
+      msg.textContent = "Name and ticker required.";
+      msg.style.color = "var(--coral)";
       return;
     }
-    var html = '';
-    for (var i = 0; i < plans.length; i++) {
-      var p = plans[i];
-      var statusClass = p.is_active ? 'active' : 'inactive';
-      var statusLabel = p.is_active ? 'Active' : 'Inactive';
-      html += '<tr>' +
-        '<td>' + p.id + '</td>' +
-        '<td>' + (p.company_name || '—') + '</td>' +
-        '<td>' + p.plan_name + '</td>' +
-        '<td>' + p.shares_count + '</td>' +
-        '<td class="mono">$' + (p.price_usd_cents / 100).toFixed(2) + '</td>' +
-        '<td>' + p.return_rate_pct + '%</td>' +
-        '<td>' + p.duration_months + 'm</td>' +
-        '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-        '<td><div class="actions">' +
-          '<button class="btn-secondary" onclick="editPlan(' + p.id + ')">Edit</button>' +
-          '<button class="btn-danger" onclick="deletePlan(' + p.id + ')">Delete</button>' +
-        '</div></td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
-  }
 
-  function showAddPlan() {
-    Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() }).then(function(data) {
-      var companyOptions = '';
-      for (var i = 0; i < data.companies.length; i++) {
-        var c = data.companies[i];
-        companyOptions += '<option value="' + c.id + '">' + c.name + ' (' + c.ticker + ')</option>';
-      }
-      var body = 
-        '<div class="field"><label>Company</label><select id="plan-company">' + companyOptions + '</select></div>' +
-        '<div class="field"><label>Plan Name</label><input id="plan-name" placeholder="e.g. Starter" /></div>' +
-        '<div class="field"><label>Number of Shares</label><input id="plan-shares" type="number" placeholder="10" /></div>' +
-        '<div class="field"><label>Price (USD)</label><input id="plan-price" type="number" step="0.01" placeholder="100.00" /></div>' +
-        '<div class="field"><label>Return Rate (%)</label><input id="plan-return" type="number" step="0.1" placeholder="12" /></div>' +
-        '<div class="field"><label>Duration (months)</label><input id="plan-duration" type="number" placeholder="12" /></div>';
-      openModal('Add Plan', body, 'Create', function() {
-        var companyId = parseInt(document.getElementById('plan-company').value);
-        var planName = document.getElementById('plan-name').value.trim();
-        var shares = parseInt(document.getElementById('plan-shares').value);
-        var price = parseFloat(document.getElementById('plan-price').value);
-        var returnRate = parseFloat(document.getElementById('plan-return').value) || 12;
-        var duration = parseInt(document.getElementById('plan-duration').value) || 12;
-        if (!planName || !shares || !price) {
-          Trovee.showToast('All fields are required.', 'error');
-          return;
-        }
-        Trovee.api('/api/admin/shares/plans', {
-          method: 'POST',
-          body: {
-            company_id: companyId,
-            plan_name: planName,
-            shares_count: shares,
-            price_usd: price,
-            return_rate_pct: returnRate,
-            duration_months: duration
-          },
-          headers: getAdminHeaders()
-        }).then(function() {
-          Trovee.showToast('Plan created successfully.');
-          closeModal();
-          loadPlans();
-        }).catch(function(e) {
-          Trovee.showToast(e.message || 'Failed to create plan.', 'error');
-        });
-      });
-    });
-  }
-
-  function editPlan(id) {
-    Trovee.api('/api/admin/shares/companies', { headers: getAdminHeaders() }).then(function(data) {
-      var allPlans = [];
-      var companyMap = {};
-      for (var i = 0; i < data.companies.length; i++) {
-        var c = data.companies[i];
-        companyMap[c.id] = c.name;
-      }
-      var promises = [];
-      for (var i = 0; i < data.companies.length; i++) {
-        promises.push(Trovee.api('/api/admin/shares/companies/' + data.companies[i].id + '/plans', { headers: getAdminHeaders() }));
-      }
-      Promise.all(promises).then(function(results) {
-        var targetPlan = null;
-        var targetCompanyId = null;
-        for (var i = 0; i < results.length; i++) {
-          for (var p = 0; p < results[i].plans.length; p++) {
-            if (results[i].plans[p].id === id) {
-              targetPlan = results[i].plans[p];
-              targetCompanyId = data.companies[i].id;
-              break;
-            }
-          }
-          if (targetPlan) break;
-        }
-        if (!targetPlan) { Trovee.showToast('Plan not found.', 'error'); return; }
-        var companyOptions = '';
-        for (var i = 0; i < data.companies.length; i++) {
-          var c = data.companies[i];
-          var sel = c.id === targetCompanyId ? 'selected' : '';
-          companyOptions += '<option value="' + c.id + '" ' + sel + '>' + c.name + ' (' + c.ticker + ')</option>';
-        }
-        var body = 
-          '<div class="field"><label>Company</label><select id="plan-company">' + companyOptions + '</select></div>' +
-          '<div class="field"><label>Plan Name</label><input id="plan-name" value="' + targetPlan.plan_name + '" /></div>' +
-          '<div class="field"><label>Number of Shares</label><input id="plan-shares" type="number" value="' + targetPlan.shares_count + '" /></div>' +
-          '<div class="field"><label>Price (USD)</label><input id="plan-price" type="number" step="0.01" value="' + (targetPlan.price_usd_cents / 100).toFixed(2) + '" /></div>' +
-          '<div class="field"><label>Return Rate (%)</label><input id="plan-return" type="number" step="0.1" value="' + targetPlan.return_rate_pct + '" /></div>' +
-          '<div class="field"><label>Duration (months)</label><input id="plan-duration" type="number" value="' + targetPlan.duration_months + '" /></div>' +
-          '<div class="field"><label>Active</label><select id="plan-active"><option value="1" ' + (targetPlan.is_active ? 'selected' : '') + '>Active</option><option value="0" ' + (!targetPlan.is_active ? 'selected' : '') + '>Inactive</option></select></div>';
-        openModal('Edit Plan', body, 'Update', function() {
-          var companyId = parseInt(document.getElementById('plan-company').value);
-          var planName = document.getElementById('plan-name').value.trim();
-          var shares = parseInt(document.getElementById('plan-shares').value);
-          var price = parseFloat(document.getElementById('plan-price').value);
-          var returnRate = parseFloat(document.getElementById('plan-return').value) || 12;
-          var duration = parseInt(document.getElementById('plan-duration').value) || 12;
-          var isActive = parseInt(document.getElementById('plan-active').value) === 1;
-          if (!planName || !shares || !price) {
-            Trovee.showToast('All fields are required.', 'error');
-            return;
-          }
-          // Update by deleting and recreating (simplest approach)
-          Trovee.api('/api/admin/shares/plans/' + id, {
-            method: 'DELETE',
-            headers: getAdminHeaders()
-          }).then(function() {
-            return Trovee.api('/api/admin/shares/plans', {
-              method: 'POST',
-              body: {
-                company_id: companyId,
-                plan_name: planName,
-                shares_count: shares,
-                price_usd: price,
-                return_rate_pct: returnRate,
-                duration_months: duration
-              },
-              headers: getAdminHeaders()
-            });
-          }).then(function() {
-            Trovee.showToast('Plan updated successfully.');
-            closeModal();
-            loadPlans();
-          }).catch(function(e) {
-            Trovee.showToast(e.message || 'Failed to update plan.', 'error');
-          });
-        });
-      });
-    });
-  }
-
-  async function deletePlan(id) {
-    if (!confirm('Delete this plan?')) return;
     try {
-      await Trovee.api('/api/admin/shares/plans/' + id, { method: 'DELETE', headers: getAdminHeaders() });
-      Trovee.showToast('Plan deleted successfully.');
-      loadPlans();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Failed to delete plan.', 'error');
+      const res = await fetch(`/api/admin/shares/companies/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ name, ticker, sector, logo_url, description, is_active: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      msg.textContent = "Saved.";
+      msg.style.color = "var(--teal)";
+      setTimeout(() => {
+        document.getElementById(`edit-form-${id}`).style.display = 'none';
+        loadSharesCompanies();
+      }, 800);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
     }
   }
 
-  // ─── WALLETS ────────────────────────────────────────────────
-  async function loadWallets() {
+  async function deleteCompany(id, name) {
+    if (!confirm(`Delete "${name}" and all its plans? This cannot be undone.`)) return;
     try {
-      var data = await Trovee.api('/api/admin/wallets', { headers: getAdminHeaders() });
-      renderWallets(data.wallets || []);
-    } catch (e) {
-      document.getElementById('wallets-table-body').innerHTML = '<tr><td colspan="5" class="empty-state">Error: ' + e.message + '</td></tr>';
+      const res = await fetch(`/api/admin/shares/companies/${id}`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      const msg = data.soft_delete
+        ? "Company deactivated (has purchase history — hidden from users)."
+        : "Company deleted.";
+      Trovee.showToast(msg);
+      loadSharesCompanies();
+    } catch(e) {
+      Trovee.showToast(e.message || "Failed to delete company.", "error");
+      console.error("deleteCompany:", e);
     }
   }
 
-  function renderWallets(wallets) {
-    var tbody = document.getElementById('wallets-table-body');
-    document.getElementById('wallets-count').textContent = wallets.length;
-    if (!wallets.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No wallets found.</td></tr>';
+  async function toggleCompanyActive(id, currentlyActive) {
+    try {
+      const data = await adminApi("/api/admin/shares/companies");
+      const c = data.companies.find(x => x.id === id);
+      if (!c) return;
+      await fetch(`/api/admin/shares/companies/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ ...c, is_active: !currentlyActive }),
+      });
+      Trovee.showToast(`Company ${currentlyActive ? "deactivated" : "activated"}.`);
+      loadSharesCompanies();
+    } catch(e) { console.error("toggleCompany", e); }
+  }
+
+  async function manageCompanyPlans(companyId, companyName) {
+    currentManagedCompanyId = companyId;
+    currentManagedCompanyName = companyName;
+    document.getElementById("plans-manager").style.display = "block";
+    document.getElementById("plans-manager-title").textContent = `Plans — ${companyName}`;
+    document.getElementById("plans-manager").scrollIntoView({ behavior: "smooth", block: "start" });
+    await loadPlansGrid();
+  }
+
+  async function loadPlansGrid() {
+    try {
+      const data = await adminApi(`/api/admin/shares/companies/${currentManagedCompanyId}/plans`);
+      const el = document.getElementById("plans-grid");
+      const active = data.plans.filter(p => p.is_active);
+      if (!active.length) { el.innerHTML = '<p class="muted small">No plans yet.</p>'; return; }
+      el.innerHTML = active.map(p => `
+        <div class="plan-mini-card">
+          <div class="plan-mini-name">${escapeHtml(p.plan_name)}</div>
+          <div class="plan-mini-row"><span>Price</span><span>$${(p.price_usd_cents/100).toFixed(2)}</span></div>
+          <div class="plan-mini-row"><span>Shares</span><span>${p.shares_count}</span></div>
+          <div class="plan-mini-row"><span>Return</span><span>${p.return_rate_pct}%</span></div>
+          <div class="plan-mini-row"><span>Duration</span><span>${p.duration_months}mo</span></div>
+          <div class="plan-mini-remove">
+            <button class="btn-sm btn-sm-red" onclick="deletePlan(${p.id})">Remove</button>
+          </div>
+        </div>
+      `).join("");
+    } catch(e) { console.error("loadPlans", e); }
+  }
+
+  async function addPlan() {
+    const plan_name = document.getElementById("np-name").value.trim();
+    const shares_count = document.getElementById("np-shares").value;
+    const price_usd = document.getElementById("np-price").value;
+    const return_rate_pct = document.getElementById("np-return").value || 12;
+    const duration_months = document.getElementById("np-duration").value || 12;
+    const msg = document.getElementById("add-plan-msg");
+
+    if (!plan_name || !shares_count || !price_usd) {
+      msg.textContent = "Name, shares, and price required.";
+      msg.style.color = "var(--coral)";
       return;
     }
-    var html = '';
-    for (var i = 0; i < wallets.length; i++) {
-      var w = wallets[i];
-      var statusClass = w.is_active ? 'active' : 'inactive';
-      var statusLabel = w.is_active ? 'Active' : 'Inactive';
-      html += '<tr>' +
-        '<td>' + w.id + '</td>' +
-        '<td><strong>' + w.display_name + '</strong></td>' +
-        '<td><span class="address">' + w.address + '</span></td>' +
-        '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-        '<td><div class="actions">' +
-          '<button class="btn-warning" onclick="toggleWallet(' + w.id + ', ' + (w.is_active ? 0 : 1) + ')">' + (w.is_active ? 'Deactivate' : 'Activate') + '</button>' +
-          '<button class="btn-danger" onclick="deleteWallet(' + w.id + ')">Delete</button>' +
-        '</div></td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
-  }
 
-  async function toggleWallet(id, status) {
     try {
-      await Trovee.api('/api/admin/wallets/' + id, {
-        method: 'PUT',
-        body: { is_active: !!status },
-        headers: getAdminHeaders()
+      const res = await fetch("/api/admin/shares/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({
+          company_id: currentManagedCompanyId,
+          plan_name,
+          shares_count: parseInt(shares_count),
+          price_usd: parseFloat(price_usd),
+          return_rate_pct: parseFloat(return_rate_pct),
+          duration_months: parseInt(duration_months),
+        }),
       });
-      Trovee.showToast('Wallet ' + (status ? 'activated' : 'deactivated') + '.');
-      loadWallets();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Failed to update wallet.', 'error');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      msg.textContent = "Plan added.";
+      msg.style.color = "var(--teal)";
+      ["np-name","np-shares","np-price","np-return","np-duration"]
+        .forEach(id => document.getElementById(id).value = "");
+      loadPlansGrid();
+      loadSharesCompanies();
+      setTimeout(() => msg.textContent = "", 3000);
+    } catch(e) {
+      msg.textContent = e.message || "Failed.";
+      msg.style.color = "var(--coral)";
     }
   }
 
-  async function deleteWallet(id) {
-    if (!confirm('Delete this wallet configuration?')) return;
+  async function deletePlan(planId) {
     try {
-      await Trovee.api('/api/admin/wallets/' + id, { method: 'DELETE', headers: getAdminHeaders() });
-      Trovee.showToast('Wallet deleted.');
-      loadWallets();
-    } catch (e) {
-      Trovee.showToast(e.message || 'Failed to delete wallet.', 'error');
+      const res = await fetch(`/api/admin/shares/plans/${planId}`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      Trovee.showToast("Plan removed.");
+      loadPlansGrid();
+      loadSharesCompanies();
+    } catch(e) { Trovee.showToast("Failed to remove plan.", "error"); }
+  }
+
+  // ─── PURCHASES ──
+  async function loadSharesPurchases() {
+    try {
+      const data = await adminApi("/api/admin/shares/purchases");
+      const el = document.getElementById("purchases-list");
+      if (!data.purchases.length) { el.innerHTML = '<p class="muted small">No purchases yet.</p>'; return; }
+      el.innerHTML = data.purchases.map(p => {
+        const isPaid   = p.status === "paid";
+        const isActive = p.status === "active";
+        const overdue  = p.is_overdue;
+        const statusColor = isPaid ? "var(--teal)" : overdue ? "#F59E0B" : "var(--accent)";
+        const statusLabel = isPaid ? "PAID" : overdue ? "OVERDUE" : "ACTIVE";
+        return `
+        <div class="data-card" style="${overdue && !isPaid ? 'border-color:rgba(245,158,11,0.4);' : ''}">
+          <div class="data-card-head">
+            <div>
+              <div class="data-card-head-title">${escapeHtml(p.username)}</div>
+              <div class="data-card-head-sub">${escapeHtml(p.email)}</div>
+            </div>
+            <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;
+              background:rgba(255,255,255,0.06);color:${statusColor};">${statusLabel}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Company</span>
+            <span class="data-card-value">${escapeHtml(p.company_name)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Plan</span>
+            <span class="data-card-value">${escapeHtml(p.plan_name || "")} · ${p.shares_count} shares</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Invested</span>
+            <span class="data-card-value mono">$${(p.price_usd_cents/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Return</span>
+            <span class="data-card-value mono" style="color:var(--teal);">+$${((p.return_usd_cents||0)/100).toFixed(2)} (${p.return_rate_pct}% p.a.)</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Total payout</span>
+            <span class="data-card-value mono" style="font-weight:700;">$${((p.total_payout_cents||0)/100).toFixed(2)}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Purchased</span>
+            <span class="data-card-value">${p.purchased_at ? p.purchased_at.slice(0,10) : ""}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Matures</span>
+            <span class="data-card-value" style="${overdue && !isPaid ? 'color:#F59E0B;font-weight:600;' : ''}">
+              ${p.maturity_date || ""}${isActive ? ` (${p.days_remaining} days)` : ""}
+              ${isPaid && p.paid_at ? ` · Paid ${p.paid_at.slice(0,10)}` : ""}
+            </span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Certificate</span>
+            <span class="data-card-value mono" style="font-size:11px;">${escapeHtml(p.certificate_id)}</span>
+          </div>
+          ${!isPaid ? `
+          <div style="margin-top:12px;">
+            <button class="btn-admin" onclick="adminPayout(${p.id}, '${escapeHtml(p.username)}', ${p.total_payout_cents})"
+              style="background:rgba(45,212,191,0.12);color:var(--teal);border:1px solid rgba(45,212,191,0.3);width:100%;">
+              Pay out $${((p.total_payout_cents||0)/100).toFixed(2)} now
+            </button>
+          </div>` : ""}
+        </div>`;
+      }).join("");
+    } catch(e) { console.error("loadPurchases", e); }
+  }
+
+  async function adminPayout(purchaseId, username, amountCents) {
+    const amount = (amountCents / 100).toFixed(2);
+    if (!confirm(`Credit $${amount} to ${username}'s balance now?\n\nThis marks the investment as paid out.`)) return;
+    try {
+      const res = await fetch(`/api/admin/shares/purchases/${purchaseId}/payout`, {
+        method: "POST",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      Trovee.showToast(`$${amount} credited to ${username}.`);
+      loadSharesPurchases();
+    } catch(e) {
+      Trovee.showToast(e.message || "Payout failed.", "error");
     }
   }
-
-  function showAddWallet() {
-    var name = prompt('Enter wallet name (e.g., Bitcoin):');
-    if (!name) return;
-    var address = prompt('Enter wallet address:');
-    if (!address) return;
-    var logo = prompt('Enter logo URL (optional):') || '';
-    var qr = prompt('Enter QR code URL (optional):') || '';
-    
-    Trovee.api('/api/admin/wallets', {
-      method: 'POST',
-      body: { display_name: name, address: address, logo_url: logo, qr_url: qr, sort_order: 0 },
-      headers: getAdminHeaders()
-    }).then(function() {
-      Trovee.showToast('Wallet added successfully.');
-      loadWallets();
-    }).catch(function(e) {
-      Trovee.showToast(e.message || 'Failed to add wallet.', 'error');
-    });
-  }
-
-  // ─── AUTO-LOGIN CHECK ──────────────────────────────────────
-  if (adminToken) {
-    document.getElementById('admin-login').style.display = 'none';
-    document.getElementById('admin-content').style.display = 'block';
-    loadAllData();
-  }
-
-  document.getElementById('admin-password').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') adminLogin();
-  });
 </script>
 </body>
 </html>
