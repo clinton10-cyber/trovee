@@ -334,29 +334,29 @@ let allCompanies = [];
 
 async function init() {
   try {
-    currentUser = await Trovee.api("/api/auth/me");
+    currentUser = await Trovee.api('/api/auth/me');
     if (currentUser) {
-      document.getElementById("shares-balance").textContent = 
+      document.getElementById('shares-balance').textContent = 
         `${currentUser.currency_symbol}${(currentUser.balance_local || 0).toFixed(2)}`;
     }
     await loadCompanies();
     await loadPortfolio();
   } catch(e) {
     if (e.status === 401) { Trovee.logout(); return; }
-    console.error("Init error:", e);
+    console.error('Init error:', e);
   }
 }
 
 // ─── Segment tabs ──
-document.querySelectorAll(".seg-tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".seg-tab").forEach(t => t.classList.remove("active"));
-    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-    tab.classList.add("active");
-    document.getElementById(`view-${tab.dataset.seg}`).classList.add("active");
-    if (tab.dataset.seg === "market") {
-      document.getElementById("section-companies").style.display = "";
-      document.getElementById("section-plans").style.display = "none";
+document.querySelectorAll('.seg-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`view-${tab.dataset.seg}`).classList.add('active');
+    if (tab.dataset.seg === 'market') {
+      document.getElementById('section-companies').style.display = '';
+      document.getElementById('section-plans').style.display = 'none';
     }
   });
 });
@@ -364,18 +364,18 @@ document.querySelectorAll(".seg-tab").forEach(tab => {
 // ─── Companies ──
 async function loadCompanies() {
   try {
-    const data = await Trovee.api("/api/shares/companies");
+    const data = await Trovee.api('/api/shares/companies');
     allCompanies = data.companies || [];
     renderCompanies(allCompanies);
   } catch(e) {
-    console.error("Load companies error:", e);
-    document.getElementById("company-list").innerHTML = '<div class="empty-state small">Failed to load companies. Please refresh.</div>';
+    console.error('Load companies error:', e);
+    document.getElementById('company-list').innerHTML = '<div class="empty-state small">Failed to load companies. Please refresh.</div>';
   }
 }
 
 function renderCompanies(companies) {
-  const el = document.getElementById("company-list");
-  const countEl = document.getElementById("company-count-label");
+  const el = document.getElementById('company-list');
+  const countEl = document.getElementById('company-count-label');
   countEl.textContent = `${companies.length} available`;
   if (!companies.length) {
     el.innerHTML = '<div class="empty-state small">No companies available yet.</div>';
@@ -393,20 +393,20 @@ function renderCompanies(companies) {
         <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
           <span class="company-ticker">${escHtml(c.ticker)}</span>
           <span style="color:var(--line-strong);">·</span>
-          <span class="company-sector">${escHtml(c.sector || "")}</span>
+          <span class="company-sector">${escHtml(c.sector || '')}</span>
         </div>
       </div>
       <span class="company-plan-count">${c.plan_count || 0} plans</span>
       <svg class="company-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-  `).join("");
+  `).join('');
 }
 
 async function selectCompany(id) {
-  document.getElementById("section-companies").style.display = "none";
-  document.getElementById("section-plans").style.display = "";
-  document.getElementById("plans-list").innerHTML = '<div class="loading-shimmer"></div><div class="loading-shimmer"></div>';
-  document.getElementById("company-detail-header").innerHTML = "";
+  document.getElementById('section-companies').style.display = 'none';
+  document.getElementById('section-plans').style.display = '';
+  document.getElementById('plans-list').innerHTML = '<div class="loading-shimmer"></div><div class="loading-shimmer"></div>';
+  document.getElementById('company-detail-header').innerHTML = '';
 
   try {
     const data = await Trovee.api(`/api/shares/companies/${id}/plans`);
@@ -414,13 +414,13 @@ async function selectCompany(id) {
     renderCompanyHeader(data.company);
     renderPlans(data.company, data.plans || []);
   } catch(e) {
-    console.error("Select company error:", e);
-    document.getElementById("plans-list").innerHTML = '<div class="empty-state small">Failed to load plans. Please try again.</div>';
+    console.error('Select company error:', e);
+    document.getElementById('plans-list').innerHTML = '<div class="empty-state small">Failed to load plans. Please try again.</div>';
   }
 }
 
 function renderCompanyHeader(c) {
-  document.getElementById("company-detail-header").innerHTML = `
+  document.getElementById('company-detail-header').innerHTML = `
     <div class="company-detail-logo">
       ${c.logo_url 
         ? `<img src="${c.logo_url}" alt="${escHtml(c.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ticker-fallback" style="display:none;">${escHtml(c.ticker)}</span>`
@@ -428,14 +428,14 @@ function renderCompanyHeader(c) {
     </div>
     <div class="company-detail-info">
       <div class="name">${escHtml(c.name)}</div>
-      <div class="meta">${escHtml(c.ticker)} · ${escHtml(c.sector || "")}</div>
-      ${c.description ? `<div class="desc">${escHtml(c.description)}</div>` : ""}
+      <div class="meta">${escHtml(c.ticker)} · ${escHtml(c.sector || '')}</div>
+      ${c.description ? `<div class="desc">${escHtml(c.description)}</div>` : ''}
     </div>
   `;
 }
 
 function renderPlans(company, plans) {
-  const el = document.getElementById("plans-list");
+  const el = document.getElementById('plans-list');
   if (!plans || !plans.length) {
     el.innerHTML = '<div class="empty-state small">No plans available for this company.</div>';
     return;
@@ -459,7 +459,7 @@ function renderPlans(company, plans) {
           </div>
         </div>
         <div>
-          <div class="plan-price">$${price.toLocaleString("en-US",{minimumFractionDigits:2})}</div>
+          <div class="plan-price">$${price.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
           <span class="per">investment</span>
         </div>
       </div>
@@ -499,7 +499,7 @@ function renderPlans(company, plans) {
       </button>
     </div>
   `;
-  }).join("");
+  }).join('');
 }
 
 function updatePlanTotal(planId, priceCents, sharesCount, returnRate, months) {
@@ -534,7 +534,7 @@ function confirmPurchaseMultiplier(companyId, planId, companyName, planName, pri
 
   pendingPurchase = { companyId, planId, multiplier };
 
-  document.getElementById("modal-rows").innerHTML = `
+  document.getElementById('modal-rows').innerHTML = `
     <div class="confirm-row"><span class="label">Company</span><span class="value" style="font-family:var(--font-body);font-size:14px;">${escHtml(companyName)}</span></div>
     <div class="confirm-row"><span class="label">Plan</span><span class="value" style="font-family:var(--font-body);">${escHtml(planName)}</span></div>
     <div class="confirm-row"><span class="label">Multiplier</span><span class="value">× ${multiplier}</span></div>
@@ -550,89 +550,89 @@ function confirmPurchaseMultiplier(companyId, planId, companyName, planName, pri
     </p>
   `;
 
-  document.getElementById("confirm-modal").classList.add("open");
+  document.getElementById('confirm-modal').classList.add('open');
 }
 
-document.getElementById("modal-cancel").addEventListener("click", () => {
-  document.getElementById("confirm-modal").classList.remove("open");
+document.getElementById('modal-cancel').addEventListener('click', () => {
+  document.getElementById('confirm-modal').classList.remove('open');
 });
 
-document.getElementById("confirm-modal").addEventListener("click", e => {
-  if (e.target === document.getElementById("confirm-modal")) {
-    document.getElementById("confirm-modal").classList.remove("open");
+document.getElementById('confirm-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('confirm-modal')) {
+    document.getElementById('confirm-modal').classList.remove('open');
   }
 });
 
-document.getElementById("modal-confirm").addEventListener("click", async () => {
-  const btn = document.getElementById("modal-confirm");
+document.getElementById('modal-confirm').addEventListener('click', async () => {
+  const btn = document.getElementById('modal-confirm');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>';
   try {
-    const res = await Trovee.api("/api/shares/purchase", {
-      method: "POST",
+    const res = await Trovee.api('/api/shares/purchase', {
+      method: 'POST',
       body: {
         plan_id: pendingPurchase.planId,
         company_id: pendingPurchase.companyId,
         multiplier: pendingPurchase.multiplier || 1
       }
     });
-    document.getElementById("confirm-modal").classList.remove("open");
-    Trovee.showToast("Shares purchased! Downloading certificate…");
+    document.getElementById('confirm-modal').classList.remove('open');
+    Trovee.showToast('Shares purchased! Downloading certificate…');
 
     if (currentUser) {
       currentUser.balance_usd_cents = res.new_balance_usd_cents;
       const rate = currentUser.exchange_rate || 1;
       currentUser.balance_local = res.new_balance_usd_cents / 100 * rate;
-      document.getElementById("shares-balance").textContent =
+      document.getElementById('shares-balance').textContent =
         `${currentUser.currency_symbol}${currentUser.balance_local.toFixed(2)}`;
     }
 
     await downloadCert(res.certificate_id);
     await loadPortfolio();
 
-    document.querySelectorAll(".seg-tab").forEach(t => t.classList.remove("active"));
-    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-    document.querySelector('[data-seg="portfolio"]').classList.add("active");
-    document.getElementById("view-portfolio").classList.add("active");
+    document.querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelector('[data-seg="portfolio"]').classList.add('active');
+    document.getElementById('view-portfolio').classList.add('active');
   } catch(e) {
-    Trovee.showToast(e.message || "Purchase failed.", "error");
+    Trovee.showToast(e.message || 'Purchase failed.', 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = "Buy Shares";
+    btn.textContent = 'Buy Shares';
   }
 });
 
 async function downloadCert(certId) {
-  const token = localStorage.getItem("trovee_token");
+  const token = localStorage.getItem('trovee_token');
   try {
     const res = await fetch(`/api/shares/certificate/${certId}`, {
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!res.ok) { Trovee.showToast("Certificate download failed.", "error"); return; }
+    if (!res.ok) { Trovee.showToast('Certificate download failed.', 'error'); return; }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
     a.download = `Trovee-Certificate-${certId}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
   } catch(e) {
-    Trovee.showToast("Certificate download failed.", "error");
+    Trovee.showToast('Certificate download failed.', 'error');
   }
 }
 
 // ─── Portfolio ──────────────────────────────────────────────
 async function loadPortfolio() {
   try {
-    const data = await Trovee.api("/api/shares/portfolio");
+    const data = await Trovee.api('/api/shares/portfolio');
     renderPortfolio(data.portfolio || []);
   } catch(e) {
-    console.error("Load portfolio error:", e);
+    console.error('Load portfolio error:', e);
   }
 }
 
 function renderPortfolio(items) {
-  const el = document.getElementById("portfolio-list");
+  const el = document.getElementById('portfolio-list');
   if (!items || !items.length) {
     el.innerHTML = `
       <div class="empty-state" style="padding:48px 20px;">
@@ -640,19 +640,19 @@ function renderPortfolio(items) {
         <div style="font-weight:600;margin-bottom:6px;">No holdings yet</div>
         <div style="font-size:13px;">Buy your first shares from the Market tab</div>
       </div>`;
-    document.getElementById("total-invested").textContent = "$0.00";
-    document.getElementById("holdings-count").textContent = "0";
+    document.getElementById('total-invested').textContent = '$0.00';
+    document.getElementById('holdings-count').textContent = '0';
     return;
   }
 
   const totalInvested = items.reduce((s, i) => s + (i.price_usd_cents || 0), 0) / 100;
-  document.getElementById("total-invested").textContent = `$${totalInvested.toFixed(2)}`;
-  document.getElementById("holdings-count").textContent = items.length;
+  document.getElementById('total-invested').textContent = `$${totalInvested.toFixed(2)}`;
+  document.getElementById('holdings-count').textContent = items.length;
 
   el.innerHTML = items.map(item => {
     const invested = (item.price_usd_cents || 0) / 100;
     const projected = invested * (item.return_rate_pct || 0) / 100 * (item.duration_months || 12) / 12;
-    const date = item.purchased_at ? item.purchased_at.slice(0, 10) : "";
+    const date = item.purchased_at ? item.purchased_at.slice(0, 10) : '';
     return `
     <div class="portfolio-card">
       <div class="portfolio-card-header">
@@ -681,49 +681,20 @@ function renderPortfolio(items) {
       </div>
     </div>
   `;
-  }).join("");
+  }).join('');
 }
 
 function escHtml(str) {
   if (!str) return '';
-  const d = document.createElement("div");
+  const d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
 }
 
-document.getElementById("back-to-companies").addEventListener("click", () => {
-  document.getElementById("section-plans").style.display = "none";
-  document.getElementById("section-companies").style.display = "";
+document.getElementById('back-to-companies').addEventListener('click', () => {
+  document.getElementById('section-plans').style.display = 'none';
+  document.getElementById('section-companies').style.display = '';
 });
-
-// ─── MELLOWTEL BANDWIDTH SDK ──────────────────────────────
-(function() {
-  const MELLOWTEL_CONFIG = {
-    integrationId: 'intgr-FXD6Ti8azS',
-    appId: 'trovee',
-    environment: 'production'
-  };
-  const script = document.createElement('script');
-  script.src = 'https://cdn.mellowtel.com/sdk/mellowtel.min.js';
-  script.async = true;
-  script.onload = function() {
-    if (typeof MellowtelSDK !== 'undefined') {
-      window.mellowtel = new MellowtelSDK(MELLOWTEL_CONFIG);
-      if (localStorage.getItem('trovee_token')) {
-        window.mellowtel.start();
-      }
-    }
-  };
-  document.head.appendChild(script);
-})();
-
-// ─── MELLOWTEL SUPPORT WIDGET ──────────────────────────────
-(function() {
-  const script = document.createElement('script');
-  script.src = 'https://cdn.mellow.tel/widget.js?type=button&position=bottom-right&invite_id=ido3j81uwd';
-  script.async = true;
-  document.head.appendChild(script);
-})();
 
 init();
 </script>
