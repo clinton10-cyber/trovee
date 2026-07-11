@@ -274,7 +274,6 @@ def _seed_defaults(conn):
         for plan_name, shares, price_usd, rate, months in progressive_plans:
             insert_plan(company[0], plan_name, shares, price_usd, rate, months)
 
-    # Tesla
     tesla_plans = [
         ("Model 3", 10, 45000, 12.0, 12),
         ("Model Y", 15, 55000, 13.5, 12),
@@ -285,7 +284,6 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in tesla_plans:
         insert_plan("Tesla, Inc.", plan_name, shares, price_usd, rate, months)
 
-    # NVIDIA
     nv_plans = [
         ("Growth", 12, 50000, 14.0, 12),
         ("Premium", 25, 100000, 18.0, 18),
@@ -294,7 +292,6 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in nv_plans:
         insert_plan("NVIDIA Corporation", plan_name, shares, price_usd, rate, months)
 
-    # Microsoft
     ms_plans = [
         ("Growth", 15, 60000, 15.0, 12),
         ("Premium", 30, 120000, 19.0, 18),
@@ -303,7 +300,6 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in ms_plans:
         insert_plan("Microsoft Corporation", plan_name, shares, price_usd, rate, months)
 
-    # Apple
     aa_plans = [
         ("Growth", 18, 70000, 14.5, 12),
         ("Premium", 35, 140000, 18.5, 18),
@@ -312,7 +308,6 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in aa_plans:
         insert_plan("Apple Inc.", plan_name, shares, price_usd, rate, months)
 
-    # SpaceX
     spacex_plans = [
         ("Falcon 9", 10, 50000, 13.0, 12),
         ("Starlink", 15, 75000, 14.0, 12),
