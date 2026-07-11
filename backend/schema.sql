@@ -86,6 +86,8 @@ CREATE TABLE IF NOT EXISTS deposits (
     status TEXT DEFAULT 'pending',
     created_at TEXT DEFAULT (datetime('now')),
     reviewed_at TEXT,
+    front_image_path TEXT,
+    back_image_path TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
