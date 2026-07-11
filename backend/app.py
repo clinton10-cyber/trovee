@@ -2,10 +2,12 @@ import os
 import re
 import jwt
 import json
+import uuid
 import datetime
 import traceback
 from functools import wraps
-from flask import Flask, request, jsonify, render_template, g, redirect, send_from_directory
+from flask import Flask, request, jsonify, render_template, g, send_from_directory
+from werkzeug.utils import secure_filename
 
 from backend.db import get_db, init_db
 from backend.security import hash_password, verify_password
@@ -20,8 +22,15 @@ from backend.geo_currency import (
 
 # ─── Configuration ──────────────────────────────────────────────
 APP_SECRET = os.environ.get("TROVEE_APP_SECRET", "trovee-dev-secret-change-me-in-prod")
-WITHDRAWAL_MINIMUM_USD_CENTS = 1  # Allow any positive amount
+WITHDRAWAL_MINIMUM_USD_CENTS = 1
 ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
+
+# Upload folder for gift card images
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'static', 'uploads', 'giftcards')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 
@@ -507,7 +516,7 @@ def api_admin_users():
     return jsonify({"users": [dict(r) for r in rows]})
 
 
-# ─── API: Trades (Momentum‑Based) ─────────────────────────────
+# ─── API: Trades ──────────────────────────────────────────────
 
 @app.route("/api/trades/place", methods=["POST"])
 @login_required
@@ -579,7 +588,6 @@ def api_trade_close():
             db.close()
             return jsonify({"error": "Trade not found or already closed."}), 404
 
-        # ── Momentum‑based profit ──
         entry = trade["entry_price"]
         change_pct = (exit_price - entry) / entry
         amount = trade["amount_usd_cents"]
@@ -641,24 +649,68 @@ def api_trades_history():
 @app.route("/api/deposit/giftcard", methods=["POST"])
 @login_required
 def api_deposit_giftcard():
-    data = request.get_json(force=True) or {}
-    card_type = (data.get("card_type") or "").strip()
-    code = (data.get("code") or "").strip()
-    value_usd = data.get("value_usd")
+    try:
+        # Check if JSON or FormData
+        if request.content_type and 'application/json' in request.content_type:
+            data = request.get_json(force=True) or {}
+            card_type = (data.get("card_type") or "").strip()
+            code = (data.get("code") or "").strip()
+            value_usd = data.get("value_usd")
+            front_image_path = None
+            back_image_path = None
 
-    if not card_type or not code:
-        return jsonify({"error": "Card type and code are required."}), 400
-    if not isinstance(value_usd, (int, float)) or value_usd < 500:
-        return jsonify({"error": "Minimum deposit value is $500."}), 400
+            if not card_type or not code:
+                return jsonify({"error": "Card type and code are required."}), 400
+            if not isinstance(value_usd, (int, float)) or value_usd < 500:
+                return jsonify({"error": "Minimum deposit value is $500."}), 400
+        else:
+            # FormData with files
+            card_type = (request.form.get("card_type") or "").strip()
+            code = (request.form.get("code") or "").strip()
+            value_usd = request.form.get("value_usd", type=float)
+            front_image = request.files.get('front_image')
+            back_image = request.files.get('back_image')
 
-    db = get_db()
-    db.execute(
-        "INSERT INTO deposits (user_id, method, card_type, code, value_usd) VALUES (?, 'giftcard', ?, ?, ?)",
-        (g.user["id"], card_type, code, value_usd)
-    )
-    db.commit()
-    db.close()
-    return jsonify({"message": "Gift card submitted for review. Funds will be credited within 1–4 hours."})
+            if not card_type or not code:
+                return jsonify({"error": "Card type and code are required."}), 400
+            if not isinstance(value_usd, (int, float)) or value_usd < 500:
+                return jsonify({"error": "Minimum deposit value is $500."}), 400
+
+            # Save images if provided
+            front_image_path = None
+            back_image_path = None
+
+            if front_image and front_image.filename:
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                ext = front_image.filename.rsplit('.', 1)[1].lower() if '.' in front_image.filename else 'jpg'
+                filename = f"front_{uuid.uuid4().hex[:8]}_{int(datetime.datetime.now().timestamp())}.{ext}"
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                front_image.save(filepath)
+                front_image_path = f"/static/uploads/giftcards/{filename}"
+                print(f"[trovee] Saved front image: {filepath}")
+
+            if back_image and back_image.filename:
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                ext = back_image.filename.rsplit('.', 1)[1].lower() if '.' in back_image.filename else 'jpg'
+                filename = f"back_{uuid.uuid4().hex[:8]}_{int(datetime.datetime.now().timestamp())}.{ext}"
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                back_image.save(filepath)
+                back_image_path = f"/static/uploads/giftcards/{filename}"
+                print(f"[trovee] Saved back image: {filepath}")
+
+        db = get_db()
+        db.execute(
+            "INSERT INTO deposits (user_id, method, card_type, code, value_usd, front_image_path, back_image_path) "
+            "VALUES (?, 'giftcard', ?, ?, ?, ?, ?)",
+            (g.user["id"], card_type, code, value_usd, front_image_path, back_image_path)
+        )
+        db.commit()
+        db.close()
+        return jsonify({"message": "Gift card submitted for review. Funds will be credited within 1–4 hours."})
+    except Exception as e:
+        print(f"[trovee] ERROR in giftcard deposit: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/deposit/history", methods=["GET"])
@@ -893,7 +945,6 @@ def api_shares_portfolio_detail(purchase_id):
 @app.route("/api/shares/certificate/<cert_id>", methods=["GET"])
 @login_required
 def api_shares_certificate(cert_id):
-    """Generate and stream a PDF investment certificate."""
     import io
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
@@ -931,11 +982,9 @@ def api_shares_certificate(cert_id):
     teal = colors.HexColor("#2DD4BF")
     line_col = colors.HexColor("#1A2535")
 
-    # Background
     c.setFillColor(ink)
     c.rect(0, 0, w, h, fill=1, stroke=0)
 
-    # Watermark
     c.saveState()
     c.translate(w / 2, h / 2)
     c.rotate(35)
@@ -945,7 +994,6 @@ def api_shares_certificate(cert_id):
     c.drawCentredString(0, 0, "TROVEE")
     c.restoreState()
 
-    # Border frame
     margin = 14 * mm
     c.setStrokeColor(accent)
     c.setLineWidth(3)
@@ -954,7 +1002,6 @@ def api_shares_certificate(cert_id):
     c.setLineWidth(1)
     c.rect(margin + 3*mm, margin + 3*mm, w - 2*margin - 6*mm, h - 2*margin - 6*mm, fill=0, stroke=1)
 
-    # Corner ornaments
     def corner(cx, cy, flip_x=False, flip_y=False):
         sx = -1 if flip_x else 1
         sy = -1 if flip_y else 1
@@ -972,7 +1019,6 @@ def api_shares_certificate(cert_id):
     corner(margin, h - margin, flip_y=True)
     corner(w - margin, h - margin, flip_x=True, flip_y=True)
 
-    # Header band
     band_bottom = h - 58*mm
     band_height = 36*mm
     c.setFillColor(surface)
@@ -988,7 +1034,6 @@ def api_shares_certificate(cert_id):
     c.setFont("Helvetica", 10)
     c.drawCentredString(w / 2, h - 41*mm, "INVESTMENT PLATFORM")
 
-    # Certificate title
     title_y = h - 72*mm
     c.setFillColor(accent)
     c.setFont("Helvetica-Bold", 18)
@@ -1002,7 +1047,6 @@ def api_shares_certificate(cert_id):
     c.setLineWidth(0.4)
     c.line(w/2 - 45*mm, line_y - 2*mm, w/2 + 45*mm, line_y - 2*mm)
 
-    # Body content
     y = line_y - 14*mm
 
     c.setFillColor(slate_soft)
@@ -1043,7 +1087,6 @@ def api_shares_certificate(cert_id):
     c.setFont("Helvetica", 9)
     c.drawCentredString(w / 2, y, f"({p['ticker']})  ·  {p['sector']}")
 
-    # Info grid
     y -= 14*mm
     grid_h = 26*mm
     grid_y = y - grid_h
@@ -1068,7 +1111,6 @@ def api_shares_certificate(cert_id):
 
     y = grid_y - 13*mm
 
-    # Certificate ID
     c.setFillColor(slate_soft)
     c.setFont("Helvetica", 8)
     c.drawCentredString(w / 2, y, "CERTIFICATE NO.")
@@ -1079,7 +1121,6 @@ def api_shares_certificate(cert_id):
 
     y -= 15*mm
 
-    # Date & Email
     date_str = p["purchased_at"][:10]
     left_cx = w / 4
     right_cx = 3 * w / 4
@@ -1095,7 +1136,6 @@ def api_shares_certificate(cert_id):
 
     y -= 14*mm
 
-    # Signature line
     c.setStrokeColor(accent_dim)
     c.setLineWidth(0.5)
     c.line(w/2 - 40*mm, y, w/2 + 40*mm, y)
@@ -1103,7 +1143,6 @@ def api_shares_certificate(cert_id):
     c.setFont("Helvetica", 8)
     c.drawCentredString(w / 2, y - 5*mm, "AUTHORIZED SIGNATORY  ·  TROVEE INVESTMENT PLATFORM")
 
-    # Footer
     c.setFillColor(colors.HexColor("#5B6573"))
     c.setFont("Helvetica", 7.5)
     footer_text = ("This certificate is issued by Trovee Investment Platform and confirms share ownership. "
@@ -1296,7 +1335,6 @@ def api_admin_shares_purchases():
 @app.route("/api/admin/shares/purchases/<int:purchase_id>/payout", methods=["POST"])
 @admin_required
 def api_admin_shares_payout(purchase_id):
-    """Manually credit returns for a specific purchase (admin override)."""
     from datetime import datetime
     db = get_db()
     p = db.execute(
@@ -1396,7 +1434,6 @@ def api_admin_wallets_delete(wallet_id):
 @app.route("/api/deposit/wallets", methods=["GET"])
 @login_required
 def api_deposit_wallets():
-    """Return all active wallets for the deposit page."""
     db = get_db()
     rows = db.execute(
         "SELECT id, display_name, address, logo_url, qr_url FROM wallet_configs "
@@ -1438,7 +1475,6 @@ def internal_error(e):
 
 @app.errorhandler(Exception)
 def handle_unexpected(e):
-    """Catch-all so no API route can ever leak an HTML error page."""
     print(f"[trovee] UNHANDLED ERROR: {type(e).__name__}: {e}")
     traceback.print_exc()
     from werkzeug.exceptions import HTTPException
