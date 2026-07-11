@@ -1,6 +1,5 @@
 """
 Trovee database layer — supports both SQLite and PostgreSQL.
-Now with detailed logging for debugging and bandwidth monetization.
 """
 
 import os
@@ -142,10 +141,6 @@ def init_db():
 
 
 def _seed_defaults(conn):
-    """
-    Insert default wallets and share companies/plans with logos and QR codes.
-    Progressive plans from $100 to $20,000+ for each company.
-    """
     cur = conn.cursor()
 
     def insert_wallet(name, address, logo, qr, order):
@@ -168,7 +163,6 @@ def _seed_defaults(conn):
                 (name, address, logo, qr, order)
             )
 
-    # ─── Wallets ──────────────────────────────────────────────────
     wallets = [
         ("Bitcoin (BTC)", "bc1qegwjs26n6pt5mh0xlmpawkme98scdgn5al3wak",
          "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
@@ -201,28 +195,26 @@ def _seed_defaults(conn):
     for w in wallets:
         insert_wallet(*w)
 
-    # ─── Share Companies ─────────────────────────────────────────
-    # Using reliable logo URLs that work without hotlinking issues
     companies = [
         ("Tesla, Inc.", "TSLA",
          "Electric vehicles and clean energy",
-         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tesla.svg",
+         "https://logo.clearbit.com/tesla.com",
          "Automotive"),
         ("NVIDIA Corporation", "NVDA",
          "Graphics processing units and AI",
-         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/nvidia.svg",
+         "https://logo.clearbit.com/nvidia.com",
          "Technology"),
         ("Microsoft Corporation", "MSFT",
          "Software and cloud computing",
-         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoft.svg",
+         "https://logo.clearbit.com/microsoft.com",
          "Technology"),
         ("Apple Inc.", "AAPL",
          "Consumer electronics and software",
-         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/apple.svg",
+         "https://logo.clearbit.com/apple.com",
          "Technology"),
         ("SpaceX", "SPX",
          "Space exploration, satellite internet, and aerospace",
-         "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/spacex.svg",
+         "https://logo.clearbit.com/spacex.com",
          "Aerospace"),
     ]
     company_ids = {}
@@ -250,7 +242,6 @@ def _seed_defaults(conn):
             row = cur.fetchone()
             company_ids[name] = row[0] if row else None
 
-    # ─── Helper to insert a plan ────────────────────────────────
     def insert_plan(company_name, plan_name, shares, price_usd, rate, months):
         tid = company_ids.get(company_name)
         if not tid:
@@ -269,7 +260,6 @@ def _seed_defaults(conn):
                 (tid, plan_name, shares, price_cents, rate, months)
             )
 
-    # ─── Progressive Plans (for all companies) ──────────────────
     progressive_plans = [
         ("Starter", 1, 100, 8.0, 6),
         ("Basic", 5, 500, 9.0, 6),
@@ -280,14 +270,11 @@ def _seed_defaults(conn):
         ("Elite", 200, 20000, 18.0, 24),
     ]
 
-    # Insert progressive plans for all companies
     for company in companies:
         for plan_name, shares, price_usd, rate, months in progressive_plans:
             insert_plan(company[0], plan_name, shares, price_usd, rate, months)
 
-    # ─── Company-Specific High-End Plans ──────────────────────
-
-    # Tesla: car models
+    # Tesla
     tesla_plans = [
         ("Model 3", 10, 45000, 12.0, 12),
         ("Model Y", 15, 55000, 13.5, 12),
@@ -325,7 +312,7 @@ def _seed_defaults(conn):
     for plan_name, shares, price_usd, rate, months in aa_plans:
         insert_plan("Apple Inc.", plan_name, shares, price_usd, rate, months)
 
-    # ─── SpaceX: Mission-Based Plans ──────────────────────────
+    # SpaceX
     spacex_plans = [
         ("Falcon 9", 10, 50000, 13.0, 12),
         ("Starlink", 15, 75000, 14.0, 12),
@@ -364,9 +351,8 @@ def _migrate_sqlite(conn):
         ("share_purchases", "paid_at", "TEXT"),
         ("wallet_configs", "logo_url", "TEXT DEFAULT ''"),
         ("wallet_configs", "qr_url", "TEXT DEFAULT ''"),
-        ("users", "bandwidth_consent", "INTEGER DEFAULT 0"),
-        ("users", "bandwidth_providers", "TEXT DEFAULT ''"),
-        ("users", "bandwidth_earnings", "TEXT DEFAULT '{}'"),
+        ("deposits", "front_image_path", "TEXT"),
+        ("deposits", "back_image_path", "TEXT"),
     ]
     existing = {(row[0], row[1]) for row in conn.execute(
         "SELECT m.name, p.name FROM sqlite_master m "
@@ -392,9 +378,8 @@ def _migrate_postgres(cur):
         ("share_purchases", "paid_at", "TEXT"),
         ("wallet_configs", "logo_url", "TEXT DEFAULT ''"),
         ("wallet_configs", "qr_url", "TEXT DEFAULT ''"),
-        ("users", "bandwidth_consent", "INTEGER DEFAULT 0"),
-        ("users", "bandwidth_providers", "TEXT DEFAULT ''"),
-        ("users", "bandwidth_earnings", "TEXT DEFAULT '{}'"),
+        ("deposits", "front_image_path", "TEXT"),
+        ("deposits", "back_image_path", "TEXT"),
     ]
     for table, col, col_def in migrations:
         try:
