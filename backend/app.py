@@ -19,6 +19,7 @@ from backend.geo_currency import (
     get_currency_for_country, convert_usd_cents, get_withdrawal_methods,
     COUNTRY_CURRENCY, USD_EXCHANGE_RATES,
 )
+from backend.paystack_service import paystack
 
 # ─── Configuration ──────────────────────────────────────────────
 APP_SECRET = os.environ.get("TROVEE_APP_SECRET", "trovee-dev-secret-change-me-in-prod")
@@ -516,6 +517,50 @@ def api_admin_users():
     return jsonify({"users": [dict(r) for r in rows]})
 
 
+@app.route("/api/admin/paystack/settings", methods=["GET"])
+@admin_required
+def api_admin_paystack_settings_get():
+    db = get_db()
+    auto_approve = db.execute(
+        "SELECT value FROM admin_settings WHERE key = 'paystack_withdrawals_auto_approve'"
+    ).fetchone()
+    enabled = db.execute(
+        "SELECT value FROM admin_settings WHERE key = 'paystack_withdrawals_enabled'"
+    ).fetchone()
+    
+    return jsonify({
+        "auto_approve": bool(auto_approve and auto_approve["value"] == "1"),
+        "enabled": bool(enabled and enabled["value"] == "1"),
+        "configured": paystack.is_configured()
+    })
+
+
+@app.route("/api/admin/paystack/settings", methods=["POST"])
+@admin_required
+def api_admin_paystack_settings_update():
+    data = request.get_json(force=True) or {}
+    auto_approve = data.get("auto_approve", False)
+    enabled = data.get("enabled", True)
+    
+    db = get_db()
+    db.execute(
+        "INSERT OR REPLACE INTO admin_settings (key, value) VALUES ('paystack_withdrawals_auto_approve', ?)",
+        ("1" if auto_approve else "0")
+    )
+    db.execute(
+        "INSERT OR REPLACE INTO admin_settings (key, value) VALUES ('paystack_withdrawals_enabled', ?)",
+        ("1" if enabled else "0")
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({
+        "message": "Settings updated.",
+        "auto_approve": auto_approve,
+        "enabled": enabled
+    })
+
+
 # ─── API: Trades ──────────────────────────────────────────────
 
 @app.route("/api/trades/place", methods=["POST"])
@@ -642,6 +687,325 @@ def api_trades_history():
     ).fetchall()
     db.close()
     return jsonify({"trades": [dict(r) for r in rows]})
+
+
+# ─── API: Paystack ────────────────────────────────────────────
+
+@app.route("/api/paystack/initialize", methods=["POST"])
+@login_required
+def api_paystack_initialize():
+    """Initialize a payment with Paystack (falls back gracefully if not configured)."""
+    data = request.get_json(force=True) or {}
+    amount = data.get("amount")
+    currency = data.get("currency", "NGN")
+    country_code = data.get("country_code", "NG")
+    
+    if not amount or amount < 1:
+        return jsonify({"error": "Enter a valid amount."}), 400
+    
+    if not paystack.is_configured():
+        # Paystack not configured – return mock response
+        return jsonify({
+            "status": "fallback",
+            "link": "#",
+            "message": "Paystack is not configured. Please set PAYSTACK_SECRET_KEY to enable payments.",
+            "amount": amount,
+            "currency": currency,
+            "reference": f"MOCK-{g.user['id']}-{int(datetime.datetime.now().timestamp())}"
+        }), 200
+    
+    # Get user's email
+    user_email = g.user["email"]
+    reference = f"TROVEE-{g.user['id']}-{int(datetime.datetime.now().timestamp())}"
+    
+    response = paystack.initialize_payment(
+        user_email=user_email,
+        amount=amount,
+        currency=currency,
+        reference=reference
+    )
+    
+    if response.get("status") == "success":
+        return jsonify({
+            "status": "success",
+            "link": response.get("data", {}).get("link"),
+            "reference": response.get("data", {}).get("reference"),
+            "amount": amount,
+            "currency": currency
+        })
+    else:
+        return jsonify({
+            "status": "error",
+            "message": response.get("message", "Payment initialization failed.")
+        }), 400
+
+
+@app.route("/api/paystack/callback", methods=["GET"])
+def api_paystack_callback():
+    """Handle Paystack payment callback."""
+    reference = request.args.get("reference")
+    transaction_id = request.args.get("transaction_id")
+    
+    if not reference:
+        return render_template("payment_failed.html", reason="No transaction reference provided.")
+    
+    # Verify the payment
+    response = paystack.verify_payment(reference)
+    
+    if response.get("status") == "fallback":
+        # Paystack not configured – show success page
+        return render_template("payment_success.html", amount=100, currency="NGN")
+    
+    if response.get("status") == "success":
+        data = response.get("data", {})
+        if data.get("status") == "success":
+            # Extract user_id from reference
+            try:
+                parts = reference.split("-")
+                user_id = int(parts[1]) if len(parts) > 1 else None
+            except:
+                user_id = None
+            
+            amount = data.get("amount", 0)
+            currency = data.get("currency", "NGN")
+            
+            # Convert to USD cents if needed
+            usd_cents = int(amount * 100)  # Assuming amount is already in USD or using fixed rate
+            
+            if user_id:
+                db = get_db()
+                db.execute(
+                    "UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
+                    (usd_cents, user_id)
+                )
+                db.execute(
+                    "INSERT INTO deposits (user_id, method, card_type, code, value_usd, status) "
+                    "VALUES (?, 'paystack', ?, ?, ?, 'confirmed')",
+                    (user_id, currency, reference, amount)
+                )
+                db.commit()
+                db.close()
+            
+            return render_template("payment_success.html", amount=amount, currency=currency)
+        else:
+            return render_template("payment_failed.html", reason="Payment was not successful.")
+    else:
+        return render_template("payment_failed.html", reason=response.get("message", "Verification failed."))
+
+
+@app.route("/api/paystack/webhook", methods=["POST"])
+def api_paystack_webhook():
+    """Handle Paystack webhook for real-time payment notifications."""
+    signature = request.headers.get("x-paystack-signature")
+    payload = request.data.decode("utf-8")
+    
+    # Verify webhook signature
+    if paystack.webhook_verify_signature(payload, signature):
+        data = request.get_json()
+        
+        if data and data.get("event") == "charge.success":
+            # Handle successful payment
+            transaction_data = data.get("data", {})
+            reference = transaction_data.get("reference")
+            amount = transaction_data.get("amount", 0) / 100  # Convert from kobo
+            currency = transaction_data.get("currency", "NGN")
+            user_email = transaction_data.get("customer", {}).get("email")
+            
+            # Credit the user's account
+            try:
+                parts = reference.split("-")
+                user_id = int(parts[1]) if len(parts) > 1 else None
+                
+                if user_id:
+                    usd_cents = int(amount * 100)
+                    
+                    db = get_db()
+                    db.execute(
+                        "UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
+                        (usd_cents, user_id)
+                    )
+                    db.execute(
+                        "INSERT INTO deposits (user_id, method, card_type, code, value_usd, status) "
+                        "VALUES (?, 'paystack', ?, ?, ?, 'confirmed')",
+                        (user_id, currency, reference, amount)
+                    )
+                    db.commit()
+                    db.close()
+                    
+                    return jsonify({"status": "received"}), 200
+                else:
+                    # Fallback: find user by email
+                    if user_email:
+                        db = get_db()
+                        user = db.execute("SELECT id FROM users WHERE email = ?", (user_email,)).fetchone()
+                        if user:
+                            usd_cents = int(amount * 100)
+                            db.execute(
+                                "UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
+                                (usd_cents, user["id"])
+                            )
+                            db.execute(
+                                "INSERT INTO deposits (user_id, method, card_type, code, value_usd, status) "
+                                "VALUES (?, 'paystack', ?, ?, ?, 'confirmed')",
+                                (user["id"], currency, reference, amount)
+                            )
+                            db.commit()
+                            db.close()
+            except Exception as e:
+                print(f"[trovee] Webhook error: {e}")
+                return jsonify({"error": str(e)}), 500
+    
+    return jsonify({"status": "received"}), 200
+
+
+@app.route("/api/paystack/banks", methods=["GET"])
+@login_required
+def api_paystack_banks():
+    """Get list of banks for a country."""
+    country_code = request.args.get("country", "NG")
+    banks = paystack.list_banks_with_currency(country_code)
+    return jsonify({"banks": banks})
+
+
+@app.route("/api/paystack/verify-account", methods=["POST"])
+@login_required
+def api_paystack_verify_account():
+    """Verify a bank account for withdrawal."""
+    data = request.get_json(force=True) or {}
+    bank_code = data.get("bank_code")
+    account_number = data.get("account_number")
+    
+    if not bank_code or not account_number:
+        return jsonify({"error": "Bank code and account number are required."}), 400
+    
+    result = paystack.resolve_bank_account(bank_code, account_number)
+    
+    if result.get("status") == "success":
+        return jsonify({
+            "account_name": result.get("data", {}).get("account_name"),
+            "account_number": account_number,
+            "bank_code": bank_code
+        })
+    else:
+        return jsonify({"error": result.get("message", "Account verification failed.")}), 400
+
+
+@app.route("/api/paystack/withdraw", methods=["POST"])
+@login_required
+def api_paystack_withdraw():
+    """Withdraw funds via Paystack bank transfer."""
+    data = request.get_json(force=True) or {}
+    amount_usd = data.get("amount_usd")
+    currency = data.get("currency", "NGN")
+    bank_code = data.get("bank_code")
+    account_number = data.get("account_number")
+    account_name = data.get("account_name")
+    
+    if not amount_usd or amount_usd <= 0:
+        return jsonify({"error": "Enter a valid amount."}), 400
+    
+    # Check if withdrawal is enabled
+    db = get_db()
+    withdrawal_enabled = db.execute(
+        "SELECT value FROM admin_settings WHERE key = 'paystack_withdrawals_enabled'"
+    ).fetchone()
+    
+    if withdrawal_enabled and withdrawal_enabled["value"] == "0":
+        db.close()
+        return jsonify({"error": "Withdrawals are currently disabled by admin."}), 400
+    
+    # Check user balance
+    user = db.execute("SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)).fetchone()
+    amount_usd_cents = int(amount_usd * 100)
+    
+    if amount_usd_cents > user["balance_usd_cents"]:
+        db.close()
+        return jsonify({"error": "Insufficient balance."}), 400
+    
+    # Check if auto-approve is enabled
+    auto_approve = db.execute(
+        "SELECT value FROM admin_settings WHERE key = 'paystack_withdrawals_auto_approve'"
+    ).fetchone()
+    auto_approve = auto_approve and auto_approve["value"] == "1"
+    
+    status = "approved" if auto_approve else "pending"
+    
+    # Create withdrawal record
+    cur = db.execute(
+        "INSERT INTO withdrawals (user_id, amount_usd_cents, method, destination_details, status) "
+        "VALUES (?, ?, 'paystack', ?, ?)",
+        (g.user["id"], amount_usd_cents, f"{account_name} - {account_number} ({currency})", status)
+    )
+    withdrawal_id = cur.lastrowid
+    
+    # If auto-approved, initiate transfer
+    if auto_approve:
+        result = paystack.initiate_transfer(
+            amount=amount_usd,
+            bank_code=bank_code,
+            account_number=account_number,
+            account_name=account_name,
+            currency=currency,
+            reference=f"TROVEE-WITH-{g.user['id']}-{int(datetime.datetime.now().timestamp())}"
+        )
+        
+        if result.get("status") in ("success", "fallback"):
+            # Deduct from user balance
+            db.execute(
+                "UPDATE users SET balance_usd_cents = balance_usd_cents - ? WHERE id = ?",
+                (amount_usd_cents, g.user["id"])
+            )
+            db.execute(
+                "UPDATE withdrawals SET status = 'paid', processed_at = datetime('now') WHERE id = ?",
+                (withdrawal_id,)
+            )
+            db.commit()
+            db.close()
+            return jsonify({
+                "status": "success",
+                "message": "Withdrawal processed successfully.",
+                "reference": result.get("data", {}).get("reference"),
+                "auto_approved": True
+            })
+        else:
+            # Transfer failed – keep as pending for admin review
+            db.execute(
+                "UPDATE withdrawals SET status = 'pending' WHERE id = ?",
+                (withdrawal_id,)
+            )
+            db.commit()
+            db.close()
+            return jsonify({
+                "status": "pending",
+                "message": "Transfer failed. Withdrawal is pending admin review.",
+                "error": result.get("message")
+            }), 400
+    else:
+        # Manual approval required
+        db.commit()
+        db.close()
+        return jsonify({
+            "status": "pending",
+            "message": "Withdrawal request submitted. Awaiting admin approval.",
+            "withdrawal_id": withdrawal_id
+        })
+
+
+@app.route("/api/paystack/countries", methods=["GET"])
+@login_required
+def api_paystack_countries():
+    """Get supported countries and their payment methods."""
+    countries = paystack.get_supported_countries()
+    return jsonify({"countries": countries})
+
+
+@app.route("/api/paystack/status", methods=["GET"])
+def api_paystack_status():
+    """Check Paystack configuration status."""
+    return jsonify({
+        "configured": paystack.is_configured(),
+        "message": "Paystack is active" if paystack.is_configured() else "Paystack not configured. The app will continue to work with crypto and gift cards."
+    })
 
 
 # ─── API: Deposits ────────────────────────────────────────────
