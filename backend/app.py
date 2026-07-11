@@ -22,7 +22,6 @@ from backend.geo_currency import (
 APP_SECRET = os.environ.get("TROVEE_APP_SECRET", "trovee-dev-secret-change-me-in-prod")
 WITHDRAWAL_MINIMUM_USD_CENTS = 1  # Allow any positive amount
 ADMIN_PASSWORD = os.environ.get("TROVEE_ADMIN_PASSWORD", "change-me-admin")
-MELLOWTEL_INTEGRATION_ID = os.environ.get("MELLOWTEL_INTEGRATION_ID", "intgr-FXD6Ti8azS")
 
 app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static")
 
@@ -129,11 +128,6 @@ def page_deposit():
 @app.route("/shares")
 def page_shares():
     return render_template("shares.html")
-
-
-@app.route("/bandwidth-settings")
-def page_bandwidth_settings():
-    return render_template("bandwidth_settings.html")
 
 
 @app.route("/favicon.ico")
@@ -297,59 +291,6 @@ def api_me():
         "currency_symbol": symbol, "balance_usd_cents": u["balance_usd_cents"],
         "balance_local": balance_local, "trust_level": u["trust_level"],
         "exchange_rate": USD_EXCHANGE_RATES.get(currency_code, 1.0),
-    })
-
-
-# ─── API: Mellowtel Bandwidth Monetization ──────────────────
-
-@app.route("/api/user/bandwidth-consent", methods=["POST"])
-@login_required
-def api_bandwidth_consent():
-    """Update user's bandwidth sharing consent"""
-    data = request.get_json(force=True) or {}
-    consented = data.get("consented", False)
-    providers = data.get("providers", [])
-
-    db = get_db()
-    db.execute(
-        "UPDATE users SET bandwidth_consent = ?, bandwidth_providers = ? WHERE id = ?",
-        (1 if consented else 0, ",".join(providers), g.user["id"])
-    )
-    db.commit()
-    db.close()
-
-    return jsonify({
-        "message": "Consent updated.",
-        "consented": consented,
-        "providers": providers
-    })
-
-
-@app.route("/api/user/bandwidth-status", methods=["GET"])
-@login_required
-def api_bandwidth_status():
-    """Get user's bandwidth sharing status and earnings"""
-    db = get_db()
-    user = db.execute(
-        "SELECT bandwidth_consent, bandwidth_providers, bandwidth_earnings FROM users WHERE id = ?",
-        (g.user["id"],)
-    ).fetchone()
-    db.close()
-
-    earnings = json.loads(user['bandwidth_earnings']) if user['bandwidth_earnings'] else {}
-    providers = user['bandwidth_providers'].split(",") if user['bandwidth_providers'] else []
-
-    # Mellowtel is always available if integration ID is set
-    available = []
-    if MELLOWTEL_INTEGRATION_ID:
-        available.append('Mellowtel')
-
-    return jsonify({
-        "consented": bool(user['bandwidth_consent']),
-        "active_providers": providers,
-        "available_providers": available,
-        "earnings": earnings,
-        "total_earnings": sum(earnings.values()) if earnings else 0
     })
 
 
@@ -812,6 +753,12 @@ def api_shares_purchase():
     data = request.get_json(force=True) or {}
     plan_id = data.get("plan_id")
     company_id = data.get("company_id")
+    multiplier = data.get("multiplier", 1)
+
+    if not isinstance(multiplier, int) or multiplier < 1:
+        multiplier = 1
+    if multiplier > 100:
+        multiplier = 100
 
     db = get_db()
     plan = db.execute(
@@ -825,11 +772,14 @@ def api_shares_purchase():
         return jsonify({"error": "Plan not found or no longer available."}), 404
 
     user = db.execute("SELECT * FROM users WHERE id = ?", (g.user["id"],)).fetchone()
-    if plan["price_usd_cents"] > user["balance_usd_cents"]:
+
+    principal = plan["price_usd_cents"] * multiplier
+    shares = plan["shares_count"] * multiplier
+
+    if principal > user["balance_usd_cents"]:
         db.close()
         return jsonify({"error": "Insufficient balance. Please deposit funds first."}), 400
 
-    principal = plan["price_usd_cents"]
     rate = plan["return_rate_pct"]
     months = plan["duration_months"]
     return_cents = int(principal * (rate / 100) * (months / 12))
@@ -845,7 +795,7 @@ def api_shares_purchase():
         " return_rate_pct, duration_months, return_usd_cents, total_payout_cents, "
         " certificate_id, status, maturity_date) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)",
-        (g.user["id"], company_id, plan_id, plan["plan_name"], plan["shares_count"],
+        (g.user["id"], company_id, plan_id, plan["plan_name"], shares,
          principal, rate, months, return_cents, total_payout, cert_id, maturity_date)
     )
     purchase_id = cur.lastrowid
@@ -859,6 +809,8 @@ def api_shares_purchase():
         "message": "Shares purchased successfully.",
         "certificate_id": cert_id,
         "purchase_id": purchase_id,
+        "multiplier": multiplier,
+        "shares_purchased": shares,
         "principal_usd_cents": principal,
         "return_usd_cents": return_cents,
         "total_payout_cents": total_payout,
