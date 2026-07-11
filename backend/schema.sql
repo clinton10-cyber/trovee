@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS withdrawals (
     destination_details TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
     requested_at TEXT DEFAULT (datetime('now')),
-    processed_at TEXT
+    processed_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS support_messages (
@@ -47,7 +48,8 @@ CREATE TABLE IF NOT EXISTS support_messages (
     message TEXT NOT NULL,
     status TEXT DEFAULT 'open',
     emailed_ok INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -146,4 +148,10 @@ CREATE TABLE IF NOT EXISTS wallet_configs (
     sort_order INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS admin_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now'))
 );
