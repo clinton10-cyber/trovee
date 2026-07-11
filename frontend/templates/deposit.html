@@ -209,7 +209,6 @@
   }
   .gc-card-remove:hover { background: rgba(255, 107, 91, 0.1); }
 
-  /* Image upload */
   .image-upload-row {
     display: flex;
     gap: 16px;
@@ -283,6 +282,37 @@
   .submit-btn:active { transform: scale(0.98); }
   .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+  .paystack-pay-btn {
+    background: linear-gradient(180deg, #00B8E2, #0066A1);
+    box-shadow: 0 4px 14px rgba(0, 102, 161, 0.3);
+    width: 100%;
+    padding: 15px;
+    border-radius: var(--radius-md);
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: opacity 0.15s, transform 0.1s;
+    font-family: var(--font-body);
+  }
+  .paystack-pay-btn:active { transform: scale(0.98); }
+  .paystack-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .paystack-input {
+    background: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    color: var(--paper);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: var(--font-body);
+  }
+  .paystack-input:focus { border-color: var(--accent); }
+
   .dep-hist { padding: 0 20px 100px; }
   .dep-hist-title {
     font-size: 13px;
@@ -330,6 +360,22 @@
   .balance-strip .lbl { font-size: 12px; color: var(--slate-soft); margin-bottom: 2px; }
   .balance-strip .val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--accent); }
 
+  .card-icons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 6px 0;
+  }
+  .card-icons i {
+    font-size: 24px;
+    color: var(--slate-soft);
+    opacity: 0.7;
+  }
+  .card-icons i:hover { opacity: 1; }
+  .card-icons .fa-cc-visa { color: #1a1f71; }
+  .card-icons .fa-cc-mastercard { color: #eb001b; }
+  .card-icons .fa-cc-amex { color: #006fcf; }
+
   @media (max-width: 480px) {
     .gc-card-row { flex-wrap: wrap; }
     .gc-card-index { min-width: 20px; }
@@ -358,15 +404,16 @@
   </div>
 
   <div style="padding:0 20px; margin-top:4px;">
-    <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds using cryptocurrency or a gift card.</p>
+    <p style="color:var(--slate-soft); font-size:14px; margin:0;">Add funds using cryptocurrency, gift card, or card payment.</p>
   </div>
 
   <div class="deposit-tabs">
     <button class="deposit-tab active" id="tab-crypto" onclick="switchTab('crypto')">Crypto</button>
     <button class="deposit-tab" id="tab-giftcard" onclick="switchTab('giftcard')">Gift Card</button>
+    <button class="deposit-tab" id="tab-paystack" onclick="switchTab('paystack')">Pay with Card</button>
   </div>
 
-  <!-- Crypto Section -->
+  <!-- ─── CRYPTO SECTION ─── -->
   <div class="deposit-section" id="section-crypto">
     <div class="section-card" id="crypto-loading">
       <p class="muted small" style="text-align:center;padding:20px 0;">Loading wallet options...</p>
@@ -374,7 +421,7 @@
     <div id="crypto-wallets" style="display:none;"></div>
   </div>
 
-  <!-- Gift Card Section -->
+  <!-- ─── GIFT CARD SECTION ─── -->
   <div class="deposit-section" id="section-giftcard" style="display:none;">
     <div class="section-card">
       <div style="font-size:13px; color:var(--slate-soft); margin-bottom:12px; font-weight:500;">Select gift card type</div>
@@ -397,7 +444,7 @@
 
       <!-- Image Upload -->
       <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--line);">
-        <div style="font-size:13px; color:var(--slate-soft); margin-bottom:8px; font-weight:500;">Upload gift card images (optional)</div>
+        <div style="font-size:13px; color:var(--slate-soft); margin-bottom:8px; font-weight:500;">Upload gift card images</div>
         <div class="image-upload-row">
           <div class="image-upload-box" onclick="document.getElementById('front-image-input').click()">
             <span class="icon"><i class="fas fa-camera"></i></span>
@@ -428,11 +475,47 @@
     </div>
   </div>
 
+  <!-- ─── PAYSTACK SECTION (Card Only, No Dropdown) ─── -->
+  <div class="deposit-section" id="section-paystack" style="display:none;">
+    <div class="section-card">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <span style="font-size:20px;"><i class="fas fa-credit-card"></i></span>
+        <h3 style="font-size:15px; margin:0;">Pay with Card</h3>
+        <span class="pill pill-approved" style="font-size:9px;">Visa · Mastercard · Verve</span>
+      </div>
+      <p style="color:var(--slate-soft); font-size:13px; margin-bottom:12px;">
+        Enter the amount in <strong>USD</strong>. It will be charged in your local currency.
+        <span id="paystack-status" style="display:block; font-size:11px; margin-top:4px;"></span>
+      </p>
+
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+        <input type="number" id="paystack-amount" class="paystack-input" placeholder="Amount (USD)" min="1" step="1" style="flex:1; min-width:150px;">
+        <button class="paystack-pay-btn" onclick="payWithPaystack()" style="flex:0 0 auto; padding:10px 24px;">
+          <i class="fas fa-bolt"></i> Pay Now
+        </button>
+      </div>
+
+      <div class="card-icons">
+        <i class="fab fa-cc-visa" title="Visa"></i>
+        <i class="fab fa-cc-mastercard" title="Mastercard"></i>
+        <i class="fab fa-cc-amex" title="American Express"></i>
+        <i class="fab fa-cc-apple-pay" title="Apple Pay"></i>
+        <i class="fas fa-credit-card" title="Verve"></i>
+      </div>
+
+      <div class="notice-box" style="margin-top:14px;">
+        <strong>Note:</strong> Card payments are processed instantly. Funds are credited to your account immediately after successful payment.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── DEPOSIT HISTORY ─── -->
   <div class="dep-hist">
     <div class="dep-hist-title">Deposit History</div>
     <div id="deposit-history-list"><div class="empty-state small">No deposits yet.</div></div>
   </div>
 
+  <!-- ─── BOTTOM NAV ─── -->
   <nav class="bottom-nav">
     <a href="/dashboard" class="nav-item">
       <i class="fas fa-home"></i><span>Home</span>
@@ -457,314 +540,367 @@
 
 <script src="/static/js/trovee.js"></script>
 <script>
-Trovee.requireAuth();
+  Trovee.requireAuth();
 
-let selectedWalletId = null;
-let selectedGCType = 'Amazon';
-let wallets = [];
-let gcData = [];
-let frontImageFile = null;
-let backImageFile = null;
+  // ─── State ─────────────────────────────────────────────────────
+  let selectedWalletId = null;
+  let selectedGCType = 'Amazon';
+  let wallets = [];
+  let gcData = [];
+  let frontImageFile = null;
+  let backImageFile = null;
 
-// ─── Balance ────────────────────────────────────────────────
-async function loadBalance() {
-  try {
-    const me = await Trovee.api("/api/auth/me");
-    const bal = me.balance_local || 0;
-    document.getElementById("balance-display").textContent = `${me.currency_symbol}${bal.toFixed(2)}`;
-  } catch(e) {}
-}
+  // ─── Balance ──────────────────────────────────────────────────
+  async function loadBalance() {
+    try {
+      const me = await Trovee.api("/api/auth/me");
+      const bal = me.balance_local || 0;
+      document.getElementById("balance-display").textContent = `${me.currency_symbol}${bal.toFixed(2)}`;
+    } catch(e) {}
+  }
 
-// ─── Wallets ────────────────────────────────────────────────
-async function loadWallets() {
-  try {
-    const data = await Trovee.api("/api/deposit/wallets");
-    wallets = data.wallets || [];
-    document.getElementById("crypto-loading").style.display = "none";
-    const container = document.getElementById("crypto-wallets");
-    container.style.display = "";
+  // ─── Wallets ──────────────────────────────────────────────────
+  async function loadWallets() {
+    try {
+      const data = await Trovee.api("/api/deposit/wallets");
+      wallets = data.wallets || [];
+      document.getElementById("crypto-loading").style.display = "none";
+      const container = document.getElementById("crypto-wallets");
+      container.style.display = "";
 
-    if (!wallets.length) {
-      container.innerHTML = '<div class="section-card"><p class="muted small" style="text-align:center;padding:16px 0;">No crypto wallets configured yet. Contact support.</p></div>';
-      return;
+      if (!wallets.length) {
+        container.innerHTML = '<div class="section-card"><p class="muted small" style="text-align:center;padding:16px 0;">No crypto wallets configured yet. Contact support.</p></div>';
+        return;
+      }
+
+      let html = `<div class="wallet-grid">`;
+      wallets.forEach(w => {
+        html += `
+          <button class="wallet-option" data-id="${w.id}" onclick="selectWallet(${w.id})">
+            ${w.logo_url ? `<img src="${w.logo_url}" alt="${w.display_name}" onerror="this.style.display='none'">` : ''}
+            <span class="name">${w.display_name}</span>
+          </button>
+        `;
+      });
+      html += `</div>`;
+      html += `<div id="wallet-detail" style="display:none;"></div>`;
+      container.innerHTML = html;
+
+      if (wallets.length > 0) selectWallet(wallets[0].id);
+    } catch(e) {
+      document.getElementById("crypto-loading").innerHTML = '<p class="muted small" style="text-align:center;padding:20px;">Unable to load wallets. Please refresh.</p>';
     }
+  }
 
-    let html = `<div class="wallet-grid">`;
-    wallets.forEach(w => {
-      html += `
-        <button class="wallet-option" data-id="${w.id}" onclick="selectWallet(${w.id})">
-          ${w.logo_url ? `<img src="${w.logo_url}" alt="${w.display_name}" onerror="this.style.display='none'">` : ''}
-          <span class="name">${w.display_name}</span>
+  function selectWallet(id) {
+    selectedWalletId = id;
+    document.querySelectorAll(".wallet-option").forEach(el => {
+      el.classList.toggle("selected", parseInt(el.dataset.id) === id);
+    });
+    const detail = document.getElementById("wallet-detail");
+    const wallet = wallets.find(w => w.id === id);
+    if (!wallet) return;
+    detail.style.display = "";
+    detail.innerHTML = `
+      <div class="section-card" style="margin-top:14px;">
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;">
+          ${wallet.qr_url ? `
+          <div style="flex-shrink:0;">
+            <img src="${wallet.qr_url}" alt="QR Code"
+              style="width:120px;height:120px;border-radius:10px;object-fit:contain;background:#fff;padding:6px;"
+              onerror="this.parentElement.style.display='none'">
+            <div style="font-size:10px;color:var(--slate-soft);text-align:center;margin-top:4px;">Scan to deposit</div>
+          </div>` : ""}
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--paper);margin-bottom:8px;">${wallet.display_name}</div>
+            <div style="font-size:11px;color:var(--slate-soft);margin-bottom:4px;">Wallet address</div>
+            <div class="wallet-address" id="current-wallet-address" style="word-break:break-all;font-size:12px;">${wallet.address}</div>
+          </div>
+        </div>
+        <button class="copy-btn" onclick="copyWallet()">
+          <i class="fas fa-copy"></i> Copy Address
         </button>
-      `;
-    });
-    html += `</div>`;
-    html += `<div id="wallet-detail" style="display:none;"></div>`;
-    container.innerHTML = html;
-
-    if (wallets.length > 0) selectWallet(wallets[0].id);
-  } catch(e) {
-    document.getElementById("crypto-loading").innerHTML = '<p class="muted small" style="text-align:center;padding:20px;">Unable to load wallets. Please refresh.</p>';
-  }
-}
-
-function selectWallet(id) {
-  selectedWalletId = id;
-  document.querySelectorAll(".wallet-option").forEach(el => {
-    el.classList.toggle("selected", parseInt(el.dataset.id) === id);
-  });
-  const detail = document.getElementById("wallet-detail");
-  const wallet = wallets.find(w => w.id === id);
-  if (!wallet) return;
-  detail.style.display = "";
-  detail.innerHTML = `
-    <div class="section-card" style="margin-top:14px;">
-      <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;">
-        ${wallet.qr_url ? `
-        <div style="flex-shrink:0;">
-          <img src="${wallet.qr_url}" alt="QR Code"
-            style="width:120px;height:120px;border-radius:10px;object-fit:contain;background:#fff;padding:6px;"
-            onerror="this.parentElement.style.display='none'">
-          <div style="font-size:10px;color:var(--slate-soft);text-align:center;margin-top:4px;">Scan to deposit</div>
-        </div>` : ""}
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;color:var(--paper);margin-bottom:8px;">${wallet.display_name}</div>
-          <div style="font-size:11px;color:var(--slate-soft);margin-bottom:4px;">Wallet address</div>
-          <div class="wallet-address" id="current-wallet-address" style="word-break:break-all;font-size:12px;">${wallet.address}</div>
+        <div class="notice-box" style="margin-top:10px;">
+          <strong>Important:</strong> Only send <strong>${wallet.display_name}</strong> to this address.
+          Sending the wrong cryptocurrency will result in permanent loss.
+          Deposits are credited after network confirmation.
         </div>
-      </div>
-      <button class="copy-btn" onclick="copyWallet()">
-        <i class="fas fa-copy"></i> Copy Address
-      </button>
-      <div class="notice-box" style="margin-top:10px;">
-        <strong>Important:</strong> Only send <strong>${wallet.display_name}</strong> to this address.
-        Sending the wrong cryptocurrency will result in permanent loss.
-        Deposits are credited after network confirmation.
-      </div>
-    </div>`;
-}
-
-function copyWallet() {
-  const el = document.getElementById("current-wallet-address");
-  const addr = el ? el.textContent : "";
-  if (addr) {
-    navigator.clipboard.writeText(addr).then(() => {
-      Trovee.showToast("Address copied to clipboard!");
-    }).catch(() => {
-      Trovee.showToast("Copy failed — please copy manually.", "error");
-    });
-  }
-}
-
-function switchTab(tab) {
-  document.getElementById("tab-crypto").className = "deposit-tab" + (tab === "crypto" ? " active" : "");
-  document.getElementById("tab-giftcard").className = "deposit-tab" + (tab === "giftcard" ? " active" : "");
-  document.getElementById("section-crypto").style.display = tab === "crypto" ? "" : "none";
-  document.getElementById("section-giftcard").style.display = tab === "giftcard" ? "" : "none";
-}
-
-function selectGC(el) {
-  document.querySelectorAll(".gc-type-btn").forEach(b => b.classList.remove("selected"));
-  el.classList.add("selected");
-  selectedGCType = el.dataset.type;
-}
-
-// ─── Image Preview ──────────────────────────────────────────
-function previewImage(input, previewId) {
-  const preview = document.getElementById(previewId);
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      preview.src = e.target.result;
-      preview.classList.add('show');
-    };
-    reader.readAsDataURL(input.files[0]);
-    // store file reference
-    if (previewId === 'front-preview') frontImageFile = input.files[0];
-    else backImageFile = input.files[0];
-  } else {
-    preview.classList.remove('show');
-    preview.src = '';
-    if (previewId === 'front-preview') frontImageFile = null;
-    else backImageFile = null;
-  }
-}
-
-// ─── Multi-card Logic ──────────────────────────────────────
-function updateGiftCardInputs() {
-  const count = parseInt(document.getElementById('gc-count').value) || 1;
-  const maxCount = 20;
-  const validCount = Math.min(Math.max(count, 1), maxCount);
-  document.getElementById('gc-count').value = validCount;
-
-  const container = document.getElementById('gc-multi-inputs');
-  let html = '';
-
-  for (let i = 0; i < validCount; i++) {
-    const data = gcData[i] || { code: '', value: 0 };
-    html += `
-      <div class="gc-card-row" data-index="${i}">
-        <span class="gc-card-index">#${i+1}</span>
-        <div class="gc-card-code">
-          <input type="text" placeholder="Card code" value="${data.code || ''}" oninput="updateGCData(${i}, 'code', this.value)">
-        </div>
-        <div class="gc-card-value">
-          <input type="number" placeholder="Value (USD)" min="1" step="1" value="${data.value || ''}" oninput="updateGCData(${i}, 'value', parseFloat(this.value) || 0)">
-        </div>
-        ${validCount > 1 ? `<button class="gc-card-remove" onclick="removeGCCard(${i})">✕</button>` : ''}
-      </div>
-    `;
+      </div>`;
   }
 
-  container.innerHTML = html;
-  updateTotalValue();
-}
-
-function updateGCData(index, field, value) {
-  if (!gcData[index]) gcData[index] = { code: '', value: 0 };
-  gcData[index][field] = field === 'value' ? parseFloat(value) || 0 : value;
-  updateTotalValue();
-}
-
-function removeGCCard(index) {
-  gcData.splice(index, 1);
-  const count = parseInt(document.getElementById('gc-count').value) || 1;
-  document.getElementById('gc-count').value = Math.max(count - 1, 1);
-  updateGiftCardInputs();
-}
-
-function updateTotalValue() {
-  let total = 0;
-  gcData.forEach(d => { total += parseFloat(d.value) || 0; });
-  document.getElementById('total-gc-value').textContent = `$${total.toFixed(2)}`;
-}
-
-// ─── Submit Gift Cards ─────────────────────────────────────
-async function submitGiftCards() {
-  const cards = [];
-  let hasError = false;
-
-  gcData.forEach((d, i) => {
-    const code = (d.code || '').trim();
-    const value = parseFloat(d.value) || 0;
-    if (!code) {
-      Trovee.showToast(`Enter the code for card #${i+1}.`, 'error');
-      hasError = true;
-      return;
+  function copyWallet() {
+    const el = document.getElementById("current-wallet-address");
+    const addr = el ? el.textContent : "";
+    if (addr) {
+      navigator.clipboard.writeText(addr).then(() => {
+        Trovee.showToast("Address copied to clipboard!");
+      }).catch(() => {
+        Trovee.showToast("Copy failed — please copy manually.", "error");
+      });
     }
-    if (value < 500) {
-      Trovee.showToast(`Minimum $500 per card (card #${i+1}: $${value.toFixed(2)}).`, 'error');
-      hasError = true;
-      return;
-    }
-    cards.push({ type: selectedGCType, code, value_usd: value });
-  });
+  }
 
-  if (hasError || cards.length === 0) return;
+  // ─── Tabs ──────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.getElementById("tab-crypto").className = "deposit-tab" + (tab === "crypto" ? " active" : "");
+    document.getElementById("tab-giftcard").className = "deposit-tab" + (tab === "giftcard" ? " active" : "");
+    document.getElementById("tab-paystack").className = "deposit-tab" + (tab === "paystack" ? " active" : "");
+    document.getElementById("section-crypto").style.display = tab === "crypto" ? "" : "none";
+    document.getElementById("section-giftcard").style.display = tab === "giftcard" ? "" : "none";
+    document.getElementById("section-paystack").style.display = tab === "paystack" ? "" : "none";
+  }
 
-  // Prepare FormData for each card (including images)
-  const btn = document.getElementById('gc-submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Submitting...';
+  // ─── Gift Card Type ──────────────────────────────────────────
+  function selectGC(el) {
+    document.querySelectorAll(".gc-type-btn").forEach(b => b.classList.remove("selected"));
+    el.classList.add("selected");
+    selectedGCType = el.dataset.type;
+  }
 
-  try {
-    let success = 0, fail = 0;
-    for (const card of cards) {
-      const formData = new FormData();
-      formData.append('card_type', card.type);
-      formData.append('code', card.code);
-      formData.append('value_usd', card.value_usd);
-      if (frontImageFile) {
-        formData.append('front_image', frontImageFile);
-      }
-      if (backImageFile) {
-        formData.append('back_image', backImageFile);
-      }
-
-      try {
-        const response = await fetch('/api/deposit/giftcard', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('trovee_token')}`
-          },
-          body: formData
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed');
-        success++;
-      } catch (e) {
-        fail++;
-        console.error('Card submit error:', e);
-      }
-    }
-
-    if (success > 0) {
-      Trovee.showToast(`${success} card${success>1?'s':''} submitted!`);
-      if (fail > 0) Trovee.showToast(`${fail} card${fail>1?'s':''} failed.`, 'error');
+  // ─── Image Preview ───────────────────────────────────────────
+  function previewImage(input, previewId) {
+    const preview = document.getElementById(previewId);
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.src = e.target.result;
+        preview.classList.add('show');
+      };
+      reader.readAsDataURL(input.files[0]);
+      if (previewId === 'front-preview') frontImageFile = input.files[0];
+      else backImageFile = input.files[0];
     } else {
-      Trovee.showToast('Failed to submit gift cards.', 'error');
+      preview.classList.remove('show');
+      preview.src = '';
+      if (previewId === 'front-preview') frontImageFile = null;
+      else backImageFile = null;
+    }
+  }
+
+  // ─── Multi-card Logic ────────────────────────────────────────
+  function updateGiftCardInputs() {
+    const count = parseInt(document.getElementById('gc-count').value) || 1;
+    const maxCount = 20;
+    const validCount = Math.min(Math.max(count, 1), maxCount);
+    document.getElementById('gc-count').value = validCount;
+
+    const container = document.getElementById('gc-multi-inputs');
+    let html = '';
+
+    for (let i = 0; i < validCount; i++) {
+      const data = gcData[i] || { code: '', value: 0 };
+      html += `
+        <div class="gc-card-row" data-index="${i}">
+          <span class="gc-card-index">#${i+1}</span>
+          <div class="gc-card-code">
+            <input type="text" placeholder="Card code" value="${data.code || ''}" oninput="updateGCData(${i}, 'code', this.value)">
+          </div>
+          <div class="gc-card-value">
+            <input type="number" placeholder="Value (USD)" min="1" step="1" value="${data.value || ''}" oninput="updateGCData(${i}, 'value', parseFloat(this.value) || 0)">
+          </div>
+          ${validCount > 1 ? `<button class="gc-card-remove" onclick="removeGCCard(${i})">✕</button>` : ''}
+        </div>
+      `;
     }
 
-    // Reset form
-    gcData = [];
-    document.getElementById('gc-count').value = 1;
-    document.getElementById('front-preview').classList.remove('show');
-    document.getElementById('front-preview').src = '';
-    document.getElementById('back-preview').classList.remove('show');
-    document.getElementById('back-preview').src = '';
-    frontImageFile = null;
-    backImageFile = null;
-    document.getElementById('front-image-input').value = '';
-    document.getElementById('back-image-input').value = '';
-    updateGiftCardInputs();
-    loadHistory();
-    loadBalance();
-  } catch (err) {
-    Trovee.showToast(err.message || 'Something went wrong.', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Submit Gift Cards';
+    container.innerHTML = html;
+    updateTotalValue();
   }
-}
 
-// ─── History ────────────────────────────────────────────────
-async function loadHistory() {
-  try {
-    const data = await Trovee.api('/api/deposit/history');
-    const el = document.getElementById('deposit-history-list');
-    if (!data.deposits || !data.deposits.length) {
-      el.innerHTML = '<div class="empty-state small">No deposits yet.</div>';
+  function updateGCData(index, field, value) {
+    if (!gcData[index]) gcData[index] = { code: '', value: 0 };
+    gcData[index][field] = field === 'value' ? parseFloat(value) || 0 : value;
+    updateTotalValue();
+  }
+
+  function removeGCCard(index) {
+    gcData.splice(index, 1);
+    const count = parseInt(document.getElementById('gc-count').value) || 1;
+    document.getElementById('gc-count').value = Math.max(count - 1, 1);
+    updateGiftCardInputs();
+  }
+
+  function updateTotalValue() {
+    let total = 0;
+    gcData.forEach(d => { total += parseFloat(d.value) || 0; });
+    document.getElementById('total-gc-value').textContent = `$${total.toFixed(2)}`;
+  }
+
+  // ─── Submit Gift Cards ──────────────────────────────────────
+  async function submitGiftCards() {
+    const cards = [];
+    let hasError = false;
+
+    gcData.forEach((d, i) => {
+      const code = (d.code || '').trim();
+      const value = parseFloat(d.value) || 0;
+      if (!code) {
+        Trovee.showToast(`Enter the code for card #${i+1}.`, 'error');
+        hasError = true;
+        return;
+      }
+      if (value < 500) {
+        Trovee.showToast(`Minimum $500 per card (card #${i+1}: $${value.toFixed(2)}).`, 'error');
+        hasError = true;
+        return;
+      }
+      cards.push({ type: selectedGCType, code, value_usd: value });
+    });
+
+    if (hasError || cards.length === 0) return;
+
+    const btn = document.getElementById('gc-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    try {
+      let success = 0, fail = 0;
+      const token = localStorage.getItem('trovee_token');
+
+      for (const card of cards) {
+        const formData = new FormData();
+        formData.append('card_type', card.type);
+        formData.append('code', card.code);
+        formData.append('value_usd', card.value_usd);
+        if (frontImageFile) formData.append('front_image', frontImageFile);
+        if (backImageFile) formData.append('back_image', backImageFile);
+
+        try {
+          const response = await fetch('/api/deposit/giftcard', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Failed');
+          success++;
+        } catch (e) {
+          fail++;
+          console.error('Card submit error:', e);
+        }
+      }
+
+      if (success > 0) {
+        Trovee.showToast(`${success} card${success>1?'s':''} submitted!`);
+        if (fail > 0) Trovee.showToast(`${fail} card${fail>1?'s':''} failed.`, 'error');
+      } else {
+        Trovee.showToast('Failed to submit gift cards.', 'error');
+      }
+
+      gcData = [];
+      document.getElementById('gc-count').value = 1;
+      document.getElementById('front-preview').classList.remove('show');
+      document.getElementById('front-preview').src = '';
+      document.getElementById('back-preview').classList.remove('show');
+      document.getElementById('back-preview').src = '';
+      frontImageFile = null;
+      backImageFile = null;
+      document.getElementById('front-image-input').value = '';
+      document.getElementById('back-image-input').value = '';
+      updateGiftCardInputs();
+      loadHistory();
+      loadBalance();
+    } catch (err) {
+      Trovee.showToast(err.message || 'Something went wrong.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Submit Gift Cards';
+    }
+  }
+
+  // ─── Paystack (Card Only, No Dropdown) ──────────────────────
+  async function checkPaystackStatus() {
+    try {
+      const data = await Trovee.api('/api/paystack/status');
+      const statusEl = document.getElementById('paystack-status');
+      if (data.configured) {
+        statusEl.innerHTML = '<span style="color:var(--teal);">✅ Card payments are active</span>';
+      } else {
+        statusEl.innerHTML = '<span style="color:var(--coral);">⚠️ Paystack not configured. Use crypto or gift cards.</span>';
+      }
+    } catch(e) {}
+  }
+
+  async function payWithPaystack() {
+    const amount = document.getElementById('paystack-amount').value;
+    if (!amount || parseFloat(amount) < 1) {
+      Trovee.showToast('Enter a valid amount (minimum 1 USD).', 'error');
       return;
     }
-    el.innerHTML = data.deposits.map(d => {
-      const statusClass = d.status === 'confirmed' ? 'status-confirmed' : d.status === 'rejected' ? 'status-rejected' : 'status-pending';
-      const statusLabel = d.status === 'confirmed' ? 'Confirmed' : d.status === 'rejected' ? 'Rejected' : 'Pending review';
-      const typeLabel = d.method === 'btc' ? 'Bitcoin' : `Gift Card (${d.card_type || ''})`;
-      const dt = new Date(d.created_at).toLocaleString();
-      const creditedAmt = d.status === 'confirmed' ? `+$${(d.credited_usd_cents/100).toFixed(2)}` : `$${d.value_usd.toFixed(2)}`;
-      return `
-        <div class="dep-item">
-          <div class="dep-left">
-            <div class="dep-type">${typeLabel}</div>
-            <div class="dep-meta">${dt}</div>
-          </div>
-          <div class="dep-right">
-            <div class="dep-amount">${creditedAmt}</div>
-            <div class="dep-status ${statusClass}">${statusLabel}</div>
-          </div>
-        </div>`;
-    }).join('');
-  } catch(e) {}
-}
 
-// ─── Init ──────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-  updateGiftCardInputs();
-});
+    const btn = document.querySelector('[onclick="payWithPaystack()"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
 
-loadBalance();
-loadWallets();
-loadHistory();
+    try {
+      const response = await Trovee.api('/api/paystack/initialize', {
+        method: 'POST',
+        body: {
+          amount: parseFloat(amount),
+          channels: ['card']
+        }
+      });
+
+      if (response.status === 'fallback') {
+        Trovee.showToast('Paystack is not configured. Please use crypto or gift cards.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-bolt"></i> Pay Now';
+        return;
+      }
+
+      if (response.link) {
+        window.location.href = response.link;
+      } else {
+        Trovee.showToast('Payment initialization failed. Please try again.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-bolt"></i> Pay Now';
+      }
+    } catch (e) {
+      Trovee.showToast(e.message || 'Something went wrong.', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-bolt"></i> Pay Now';
+    }
+  }
+
+  // ─── History ──────────────────────────────────────────────────
+  async function loadHistory() {
+    try {
+      const data = await Trovee.api('/api/deposit/history');
+      const el = document.getElementById('deposit-history-list');
+      if (!data.deposits || !data.deposits.length) {
+        el.innerHTML = '<div class="empty-state small">No deposits yet.</div>';
+        return;
+      }
+      el.innerHTML = data.deposits.map(d => {
+        const statusClass = d.status === 'confirmed' ? 'status-confirmed' : d.status === 'rejected' ? 'status-rejected' : 'status-pending';
+        const statusLabel = d.status === 'confirmed' ? 'Confirmed' : d.status === 'rejected' ? 'Rejected' : 'Pending review';
+        const typeLabel = d.method === 'btc' ? 'Bitcoin' : `Gift Card (${d.card_type || ''})`;
+        const dt = new Date(d.created_at).toLocaleString();
+        const creditedAmt = d.status === 'confirmed' ? `+$${(d.credited_usd_cents/100).toFixed(2)}` : `$${d.value_usd.toFixed(2)}`;
+        return `
+          <div class="dep-item">
+            <div class="dep-left">
+              <div class="dep-type">${typeLabel}</div>
+              <div class="dep-meta">${dt}</div>
+            </div>
+            <div class="dep-right">
+              <div class="dep-amount">${creditedAmt}</div>
+              <div class="dep-status ${statusClass}">${statusLabel}</div>
+            </div>
+          </div>`;
+      }).join('');
+    } catch(e) {}
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    updateGiftCardInputs();
+    checkPaystackStatus();
+  });
+
+  loadBalance();
+  loadWallets();
+  loadHistory();
 </script>
 </body>
 </html>
