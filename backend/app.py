@@ -120,6 +120,11 @@ def page_support():
     return render_template("support.html")
 
 
+@app.route("/messages")
+def page_messages():
+    return render_template("messages.html")
+
+
 @app.route("/admin")
 def page_admin():
     return render_template("admin.html")
@@ -408,6 +413,116 @@ def api_support_history():
     return jsonify({"tickets": [dict(r) for r in rows]})
 
 
+# ─── API: Messages (user-facing) ──────────────────────────────
+# A "support account" is a completely normal-looking user account
+# that an admin can flag and assign to another user. While assigned,
+# loading /messages on that support account shows a chat with the
+# assigned user instead of a generic support inbox. The assigned
+# user never sees anything indicating who is on the other end —
+# it just looks like they're messaging Trovee support.
+
+def _active_assignment_for_support(db, support_user_id):
+    return db.execute(
+        "SELECT * FROM support_assignments WHERE support_user_id = ? AND is_active = 1 "
+        "ORDER BY id DESC LIMIT 1",
+        (support_user_id,),
+    ).fetchone()
+
+
+def _current_chat_context(db):
+    """Resolve the target_user_id and mode ('support' or 'user') for g.user."""
+    if g.user["is_support_account"]:
+        assignment = _active_assignment_for_support(db, g.user["id"])
+        if assignment:
+            return assignment["target_user_id"], "support"
+    return g.user["id"], "user"
+
+
+@app.route("/api/messages", methods=["GET"])
+@login_required
+def api_messages_get():
+    db = get_db()
+    target_id, mode = _current_chat_context(db)
+
+    if mode == "support":
+        other = db.execute("SELECT username FROM users WHERE id = ?", (target_id,)).fetchone()
+        other_name = other["username"] if other else "User"
+        db.execute(
+            "UPDATE chat_messages SET is_read_support = 1 WHERE target_user_id = ? AND is_read_support = 0",
+            (target_id,),
+        )
+    else:
+        other_name = "Support"
+        db.execute(
+            "UPDATE chat_messages SET is_read_user = 1 WHERE target_user_id = ? AND is_read_user = 0",
+            (target_id,),
+        )
+    db.commit()
+
+    rows = db.execute(
+        "SELECT id, sender, body, created_at FROM chat_messages "
+        "WHERE target_user_id = ? ORDER BY created_at ASC, id ASC",
+        (target_id,),
+    ).fetchall()
+    db.close()
+
+    return jsonify({
+        "mode": mode,
+        "other_name": other_name,
+        "messages": [dict(r) for r in rows],
+    })
+
+
+@app.route("/api/messages", methods=["POST"])
+@login_required
+def api_messages_send():
+    data = request.get_json(force=True) or {}
+    body = (data.get("message") or "").strip()
+    if not body:
+        return jsonify({"error": "Enter a message."}), 400
+    if len(body) > 4000:
+        return jsonify({"error": "Message is too long."}), 400
+
+    db = get_db()
+    target_id, mode = _current_chat_context(db)
+
+    if mode == "support":
+        db.execute(
+            "INSERT INTO chat_messages (target_user_id, support_user_id, sender, body, "
+            "is_read_user, is_read_support) VALUES (?, ?, 'support', ?, 0, 1)",
+            (target_id, g.user["id"], body),
+        )
+    else:
+        assignment = db.execute(
+            "SELECT support_user_id FROM support_assignments WHERE target_user_id = ? AND is_active = 1 "
+            "ORDER BY id DESC LIMIT 1",
+            (target_id,),
+        ).fetchone()
+        support_user_id = assignment["support_user_id"] if assignment else None
+        db.execute(
+            "INSERT INTO chat_messages (target_user_id, support_user_id, sender, body, "
+            "is_read_user, is_read_support) VALUES (?, ?, 'user', ?, 1, 0)",
+            (target_id, support_user_id, body),
+        )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Sent."})
+
+
+@app.route("/api/messages/unread-count", methods=["GET"])
+@login_required
+def api_messages_unread_count():
+    db = get_db()
+    target_id, mode = _current_chat_context(db)
+    col = "is_read_support" if mode == "support" else "is_read_user"
+    row = db.execute(
+        f"SELECT COUNT(*) as n FROM chat_messages WHERE target_user_id = ? AND {col} = 0 AND sender != ?",
+        (target_id, "support" if mode == "support" else "user"),
+    ).fetchone()
+    db.close()
+    return jsonify({"unread": row["n"] if row else 0})
+
+
 # ─── API: Admin ───────────────────────────────────────────────
 
 @app.route("/api/admin/login", methods=["POST"])
@@ -511,10 +626,166 @@ def api_admin_users():
     db = get_db()
     rows = db.execute(
         "SELECT id, username, email, phone, country_code, currency_code, "
-        "balance_usd_cents, trust_level, created_at FROM users ORDER BY created_at DESC"
+        "balance_usd_cents, trust_level, is_support_account, created_at FROM users ORDER BY created_at DESC"
     ).fetchall()
     db.close()
     return jsonify({"users": [dict(r) for r in rows]})
+
+
+@app.route("/api/admin/support-accounts", methods=["GET"])
+@admin_required
+def api_admin_support_accounts():
+    db = get_db()
+    rows = db.execute(
+        "SELECT u.id, u.username, u.email, sa.target_user_id, tu.username as target_username "
+        "FROM users u "
+        "LEFT JOIN support_assignments sa ON sa.support_user_id = u.id AND sa.is_active = 1 "
+        "LEFT JOIN users tu ON tu.id = sa.target_user_id "
+        "WHERE u.is_support_account = 1 "
+        "ORDER BY u.username"
+    ).fetchall()
+    db.close()
+    return jsonify({"accounts": [dict(r) for r in rows]})
+
+
+@app.route("/api/admin/support-accounts/<int:user_id>/toggle", methods=["POST"])
+@admin_required
+def api_admin_support_account_toggle(user_id):
+    data = request.get_json(force=True) or {}
+    enabled = bool(data.get("enabled", True))
+
+    db = get_db()
+    user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        db.close()
+        return jsonify({"error": "User not found."}), 404
+
+    db.execute("UPDATE users SET is_support_account = ? WHERE id = ?", (1 if enabled else 0, user_id))
+    if not enabled:
+        db.execute(
+            "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
+            "WHERE support_user_id = ? AND is_active = 1",
+            (user_id,),
+        )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Support account updated." if enabled else "Support account disabled."})
+
+
+@app.route("/api/admin/support-accounts/<int:user_id>/assign", methods=["POST"])
+@admin_required
+def api_admin_support_account_assign(user_id):
+    data = request.get_json(force=True) or {}
+    target_user_id = data.get("target_user_id")
+    if not target_user_id:
+        return jsonify({"error": "target_user_id is required."}), 400
+
+    db = get_db()
+    support_user = db.execute("SELECT id, is_support_account FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not support_user or not support_user["is_support_account"]:
+        db.close()
+        return jsonify({"error": "That account is not marked as a support account."}), 400
+
+    target_user = db.execute("SELECT id FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    if not target_user:
+        db.close()
+        return jsonify({"error": "Target user not found."}), 404
+
+    if int(target_user_id) == int(user_id):
+        db.close()
+        return jsonify({"error": "A support account can't be assigned to itself."}), 400
+
+    # Free up this support account from any prior assignment, and make sure the
+    # target isn't simultaneously being messaged by a different support account.
+    db.execute(
+        "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
+        "WHERE support_user_id = ? AND is_active = 1",
+        (user_id,),
+    )
+    db.execute(
+        "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
+        "WHERE target_user_id = ? AND is_active = 1",
+        (target_user_id,),
+    )
+    db.execute(
+        "INSERT INTO support_assignments (support_user_id, target_user_id, is_active) VALUES (?, ?, 1)",
+        (user_id, target_user_id),
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Support account assigned."})
+
+
+@app.route("/api/admin/support-accounts/<int:user_id>/unassign", methods=["POST"])
+@admin_required
+def api_admin_support_account_unassign(user_id):
+    db = get_db()
+    db.execute(
+        "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
+        "WHERE support_user_id = ? AND is_active = 1",
+        (user_id,),
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Support account unassigned."})
+
+
+@app.route("/api/admin/messages/<int:target_user_id>", methods=["GET"])
+@admin_required
+def api_admin_messages_thread(target_user_id):
+    db = get_db()
+    target = db.execute("SELECT id, username, email FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    if not target:
+        db.close()
+        return jsonify({"error": "User not found."}), 404
+    assignment = db.execute(
+        "SELECT sa.*, u.username as support_username FROM support_assignments sa "
+        "JOIN users u ON u.id = sa.support_user_id "
+        "WHERE sa.target_user_id = ? AND sa.is_active = 1 ORDER BY sa.id DESC LIMIT 1",
+        (target_user_id,),
+    ).fetchone()
+    rows = db.execute(
+        "SELECT id, sender, body, created_at FROM chat_messages "
+        "WHERE target_user_id = ? ORDER BY created_at ASC, id ASC",
+        (target_user_id,),
+    ).fetchall()
+    db.close()
+    return jsonify({
+        "target": dict(target),
+        "assigned_support": dict(assignment) if assignment else None,
+        "messages": [dict(r) for r in rows],
+    })
+
+
+@app.route("/api/admin/messages/<int:target_user_id>", methods=["POST"])
+@admin_required
+def api_admin_messages_send(target_user_id):
+    data = request.get_json(force=True) or {}
+    body = (data.get("message") or "").strip()
+    if not body:
+        return jsonify({"error": "Enter a message."}), 400
+
+    db = get_db()
+    target = db.execute("SELECT id FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    if not target:
+        db.close()
+        return jsonify({"error": "User not found."}), 404
+
+    assignment = db.execute(
+        "SELECT support_user_id FROM support_assignments WHERE target_user_id = ? AND is_active = 1 "
+        "ORDER BY id DESC LIMIT 1",
+        (target_user_id,),
+    ).fetchone()
+    support_user_id = assignment["support_user_id"] if assignment else None
+
+    db.execute(
+        "INSERT INTO chat_messages (target_user_id, support_user_id, sender, body, "
+        "is_read_user, is_read_support) VALUES (?, ?, 'support', ?, 0, 1)",
+        (target_user_id, support_user_id, body),
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Sent."})
 
 
 @app.route("/api/admin/deposits", methods=["GET"])

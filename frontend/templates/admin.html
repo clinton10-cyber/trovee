@@ -217,6 +217,7 @@
     <div class="admin-tab" data-tab="withdrawals">Withdrawals</div>
     <div class="admin-tab" data-tab="deposits">Deposits</div>
     <div class="admin-tab" data-tab="users">Users</div>
+    <div class="admin-tab" data-tab="messages">Messages</div>
     <div class="admin-tab" data-tab="shares">Shares</div>
     <div class="admin-tab" data-tab="settings">Settings</div>
   </div>
@@ -243,6 +244,53 @@
   <div class="admin-panel" id="panel-users">
     <p class="section-desc">Manage user balances and account status.</p>
     <div id="users-list"></div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div class="admin-panel" id="panel-messages">
+    <p class="section-desc">
+      Support accounts are ordinary user accounts you can flag here. Assign one to a specific
+      user and, from that moment, opening "Messages" inside that account shows a private chat
+      with the assigned user instead of the normal app — the assigned user just sees "Support"
+      and has no way to tell which account is on the other end.
+    </p>
+
+    <div class="data-card" style="margin-bottom:20px;">
+      <div class="data-card-head">
+        <div class="data-card-head-title">Support accounts</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">
+        <select id="new-support-user"
+          style="flex:1;min-width:180px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--paper);font-size:13px;outline:none;">
+          <option value="">Select a user to flag as support…</option>
+        </select>
+        <button class="btn-admin" onclick="makeSupportAccount()" style="padding:8px 14px;">Flag as support</button>
+      </div>
+      <div id="support-accounts-list"><p class="muted small">Loading…</p></div>
+    </div>
+
+    <div class="data-card">
+      <div class="data-card-head">
+        <div class="data-card-head-title">Message a user directly</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">
+        <select id="chat-open-user"
+          style="flex:1;min-width:180px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--paper);font-size:13px;outline:none;">
+          <option value="">Select a user…</option>
+        </select>
+        <button class="btn-admin" onclick="openAdminChat()" style="padding:8px 14px;">Open conversation</button>
+      </div>
+      <div id="admin-chat-panel" style="display:none;">
+        <div id="admin-chat-meta" class="muted small" style="margin-bottom:10px;"></div>
+        <div id="admin-chat-thread"
+          style="max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--ink-soft);"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <input type="text" id="admin-chat-input" placeholder="Type a message as Support…"
+            style="flex:1;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:9px 12px;color:var(--paper);font-size:13.5px;outline:none;">
+          <button class="btn-admin" onclick="sendAdminChat()" style="padding:8px 14px;">Send</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- SHARES -->
@@ -433,6 +481,7 @@
     loadUsers();
     loadWalletSetting();
     loadSharesCompanies();
+    loadMessagesTab();
   }
 
   function escapeHtml(str) {
@@ -717,6 +766,158 @@
     } catch(e) {
       Trovee.showToast("Failed to toggle user status.", "error");
     }
+  }
+
+  // ─── MESSAGES / SUPPORT ACCOUNTS ──
+  let allUsersCache = [];
+  let openAdminChatUserId = null;
+
+  async function adminPost(path, body) {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+    return data;
+  }
+
+  async function loadMessagesTab() {
+    try {
+      const usersData = await adminApi("/api/admin/users");
+      allUsersCache = usersData.users;
+
+      const supportSelect = document.getElementById("new-support-user");
+      const chatSelect = document.getElementById("chat-open-user");
+      const optionsHtml = allUsersCache.map(u =>
+        `<option value="${u.id}">${escapeHtml(u.username)} (${escapeHtml(u.email)})</option>`
+      ).join("");
+      supportSelect.innerHTML = '<option value="">Select a user to flag as support…</option>' + optionsHtml;
+      chatSelect.innerHTML = '<option value="">Select a user…</option>' + optionsHtml;
+
+      await loadSupportAccounts();
+    } catch (e) { console.error("loadMessagesTab", e); }
+  }
+
+  async function loadSupportAccounts() {
+    try {
+      const data = await adminApi("/api/admin/support-accounts");
+      const el = document.getElementById("support-accounts-list");
+      if (!data.accounts.length) {
+        el.innerHTML = '<p class="muted small">No accounts flagged as support yet.</p>';
+        return;
+      }
+      el.innerHTML = data.accounts.map(a => {
+        const otherOptions = allUsersCache
+          .filter(u => u.id !== a.id)
+          .map(u => `<option value="${u.id}" ${a.target_user_id === u.id ? 'selected' : ''}>${escapeHtml(u.username)}</option>`)
+          .join("");
+        return `
+        <div style="padding:12px 0;border-top:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:600;font-size:13.5px;">${escapeHtml(a.username)}</div>
+              <div class="muted small">${a.target_username ? `Assigned to chat with ${escapeHtml(a.target_username)}` : 'Not assigned — behaves like a normal account'}</div>
+            </div>
+            <button class="btn-sm btn-sm-red" onclick="removeSupportAccount(${a.id})">Remove role</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <select id="assign-target-${a.id}"
+              style="flex:1;min-width:140px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:7px 10px;color:var(--paper);font-size:12.5px;outline:none;">
+              <option value="">Select target user…</option>
+              ${otherOptions}
+            </select>
+            <button class="btn-admin" style="padding:7px 12px;font-size:12.5px;" onclick="assignSupportAccount(${a.id})">Assign</button>
+            ${a.target_user_id ? `<button class="btn-sm" style="padding:7px 12px;font-size:12.5px;" onclick="unassignSupportAccount(${a.id})">Unassign</button>` : ''}
+          </div>
+        </div>`;
+      }).join("");
+    } catch (e) { console.error("loadSupportAccounts", e); }
+  }
+
+  async function makeSupportAccount() {
+    const sel = document.getElementById("new-support-user");
+    const userId = sel.value;
+    if (!userId) { Trovee.showToast("Select a user first.", "error"); return; }
+    try {
+      await adminPost(`/api/admin/support-accounts/${userId}/toggle`, { enabled: true });
+      sel.value = "";
+      Trovee.showToast("Account flagged as support.");
+      loadSupportAccounts();
+    } catch (e) { Trovee.showToast(e.message, "error"); }
+  }
+
+  async function removeSupportAccount(userId) {
+    try {
+      await adminPost(`/api/admin/support-accounts/${userId}/toggle`, { enabled: false });
+      Trovee.showToast("Support role removed.");
+      loadSupportAccounts();
+    } catch (e) { Trovee.showToast(e.message, "error"); }
+  }
+
+  async function assignSupportAccount(userId) {
+    const targetId = document.getElementById(`assign-target-${userId}`).value;
+    if (!targetId) { Trovee.showToast("Select a target user first.", "error"); return; }
+    try {
+      await adminPost(`/api/admin/support-accounts/${userId}/assign`, { target_user_id: parseInt(targetId, 10) });
+      Trovee.showToast("Assigned.");
+      loadSupportAccounts();
+    } catch (e) { Trovee.showToast(e.message, "error"); }
+  }
+
+  async function unassignSupportAccount(userId) {
+    try {
+      await adminPost(`/api/admin/support-accounts/${userId}/unassign`, {});
+      Trovee.showToast("Unassigned.");
+      loadSupportAccounts();
+    } catch (e) { Trovee.showToast(e.message, "error"); }
+  }
+
+  async function openAdminChat() {
+    const userId = document.getElementById("chat-open-user").value;
+    if (!userId) { Trovee.showToast("Select a user first.", "error"); return; }
+    openAdminChatUserId = userId;
+    document.getElementById("admin-chat-panel").style.display = "block";
+    await loadAdminChatThread();
+  }
+
+  async function loadAdminChatThread() {
+    if (!openAdminChatUserId) return;
+    try {
+      const data = await adminApi(`/api/admin/messages/${openAdminChatUserId}`);
+      const meta = document.getElementById("admin-chat-meta");
+      meta.textContent = data.assigned_support
+        ? `Chatting with ${data.target.username} — currently assigned to support account "${data.assigned_support.support_username}"`
+        : `Chatting with ${data.target.username} — no support account currently assigned`;
+
+      const thread = document.getElementById("admin-chat-thread");
+      if (!data.messages.length) {
+        thread.innerHTML = '<p class="muted small">No messages yet.</p>';
+        return;
+      }
+      thread.innerHTML = data.messages.map(m => {
+        const mine = m.sender === "support";
+        return `
+          <div style="align-self:${mine ? 'flex-end' : 'flex-start'};max-width:80%;">
+            <div style="background:${mine ? 'var(--accent)' : 'var(--surface)'};color:${mine ? '#08110d' : 'var(--paper)'};border:1px solid var(--line);padding:8px 11px;border-radius:12px;font-size:13px;white-space:pre-wrap;">${escapeHtml(m.body)}</div>
+            <div class="muted" style="font-size:10.5px;margin-top:2px;text-align:${mine ? 'right' : 'left'};">${new Date(m.created_at).toLocaleString()}</div>
+          </div>`;
+      }).join("");
+      thread.scrollTop = thread.scrollHeight;
+    } catch (e) { console.error("loadAdminChatThread", e); }
+  }
+
+  async function sendAdminChat() {
+    if (!openAdminChatUserId) return;
+    const input = document.getElementById("admin-chat-input");
+    const body = input.value.trim();
+    if (!body) return;
+    try {
+      await adminPost(`/api/admin/messages/${openAdminChatUserId}`, { message: body });
+      input.value = "";
+      loadAdminChatThread();
+    } catch (e) { Trovee.showToast(e.message, "error"); }
   }
 
   // ─── WALLET MANAGER ──

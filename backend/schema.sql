@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     email_verified INTEGER DEFAULT 0,
     balance_usd_cents INTEGER DEFAULT 0,
     trust_level INTEGER DEFAULT 1,
+    is_support_account INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     last_login_at TEXT
 );
@@ -148,6 +149,30 @@ CREATE TABLE IF NOT EXISTS wallet_configs (
     sort_order INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS support_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    support_user_id INTEGER NOT NULL,
+    target_user_id INTEGER NOT NULL,
+    is_active INTEGER DEFAULT 1,
+    assigned_at TEXT DEFAULT (datetime('now')),
+    unassigned_at TEXT,
+    FOREIGN KEY (support_user_id) REFERENCES users(id),
+    FOREIGN KEY (target_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_user_id INTEGER NOT NULL,
+    support_user_id INTEGER,
+    sender TEXT NOT NULL,
+    body TEXT NOT NULL,
+    is_read_user INTEGER DEFAULT 0,
+    is_read_support INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (target_user_id) REFERENCES users(id),
+    FOREIGN KEY (support_user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS admin_settings (
