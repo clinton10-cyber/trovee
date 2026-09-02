@@ -105,6 +105,11 @@ def page_signup():
     return render_template("signup.html")
 
 
+@app.route("/forgot-password")
+def page_forgot_password():
+    return render_template("forgot_password.html")
+
+
 @app.route("/dashboard")
 def page_dashboard():
     return render_template("dashboard.html")
@@ -292,6 +297,96 @@ def api_login():
     db.close()
     token = make_token(user["id"])
     return jsonify({"message": "Logged in.", "token": token})
+
+
+@app.route("/api/auth/forgot-password/start", methods=["POST"])
+def api_forgot_password_start():
+    data = request.get_json(force=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    if not EMAIL_RE.match(email):
+        return jsonify({"error": "Enter a valid email address."}), 400
+
+    # Always return the same generic response whether or not the email is
+    # registered, so this endpoint can't be used to find out who has an account.
+    generic_response = jsonify({
+        "message": "If that email has a Trovee account, we've sent a reset code to it.",
+        "expires_in_seconds": 300,
+    })
+
+    db = get_db()
+    user = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    if not user:
+        db.close()
+        return generic_response
+
+    code = generate_otp()
+    code_hash = hash_otp(code)
+    expires_at = otp_expiry_timestamp()
+    db.execute(
+        "INSERT INTO otp_codes (email, code_hash, purpose, expires_at) VALUES (?, ?, ?, ?)",
+        (email, code_hash, "reset", expires_at),
+    )
+    db.commit()
+    db.close()
+
+    send_otp_email(email, code, purpose="reset")
+    return generic_response
+
+
+@app.route("/api/auth/forgot-password/verify", methods=["POST"])
+def api_forgot_password_verify():
+    data = request.get_json(force=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    code = (data.get("code") or "").strip()
+    new_password = data.get("new_password") or ""
+
+    if len(new_password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters."}), 400
+
+    db = get_db()
+    row = db.execute(
+        "SELECT * FROM otp_codes WHERE email = ? AND purpose = 'reset' AND consumed = 0 "
+        "ORDER BY id DESC LIMIT 1",
+        (email,),
+    ).fetchone()
+
+    if not row:
+        db.close()
+        return jsonify({"error": "No pending reset found. Please request a new code."}), 400
+
+    if row["attempts"] >= OTP_MAX_ATTEMPTS:
+        db.close()
+        return jsonify({"error": "Too many incorrect attempts. Please request a new code."}), 429
+
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    if now > row["expires_at"]:
+        db.close()
+        return jsonify({"error": "This code has expired. Please request a new one."}), 400
+
+    if not verify_otp_code(code, row["code_hash"]):
+        db.execute("UPDATE otp_codes SET attempts = attempts + 1 WHERE id = ?", (row["id"],))
+        db.commit()
+        db.close()
+        return jsonify({"error": "Incorrect code. Please try again."}), 400
+
+    user = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    if not user:
+        db.close()
+        return jsonify({"error": "No account found for that email."}), 404
+
+    pw_hash, salt = hash_password(new_password)
+    db.execute(
+        "UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?",
+        (pw_hash, salt, user["id"]),
+    )
+    db.execute("UPDATE otp_codes SET consumed = 1 WHERE id = ?", (row["id"],))
+    db.commit()
+    user_id = user["id"]
+    db.close()
+
+    token = make_token(user_id)
+    return jsonify({"message": "Password updated.", "token": token})
 
 
 @app.route("/api/auth/me", methods=["GET"])
