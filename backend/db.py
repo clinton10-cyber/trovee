@@ -142,6 +142,21 @@ def init_db():
 
 def _seed_defaults(conn):
     cur = conn.cursor()
+    
+    # Clear old hardcoded wallets and companies
+    try:
+        if USE_POSTGRES:
+            cur.execute("DELETE FROM share_purchases")
+            cur.execute("DELETE FROM share_plans")
+            cur.execute("DELETE FROM share_companies")
+            cur.execute("DELETE FROM wallet_configs")
+        else:
+            cur.execute("DELETE FROM share_purchases")
+            cur.execute("DELETE FROM share_plans")
+            cur.execute("DELETE FROM share_companies")
+            cur.execute("DELETE FROM wallet_configs")
+    except Exception as e:
+        print(f"Cleanup warning: {e}")
 
     def insert_wallet(name, address, logo, qr, order):
         if USE_POSTGRES:
