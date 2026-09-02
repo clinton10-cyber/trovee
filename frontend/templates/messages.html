@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trovee — Messages</title>
+<title>Trovee — Customer Care and Support</title>
 <link rel="icon" href="/static/img/favicon.ico">
 <link rel="manifest" href="/static/manifest.webmanifest">
 <meta name="theme-color" content="#06080D">
@@ -196,7 +196,7 @@
 <div class="app-shell">
   <div class="top-bar">
     <button class="back-btn" id="back-btn"><i class="fas fa-arrow-left"></i></button>
-    <h1 class="page-title" id="chat-title">Messages</h1>
+    <h1 class="page-title" id="chat-title">Customer Care and Support</h1>
     <span></span>
   </div>
 
@@ -252,13 +252,9 @@
       <i class="fas fa-arrow-up"></i>
       <span>Withdraw</span>
     </a>
-    <a href="/support" class="nav-item">
-      <i class="fas fa-headset"></i>
-      <span>Support</span>
-    </a>
     <a href="/messages" class="nav-item active">
       <i class="fas fa-comment-dots"></i>
-      <span>Messages</span>
+      <span>Support</span>
     </a>
   </nav>
 </div>
@@ -299,7 +295,7 @@
     document.getElementById("inbox-view").style.display = "flex";
     document.getElementById("thread-view").style.display = "none";
     document.getElementById("back-btn").classList.remove("visible");
-    document.getElementById("chat-title").textContent = "Messages";
+    document.getElementById("chat-title").textContent = "Customer Care and Support";
     document.getElementById("balance-bar").classList.remove("visible");
     document.getElementById("balance-edit-form").classList.remove("visible");
   }
@@ -514,13 +510,13 @@
         showInbox();
         startInboxPolling();
       } else {
-        showThread("Support");
+        showThread("Customer Care and Support");
         loadThread(true);
         restartPolling();
       }
     } catch (err) {
       if (err.status === 401) { Trovee.logout(); return; }
-      showThread("Support");
+      showThread("Customer Care and Support");
       loadThread(true);
       restartPolling();
     }

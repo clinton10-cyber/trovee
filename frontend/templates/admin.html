@@ -220,19 +220,12 @@
   </div>
 
   <div class="admin-tabs">
-    <div class="admin-tab active" data-tab="support">Support</div>
+    <div class="admin-tab active" data-tab="messages">Customer Care &amp; Support</div>
     <div class="admin-tab" data-tab="withdrawals">Withdrawals</div>
     <div class="admin-tab" data-tab="deposits">Deposits</div>
     <div class="admin-tab" data-tab="users">Users</div>
-    <div class="admin-tab" data-tab="messages">Messages</div>
     <div class="admin-tab" data-tab="shares">Shares</div>
     <div class="admin-tab" data-tab="settings">Settings</div>
-  </div>
-
-  <!-- SUPPORT -->
-  <div class="admin-panel active" id="panel-support">
-    <p class="section-desc">Messages are also emailed to your Gmail inbox as they arrive.</p>
-    <div id="support-list"></div>
   </div>
 
   <!-- WITHDRAWALS -->
@@ -254,13 +247,14 @@
   </div>
 
   <!-- MESSAGES -->
-  <div class="admin-panel" id="panel-messages">
+  <div class="admin-panel active" id="panel-messages">
     <p class="section-desc">
       Support accounts are ordinary user accounts you can flag here. Assign one to any number of
-      users and, from that moment, opening "Messages" inside that account shows a private inbox
-      of those conversations instead of the normal app — each assigned user just sees "Support"
-      and has no way to tell which account (or how many other people) is on the other end. You can
-      read and reply to every conversation from here too, without either side knowing.
+      users and, from that moment, opening "Customer Care and Support" inside that account shows
+      a private inbox of those conversations instead of the normal app — each assigned user just
+      sees "Customer Care and Support" and has no way to tell which account (or how many other
+      people) is on the other end. You can read and reply to every conversation from here too,
+      without either side knowing.
     </p>
 
     <div class="data-card" style="margin-bottom:20px;">
@@ -483,7 +477,6 @@
   function showAdmin() {
     document.getElementById("login-gate").style.display = "none";
     document.getElementById("admin-content").style.display = "block";
-    loadSupport();
     loadWithdrawals();
     loadDeposits();
     loadUsers();
@@ -525,34 +518,6 @@
       if (t === "purchases") loadSharesPurchases();
     });
   });
-
-  // ─── SUPPORT ──
-  async function loadSupport() {
-    try {
-      const data = await adminApi("/api/admin/support");
-      const el = document.getElementById("support-list");
-      if (!data.tickets.length) { el.innerHTML = '<p class="muted small">No support messages yet.</p>'; return; }
-      el.innerHTML = data.tickets.map(t => `
-        <div class="data-card">
-          <div class="data-card-head">
-            <div>
-              <div class="data-card-head-title">${escapeHtml(t.name)}</div>
-              <div class="data-card-head-sub">${escapeHtml(t.email)} · ${new Date(t.created_at).toLocaleDateString()}</div>
-            </div>
-            ${t.emailed_ok ? '<span class="pill pill-approved">Emailed</span>' : '<span class="pill pill-rejected">Email failed</span>'}
-          </div>
-          <div class="data-card-row">
-            <span class="data-card-label">Subject</span>
-            <span class="data-card-value">${escapeHtml(t.subject)}</span>
-          </div>
-          <div class="data-card-row">
-            <span class="data-card-label">Message</span>
-            <span class="data-card-value">${escapeHtml(t.message)}</span>
-          </div>
-        </div>
-      `).join("");
-    } catch(e) { console.error("loadSupport", e); }
-  }
 
   // ─── WITHDRAWALS ──
   async function loadWithdrawals() {

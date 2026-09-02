@@ -6,14 +6,14 @@ import uuid
 import datetime
 import traceback
 from functools import wraps
-from flask import Flask, request, jsonify, render_template, g, send_from_directory
+from flask import Flask, request, jsonify, render_template, g, send_from_directory, redirect
 from werkzeug.utils import secure_filename
 
 from backend.db import get_db, init_db
 from backend.security import hash_password, verify_password
 from backend.email_otp import (
     generate_otp, hash_otp, verify_otp_code, otp_expiry_timestamp,
-    send_otp_email, send_support_ticket_email, OTP_MAX_ATTEMPTS,
+    send_otp_email, OTP_MAX_ATTEMPTS,
 )
 from backend.geo_currency import (
     get_currency_for_country, convert_usd_cents, get_withdrawal_methods,
@@ -121,8 +121,10 @@ def page_withdraw():
 
 
 @app.route("/support")
-def page_support():
-    return render_template("support.html")
+def page_support_redirect():
+    # The old email-based support ticket page has been retired in favour of
+    # the in-app Messages chat.
+    return redirect("/messages")
 
 
 @app.route("/messages")
@@ -482,46 +484,6 @@ def api_withdraw_history():
     return jsonify({"withdrawals": [dict(r) for r in rows]})
 
 
-# ─── API: Support ─────────────────────────────────────────────
-
-@app.route("/api/support/send", methods=["POST"])
-@login_required
-def api_support_send():
-    data = request.get_json(force=True) or {}
-    subject = (data.get("subject") or "").strip()
-    message = (data.get("message") or "").strip()
-    if not subject or not message:
-        return jsonify({"error": "Enter a subject and message."}), 400
-
-    db = get_db()
-    cur = db.execute(
-        "INSERT INTO support_messages (user_id, name, email, subject, message) VALUES (?, ?, ?, ?, ?)",
-        (g.user["id"], g.user["username"], g.user["email"], subject, message),
-    )
-    ticket_id = cur.lastrowid
-    db.commit()
-
-    sent = send_support_ticket_email(g.user["username"], g.user["email"], subject, message, ticket_id)
-    db.execute("UPDATE support_messages SET emailed_ok = ? WHERE id = ?", (1 if sent else 0, ticket_id))
-    db.commit()
-    db.close()
-
-    return jsonify({"message": "Your message has been sent to support.", "ticket_id": ticket_id})
-
-
-@app.route("/api/support/history", methods=["GET"])
-@login_required
-def api_support_history():
-    db = get_db()
-    rows = db.execute(
-        "SELECT id, subject, message, status, created_at FROM support_messages "
-        "WHERE user_id = ? ORDER BY created_at DESC",
-        (g.user["id"],),
-    ).fetchall()
-    db.close()
-    return jsonify({"tickets": [dict(r) for r in rows]})
-
-
 # ─── API: Messages (user-facing) ──────────────────────────────
 # A "support account" is a completely normal-looking user account
 # that an admin can flag and assign to one or more other users. While
@@ -601,7 +563,7 @@ def api_messages_get():
             (target_id,),
         )
     else:
-        other_name = "Support"
+        other_name = "Customer Care and Support"
         db.execute(
             "UPDATE chat_messages SET is_read_user = 1 WHERE target_user_id = ? AND is_read_user = 0",
             (target_id,),
@@ -794,15 +756,6 @@ def api_admin_login():
     if data.get("password") != ADMIN_PASSWORD:
         return jsonify({"error": "Incorrect admin password."}), 401
     return jsonify({"token": ADMIN_PASSWORD})
-
-
-@app.route("/api/admin/support", methods=["GET"])
-@admin_required
-def api_admin_support():
-    db = get_db()
-    rows = db.execute("SELECT * FROM support_messages ORDER BY created_at DESC").fetchall()
-    db.close()
-    return jsonify({"tickets": [dict(r) for r in rows]})
 
 
 @app.route("/api/admin/withdrawals", methods=["GET"])
