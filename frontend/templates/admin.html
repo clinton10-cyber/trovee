@@ -225,6 +225,7 @@
     <div class="admin-tab" data-tab="deposits">Deposits</div>
     <div class="admin-tab" data-tab="users">Users</div>
     <div class="admin-tab" data-tab="shares">Shares</div>
+    <div class="admin-tab" data-tab="user-currencies">User Currencies</div>
     <div class="admin-tab" data-tab="settings">Settings</div>
     <div class="admin-tab" data-tab="currencies">Currencies</div>
   </div>
@@ -245,6 +246,20 @@
   <div class="admin-panel" id="panel-users">
     <p class="section-desc">Manage user balances and account status.</p>
     <div id="users-list"></div>
+  </div>
+
+  <!-- USER CURRENCIES -->
+  <div class="admin-panel" id="panel-user-currencies">
+    <p class="section-desc">Override user currencies. Search and change any user's currency code (NGN → USD, etc).</p>
+    <div style="max-width:900px;margin-bottom:20px;">
+      <div class="form-field">
+        <label>Search by username</label>
+        <input type="text" id="currency-search" placeholder="Type username..." onkeyup="filterUserCurrencies()">
+      </div>
+    </div>
+    <div id="user-currencies-list" style="max-width:900px;">
+      <p class="muted small">Loading...</p>
+    </div>
   </div>
 
   <!-- MESSAGES -->
@@ -438,45 +453,7 @@
     </div>
   </div>
 </div>
-  <!-- CURRENCIES -->
-  <div class="admin-panel" id="panel-currencies">
-    <div class="admin-form-card" style="max-width:700px;">
-      <h4>Currency Overrides</h4>
-      <p class="section-desc" style="margin-bottom:18px;">
-        Override exchange rates for any currency. USD always appears first in the list.
-      </p>
 
-      <div style="background:rgba(10,132,255,0.06);border:1px solid rgba(10,132,255,0.18);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:12px;letter-spacing:0.04em;text-transform:uppercase;">Add new currency</div>
-        <div class="form-grid-2">
-          <div class="form-field">
-            <label>Currency code (e.g. USD, NGN, GBP)</label>
-            <input type="text" id="new-currency-code" placeholder="USD" maxlength="3" style="text-transform:uppercase;">
-          </div>
-          <div class="form-field">
-            <label>Currency symbol</label>
-            <input type="text" id="new-currency-symbol" placeholder="$" maxlength="5">
-          </div>
-          <div class="form-field">
-            <label>Currency name</label>
-            <input type="text" id="new-currency-name" placeholder="US Dollar">
-          </div>
-          <div class="form-field">
-            <label>Exchange rate per 1 USD</label>
-            <input type="number" id="new-currency-rate" placeholder="1.0" step="0.01" min="0.01">
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:14px;">
-          <button class="btn-admin" onclick="addCurrency()">Add Currency</button>
-          <span id="add-currency-msg" style="font-size:12px;"></span>
-        </div>
-      </div>
-
-      <div id="currencies-list">
-        <p class="muted small">Loading...</p>
-      </div>
-    </div>
-  </div>
 <script src="/static/js/trovee.js"></script>
 <script>
   let adminToken = sessionStorage.getItem("trovee_admin_token");
@@ -519,8 +496,8 @@
     loadWithdrawals();
     loadDeposits();
     loadUsers();
+    loadUserCurrencies();
     loadWalletSetting();
-    loadCurrencies();
     loadSharesCompanies();
     loadMessagesTab();
   }
@@ -1409,116 +1386,94 @@
     }
   }
 
-  async function loadCurrencies() {
+  let userCurrenciesCache = {};
+
+  async function loadUserCurrencies() {
     try {
-      const data = await adminApi("/api/admin/currencies");
-      renderCurrencyList(data.currencies || []);
-    } catch(e) { console.error("loadCurrencies", e); }
+      const data = await adminApi("/api/admin/users/currencies");
+      userCurrenciesCache = data.users_by_currency || {};
+      renderUserCurrencies(userCurrenciesCache);
+    } catch(e) { console.error("loadUserCurrencies", e); }
   }
 
-  function renderCurrencyList(currencies) {
-    const el = document.getElementById("currencies-list");
-    if (!currencies.length) {
-      el.innerHTML = '<p class="muted small">No currencies added yet. Add one above.</p>';
-      return;
-    }
-    el.innerHTML = currencies.map(c => `
-      <div class="data-card">
-        <div class="data-card-row">
-          <div style="flex:1;">
-            <div class="data-card-label">${escapeHtml(c.currency_code)}</div>
-            <div style="font-size:13px;color:var(--slate-soft);margin-top:2px;">${escapeHtml(c.currency_name)}</div>
-          </div>
-          <div style="text-align:right;">
-            <div class="data-card-value mono">${escapeHtml(c.currency_symbol)}</div>
-            <div style="font-size:12px;color:var(--slate-soft);margin-top:2px;">Rate: ${c.exchange_rate.toFixed(4)}</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
-          <button class="btn-sm btn-sm-blue" onclick="editCurrency(${c.id})">Edit</button>
-          <button class="btn-sm btn-sm-red" onclick="deleteCurrency(${c.id})">Delete</button>
-        </div>
-      </div>
-    `).join("");
-  }
-
-  async function addCurrency() {
-    const code = document.getElementById("new-currency-code").value.trim().toUpperCase();
-    const symbol = document.getElementById("new-currency-symbol").value.trim();
-    const name = document.getElementById("new-currency-name").value.trim();
-    const rate = document.getElementById("new-currency-rate").value.trim();
-    const msg = document.getElementById("add-currency-msg");
+  function renderUserCurrencies(data) {
+    const el = document.getElementById("user-currencies-list");
+    const currencies = Object.keys(data).sort();
     
-    if (!code || !symbol || !name || !rate) {
-      msg.textContent = "All fields required.";
-      msg.style.color = "var(--coral)";
+    if (!currencies.length) {
+      el.innerHTML = '<p class="muted small">No users found.</p>';
+      return;
+    }
+
+    let html = '';
+    currencies.forEach(currencyLabel => {
+      const users = data[currencyLabel];
+      html += `<div style="margin-bottom:24px;">
+        <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px;">${escapeHtml(currencyLabel)}</div>`;
+      
+      users.forEach(u => {
+        html += `<div class="data-card" style="margin-bottom:8px;cursor:pointer;" onclick="openChangeCurrency(${u.id}, '${escapeHtml(u.username)}', '${escapeHtml(u.currency_code)}')">
+          <div class="data-card-row">
+            <div style="flex:1;">
+              <div class="data-card-label">${escapeHtml(u.username)}</div>
+              <div style="font-size:12px;color:var(--slate-soft);">${escapeHtml(u.email)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:13px;font-weight:600;color:var(--paper);">${escapeHtml(u.currency_code)}</div>
+              <div style="font-size:12px;color:var(--slate-soft);">${escapeHtml(u.country_code)}</div>
+            </div>
+          </div>
+        </div>`;
+      });
+      
+      html += '</div>';
+    });
+
+    el.innerHTML = html;
+  }
+
+  function filterUserCurrencies() {
+    const search = document.getElementById("currency-search").value.toLowerCase();
+    const el = document.getElementById("user-currencies-list");
+    
+    if (!search) {
+      renderUserCurrencies(userCurrenciesCache);
+      return;
+    }
+
+    const filtered = {};
+    Object.keys(userCurrenciesCache).forEach(key => {
+      const users = userCurrenciesCache[key].filter(u => 
+        u.username.toLowerCase().includes(search) || 
+        u.email.toLowerCase().includes(search)
+      );
+      if (users.length) {
+        filtered[key] = users;
+      }
+    });
+
+    renderUserCurrencies(filtered);
+  }
+
+  async function openChangeCurrency(userId, username, currentCurrency) {
+    const newCurrency = prompt(`Change currency for ${username}?\n\nCurrent: ${currentCurrency}\n\nEnter new 3-letter code (e.g. USD, NGN, GBP):`).toUpperCase().trim();
+    if (!newCurrency || newCurrency.length !== 3) {
+      if (newCurrency !== '') Trovee.showToast("Invalid currency code.", "error");
       return;
     }
 
     try {
-      const res = await fetch("/api/admin/currencies", {
-        method: "POST",
-        headers: { "X-Admin-Token": adminToken, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currency_code: code,
-          currency_symbol: symbol,
-          currency_name: name,
-          exchange_rate: parseFloat(rate)
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      document.getElementById("new-currency-code").value = "";
-      document.getElementById("new-currency-symbol").value = "";
-      document.getElementById("new-currency-name").value = "";
-      document.getElementById("new-currency-rate").value = "";
-      msg.textContent = "Added!";
-      msg.style.color = "var(--teal)";
-      loadCurrencies();
-    } catch(e) {
-      msg.textContent = e.message || "Error";
-      msg.style.color = "var(--coral)";
-    }
-  }
-
-  async function editCurrency(id) {
-    const newRate = prompt("Enter new exchange rate:");
-    if (!newRate) return;
-    try {
-      const rate = parseFloat(newRate);
-      if (isNaN(rate) || rate <= 0) throw new Error("Invalid rate");
-      const res = await fetch(`/api/admin/currencies/${id}`, {
+      const res = await fetch(`/api/admin/users/${userId}/currency`, {
         method: "PUT",
         headers: { "X-Admin-Token": adminToken, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currency_symbol: "",
-          currency_name: "",
-          exchange_rate: rate,
-          is_enabled: 1
-        }),
+        body: JSON.stringify({ currency_code: newCurrency }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
-      Trovee.showToast("Currency updated.");
-      loadCurrencies();
+      Trovee.showToast(`${username} currency changed to ${newCurrency}.`);
+      loadUserCurrencies();
     } catch(e) {
       Trovee.showToast(e.message || "Update failed.", "error");
-    }
-  }
-
-  async function deleteCurrency(id) {
-    if (!confirm("Delete this currency override?")) return;
-    try {
-      const res = await fetch(`/api/admin/currencies/${id}`, {
-        method: "DELETE",
-        headers: { "X-Admin-Token": adminToken },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      Trovee.showToast("Currency deleted.");
-      loadCurrencies();
-    } catch(e) {
-      Trovee.showToast(e.message || "Delete failed.", "error");
     }
   }
 </script>
