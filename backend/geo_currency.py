@@ -3,8 +3,7 @@ Country -> currency mapping (covers all ISO countries), exchange rates relative 
 and region-appropriate withdrawal methods.
 
 Exchange rates are illustrative fixed snapshots stored server-side so the demo behaves
-deterministically. In a production deploy, swap fetch_live_rates() to call a real FX API
-(e.g. exchangerate.host, Open Exchange Rates) on a schedule and cache results.
+deterministically. In production this should be refreshed periodically from a live FX rate provider.
 """
 
 # Map ISO 3166-1 alpha-2 country code -> (currency code, currency symbol, currency name)
@@ -160,8 +159,11 @@ def get_currency_for_country(country_code: str):
     return COUNTRY_CURRENCY.get(country_code, DEFAULT_CURRENCY)
 
 
-def convert_usd_cents(usd_cents: int, currency_code: str) -> float:
-    rate = USD_EXCHANGE_RATES.get(currency_code, 1.0)
+def convert_usd_cents(usd_cents: int, currency_code: str, overrides: dict = None) -> float:
+    if overrides and currency_code in overrides:
+        rate = overrides[currency_code]
+    else:
+        rate = USD_EXCHANGE_RATES.get(currency_code, 1.0)
     return round((usd_cents / 100.0) * rate, 2)
 
 

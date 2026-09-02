@@ -180,3 +180,14 @@ CREATE TABLE IF NOT EXISTS admin_settings (
     value TEXT NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS currency_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    currency_code TEXT UNIQUE NOT NULL,
+    currency_symbol TEXT NOT NULL,
+    currency_name TEXT NOT NULL,
+    exchange_rate REAL NOT NULL,
+    is_enabled INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);

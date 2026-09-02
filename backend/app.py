@@ -2177,6 +2177,102 @@ def api_admin_wallets_delete(wallet_id):
     return jsonify({"message": "Wallet deleted."})
 
 
+
+
+# ─── API: Admin — Currency Overrides ─────────────────────────
+
+@app.route("/api/admin/currencies", methods=["GET"])
+@admin_required
+def api_admin_currencies_get():
+    db = get_db()
+    rows = db.execute("SELECT * FROM currency_overrides ORDER BY currency_code").fetchall()
+    db.close()
+    currencies = [dict(r) for r in rows]
+    
+    # Build sorted list: USD first, then rest alphabetically
+    usd_curr = None
+    rest = []
+    for c in currencies:
+        if c["currency_code"] == "USD":
+            usd_curr = c
+        else:
+            rest.append(c)
+    
+    rest.sort(key=lambda x: x["currency_code"])
+    result = [usd_curr] if usd_curr else []
+    result.extend(rest)
+    
+    return jsonify({"currencies": result})
+
+
+@app.route("/api/admin/currencies", methods=["POST"])
+@admin_required
+def api_admin_currencies_add():
+    data = request.get_json(force=True) or {}
+    currency_code = (data.get("currency_code") or "").strip().upper()
+    currency_symbol = (data.get("currency_symbol") or "").strip()
+    currency_name = (data.get("currency_name") or "").strip()
+    exchange_rate = data.get("exchange_rate")
+
+    if not all([currency_code, currency_symbol, currency_name, exchange_rate is not None]):
+        return jsonify({"error": "All fields required."}), 400
+    
+    try:
+        exchange_rate = float(exchange_rate)
+        if exchange_rate <= 0:
+            return jsonify({"error": "Exchange rate must be positive."}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid exchange rate."}), 400
+
+    db = get_db()
+    cur = db.execute(
+        "INSERT INTO currency_overrides (currency_code, currency_symbol, currency_name, exchange_rate, is_enabled) VALUES (?, ?, ?, ?, ?)",
+        (currency_code, currency_symbol, currency_name, exchange_rate, 1)
+    )
+    cid = cur.lastrowid
+    db.commit()
+    db.close()
+    return jsonify({"id": cid, "message": "Currency added."})
+
+
+@app.route("/api/admin/currencies/<int:currency_id>", methods=["PUT"])
+@admin_required
+def api_admin_currencies_update(currency_id):
+    data = request.get_json(force=True) or {}
+    currency_symbol = (data.get("currency_symbol") or "").strip()
+    currency_name = (data.get("currency_name") or "").strip()
+    exchange_rate = data.get("exchange_rate")
+    is_enabled = int(bool(data.get("is_enabled", True)))
+
+    if not all([currency_symbol, currency_name, exchange_rate is not None]):
+        return jsonify({"error": "All fields required."}), 400
+    
+    try:
+        exchange_rate = float(exchange_rate)
+        if exchange_rate <= 0:
+            return jsonify({"error": "Exchange rate must be positive."}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid exchange rate."}), 400
+
+    db = get_db()
+    db.execute(
+        "UPDATE currency_overrides SET currency_symbol=?, currency_name=?, exchange_rate=?, is_enabled=? WHERE id=?",
+        (currency_symbol, currency_name, exchange_rate, is_enabled, currency_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Currency updated."})
+
+
+@app.route("/api/admin/currencies/<int:currency_id>", methods=["DELETE"])
+@admin_required
+def api_admin_currencies_delete(currency_id):
+    db = get_db()
+    db.execute("DELETE FROM currency_overrides WHERE id = ?", (currency_id,))
+    db.commit()
+    db.close()
+    return jsonify({"message": "Currency deleted."})
+
 # ─── Error Handlers ──────────────────────────────────────────
 
 @app.errorhandler(404)
