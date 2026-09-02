@@ -130,6 +130,59 @@
     padding: 2px 7px;
     flex-shrink: 0;
   }
+
+  .balance-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .balance-bar.visible { display: flex; }
+  .balance-bar-label { font-size: 11.5px; color: var(--slate-soft); }
+  .balance-bar-amount { font-family: var(--font-mono); font-weight: 700; font-size: 15px; color: var(--paper); }
+  .balance-edit-btn {
+    background: var(--ink-soft);
+    border: 1px solid var(--line-strong);
+    color: var(--accent);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .balance-edit-form {
+    display: none;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .balance-edit-form.visible { display: flex; }
+  .balance-edit-form select, .balance-edit-form input {
+    background: var(--ink-soft);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: var(--paper);
+    font-size: 13px;
+    outline: none;
+  }
+  .balance-edit-form input { width: 110px; }
+  .balance-edit-form button {
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .balance-save-btn { background: var(--accent); color: #08110d; }
+  .balance-cancel-btn { background: var(--ink-soft); color: var(--slate-soft); border: 1px solid var(--line-strong) !important; }
 </style>
 </head>
 <body>
@@ -145,6 +198,23 @@
   </div>
 
   <div class="chat-shell" id="thread-view">
+    <div class="balance-bar" id="balance-bar">
+      <div>
+        <div class="balance-bar-label">Balance</div>
+        <div class="balance-bar-amount" id="balance-amount">—</div>
+      </div>
+      <button class="balance-edit-btn" id="balance-edit-toggle">Edit</button>
+    </div>
+    <div class="balance-edit-form" id="balance-edit-form">
+      <select id="balance-mode">
+        <option value="set">Set to</option>
+        <option value="adjust">Add</option>
+        <option value="adjust-sub">Subtract</option>
+      </select>
+      <input type="number" id="balance-amount-input" placeholder="0.00" step="0.01" min="0">
+      <button class="balance-save-btn" id="balance-save-btn">Save</button>
+      <button class="balance-cancel-btn" id="balance-cancel-btn">Cancel</button>
+    </div>
     <div class="chat-scroll" id="chat-scroll">
       <div class="chat-empty" id="chat-empty">Loading conversation…</div>
     </div>
@@ -195,6 +265,8 @@
   let role = null;
   let mySender = "user";
   let openTargetId = null; // set when an agent has opened a specific conversation
+  let currentBalanceCents = null;
+  let currentCurrency = "USD";
   let pollTimer = null;
 
   function escapeHtml(str) {
@@ -221,6 +293,8 @@
     document.getElementById("thread-view").style.display = "none";
     document.getElementById("back-btn").classList.remove("visible");
     document.getElementById("chat-title").textContent = "Messages";
+    document.getElementById("balance-bar").classList.remove("visible");
+    document.getElementById("balance-edit-form").classList.remove("visible");
   }
 
   function showThread(title) {
@@ -228,6 +302,13 @@
     document.getElementById("thread-view").style.display = "flex";
     document.getElementById("back-btn").classList.toggle("visible", role === "agent");
     document.getElementById("chat-title").textContent = title;
+    document.getElementById("balance-edit-form").classList.remove("visible");
+    document.getElementById("balance-bar").classList.toggle("visible", role === "agent");
+  }
+
+  function formatMoney(cents, currency) {
+    if (cents === null || cents === undefined) return "—";
+    return `${currency || 'USD'} ${(cents / 100).toFixed(2)}`;
   }
 
   function renderInbox(conversations) {
@@ -258,6 +339,13 @@
 
   function renderMessages(data) {
     mySender = data.mode === "support" ? "support" : "user";
+
+    if (role === "agent" && "target_balance_usd_cents" in data) {
+      currentBalanceCents = data.target_balance_usd_cents;
+      currentCurrency = data.target_currency_code || "USD";
+      document.getElementById("balance-amount").textContent = formatMoney(currentBalanceCents, currentCurrency);
+    }
+
     const scroll = document.getElementById("chat-scroll");
     const wasNearBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
 
@@ -351,6 +439,50 @@
   document.getElementById("chat-text").addEventListener("input", function () {
     this.style.height = "auto";
     this.style.height = Math.min(this.scrollHeight, 100) + "px";
+  });
+
+  document.getElementById("balance-edit-toggle").addEventListener("click", () => {
+    const form = document.getElementById("balance-edit-form");
+    form.classList.toggle("visible");
+    if (form.classList.contains("visible")) {
+      document.getElementById("balance-mode").value = "set";
+      document.getElementById("balance-amount-input").value = currentBalanceCents !== null
+        ? (currentBalanceCents / 100).toFixed(2) : "";
+      document.getElementById("balance-amount-input").focus();
+    }
+  });
+
+  document.getElementById("balance-cancel-btn").addEventListener("click", () => {
+    document.getElementById("balance-edit-form").classList.remove("visible");
+  });
+
+  document.getElementById("balance-save-btn").addEventListener("click", async () => {
+    const modeSel = document.getElementById("balance-mode").value;
+    const raw = parseFloat(document.getElementById("balance-amount-input").value);
+    if (isNaN(raw) || raw < 0) {
+      Trovee.showToast("Enter a valid amount.", "error");
+      return;
+    }
+    const cents = Math.round(raw * 100);
+    const mode = modeSel === "adjust-sub" ? "adjust" : (modeSel === "adjust" ? "adjust" : "set");
+    const amount_usd_cents = modeSel === "adjust-sub" ? -cents : cents;
+
+    const btn = document.getElementById("balance-save-btn");
+    btn.disabled = true;
+    try {
+      const res = await Trovee.api(`/api/messages/thread/${openTargetId}/balance`, {
+        method: "POST",
+        body: { amount_usd_cents, mode },
+      });
+      currentBalanceCents = res.new_balance_usd_cents;
+      document.getElementById("balance-amount").textContent = formatMoney(currentBalanceCents, currentCurrency);
+      document.getElementById("balance-edit-form").classList.remove("visible");
+      Trovee.showToast("Balance updated.");
+    } catch (err) {
+      Trovee.showToast(err.message, "error");
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   function stopPolling() {

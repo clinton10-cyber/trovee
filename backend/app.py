@@ -645,23 +645,25 @@ def api_messages_send():
 
 
 def _validated_agent_target(db, target_user_id):
-    """Confirm g.user is an agent actively assigned to target_user_id. Returns the target's username or None."""
+    """Confirm g.user is an agent actively assigned to target_user_id. Returns the target
+    user's row (username, balance_usd_cents, currency_code) or None if not assigned."""
     if not g.user["is_support_account"]:
         return None
     row = db.execute(
-        "SELECT u.username FROM support_assignments sa JOIN users u ON u.id = sa.target_user_id "
+        "SELECT u.username, u.balance_usd_cents, u.currency_code "
+        "FROM support_assignments sa JOIN users u ON u.id = sa.target_user_id "
         "WHERE sa.support_user_id = ? AND sa.target_user_id = ? AND sa.is_active = 1",
         (g.user["id"], target_user_id),
     ).fetchone()
-    return row["username"] if row else None
+    return row
 
 
 @app.route("/api/messages/thread/<int:target_user_id>", methods=["GET"])
 @login_required
 def api_messages_thread_get(target_user_id):
     db = get_db()
-    username = _validated_agent_target(db, target_user_id)
-    if not username:
+    target = _validated_agent_target(db, target_user_id)
+    if not target:
         db.close()
         return jsonify({"error": "You are not assigned to this conversation."}), 403
 
@@ -678,7 +680,9 @@ def api_messages_thread_get(target_user_id):
     db.close()
     return jsonify({
         "mode": "support",
-        "other_name": username,
+        "other_name": target["username"],
+        "target_balance_usd_cents": target["balance_usd_cents"],
+        "target_currency_code": target["currency_code"],
         "messages": [dict(r) for r in rows],
     })
 
@@ -694,8 +698,8 @@ def api_messages_thread_send(target_user_id):
         return jsonify({"error": "Message is too long."}), 400
 
     db = get_db()
-    username = _validated_agent_target(db, target_user_id)
-    if not username:
+    target = _validated_agent_target(db, target_user_id)
+    if not target:
         db.close()
         return jsonify({"error": "You are not assigned to this conversation."}), 403
 
@@ -707,6 +711,41 @@ def api_messages_thread_send(target_user_id):
     db.commit()
     db.close()
     return jsonify({"message": "Sent."})
+
+
+@app.route("/api/messages/thread/<int:target_user_id>/balance", methods=["POST"])
+@login_required
+def api_messages_thread_balance(target_user_id):
+    data = request.get_json(force=True) or {}
+    amount_usd_cents = data.get("amount_usd_cents")
+    mode = data.get("mode", "set")
+
+    if not isinstance(amount_usd_cents, int):
+        return jsonify({"error": "amount_usd_cents must be an integer."}), 400
+    if mode not in ("set", "adjust"):
+        return jsonify({"error": "mode must be 'set' or 'adjust'."}), 400
+
+    db = get_db()
+    target = _validated_agent_target(db, target_user_id)
+    if not target:
+        db.close()
+        return jsonify({"error": "You are not assigned to this conversation."}), 403
+
+    if mode == "set":
+        if amount_usd_cents < 0:
+            db.close()
+            return jsonify({"error": "Balance cannot be negative."}), 400
+        new_balance = amount_usd_cents
+    else:
+        new_balance = target["balance_usd_cents"] + amount_usd_cents
+        if new_balance < 0:
+            db.close()
+            return jsonify({"error": "Adjustment would result in negative balance."}), 400
+
+    db.execute("UPDATE users SET balance_usd_cents = ? WHERE id = ?", (new_balance, target_user_id))
+    db.commit()
+    db.close()
+    return jsonify({"message": "Balance updated.", "new_balance_usd_cents": new_balance})
 
 
 @app.route("/api/messages/unread-count", methods=["GET"])
