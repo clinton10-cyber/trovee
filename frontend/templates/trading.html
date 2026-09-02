@@ -436,7 +436,12 @@
 <div class="app-shell">
   <div class="top-bar">
     <h1 class="page-title">Trade</h1>
-    <span id="balance-badge" class="mono" style="font-size:13px; color:var(--accent);"></span>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="balance-badge" class="mono" style="font-size:13px; color:var(--accent);"></span>
+      <button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
   </div>
 
   <div class="trade-header">
@@ -934,6 +939,13 @@
     loadBalance();
     loadHistory();
     document.getElementById("trade-btn").disabled = true;
+  }
+
+  function userLogout() {
+    if (!confirm("Logout?")) return;
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userId");
+    location.href = "/";
   }
 
   if (document.readyState === 'loading') {

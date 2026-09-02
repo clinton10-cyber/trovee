@@ -29,7 +29,9 @@
 <div class="app-shell">
   <div class="top-bar">
     <h1 class="page-title">Support</h1>
-    <span></span>
+    <button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout">
+      <i class="fas fa-sign-out-alt"></i>
+    </button>
   </div>
   <p class="page-sub" style="padding:0 20px;">Send us a message and we'll get back to you. You'll never need to leave the app.</p>
 
@@ -155,6 +157,13 @@
   }
 
   loadTickets();
+
+  function userLogout() {
+    if (!confirm("Logout?")) return;
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userId");
+    location.href = "/";
+  }
 </script>
 </body>
 </html>

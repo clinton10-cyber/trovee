@@ -134,7 +134,12 @@
       <img src="/static/img/logo.png" alt="" class="brand-mark">
       <span class="brand-word">Tro<span class="accent">vee</span></span>
     </div>
-    <span id="balance-badge" class="mono" style="font-size:13px; color:var(--accent);">$0.00</span>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="balance-badge" class="mono" style="font-size:13px; color:var(--accent);">$0.00</span>
+      <button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
   </div>
 
   <!-- Balance Hero -->
@@ -263,6 +268,13 @@
   }
 
   loadDashboard();
+
+  function userLogout() {
+    if (!confirm("Logout?")) return;
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userId");
+    location.href = "/";
+  }
 </script>
 </body>
 </html>

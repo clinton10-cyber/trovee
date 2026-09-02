@@ -225,7 +225,6 @@
     <div class="admin-tab" data-tab="deposits">Deposits</div>
     <div class="admin-tab" data-tab="users">Users</div>
     <div class="admin-tab" data-tab="shares">Shares</div>
-    <div class="admin-tab" data-tab="user-currencies">User Currencies</div>
     <div class="admin-tab" data-tab="settings">Settings</div>
     <div class="admin-tab" data-tab="currencies">Currencies</div>
   </div>
@@ -246,20 +245,6 @@
   <div class="admin-panel" id="panel-users">
     <p class="section-desc">Manage user balances and account status.</p>
     <div id="users-list"></div>
-  </div>
-
-  <!-- USER CURRENCIES -->
-  <div class="admin-panel" id="panel-user-currencies">
-    <p class="section-desc">Override user currencies. Change NGN (₦) to USD ($), GBP (£), etc. Symbol and name update for all displays.</p>
-    <div style="max-width:900px;margin-bottom:20px;">
-      <div class="form-field">
-        <label>Search by username</label>
-        <input type="text" id="currency-search" placeholder="Type username..." onkeyup="filterUserCurrencies()">
-      </div>
-    </div>
-    <div id="user-currencies-list" style="max-width:900px;">
-      <p class="muted small">Loading...</p>
-    </div>
   </div>
 
   <!-- MESSAGES -->
@@ -496,7 +481,6 @@
     loadWithdrawals();
     loadDeposits();
     loadUsers();
-    loadUserCurrencies();
     loadWalletSetting();
     loadSharesCompanies();
     loadMessagesTab();
@@ -1383,135 +1367,6 @@
       loadSharesPurchases();
     } catch(e) {
       Trovee.showToast(e.message || "Payout failed.", "error");
-    }
-  }
-
-  let userCurrenciesCache = {};
-  let availableCurrencies = [];
-
-  async function loadUserCurrencies() {
-    try {
-      const [usersData, currenciesData] = await Promise.all([
-        adminApi("/api/admin/users/currencies"),
-        adminApi("/api/admin/currencies/list")
-      ]);
-      userCurrenciesCache = usersData.users_by_currency || {};
-      availableCurrencies = currenciesData.currencies || [];
-      renderUserCurrencies(userCurrenciesCache);
-    } catch(e) { console.error("loadUserCurrencies", e); }
-  }
-
-  function renderUserCurrencies(data) {
-    const el = document.getElementById("user-currencies-list");
-    const currencies = Object.keys(data).sort();
-    
-    if (!currencies.length) {
-      el.innerHTML = '<p class="muted small">No users found.</p>';
-      return;
-    }
-
-    let html = '';
-    currencies.forEach(currencyLabel => {
-      const users = data[currencyLabel];
-      html += `<div style="margin-bottom:24px;">
-        <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px;">${escapeHtml(currencyLabel)}</div>`;
-      
-      users.forEach(u => {
-        html += `<div class="data-card" style="margin-bottom:8px;cursor:pointer;" onclick="openChangeCurrency(${u.id}, '${escapeHtml(u.username)}', '${escapeHtml(u.currency_code)}')">
-          <div class="data-card-row">
-            <div style="flex:1;">
-              <div class="data-card-label">${escapeHtml(u.username)}</div>
-              <div style="font-size:12px;color:var(--slate-soft);">${escapeHtml(u.email)}</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-size:13px;font-weight:600;color:var(--paper);">${escapeHtml(u.currency_code)}</div>
-              <div style="font-size:12px;color:var(--slate-soft);">${escapeHtml(u.country_code)}</div>
-            </div>
-          </div>
-        </div>`;
-      });
-      
-      html += '</div>';
-    });
-
-    el.innerHTML = html;
-  }
-
-  function filterUserCurrencies() {
-    const search = document.getElementById("currency-search").value.toLowerCase();
-    const el = document.getElementById("user-currencies-list");
-    
-    if (!search) {
-      renderUserCurrencies(userCurrenciesCache);
-      return;
-    }
-
-    const filtered = {};
-    Object.keys(userCurrenciesCache).forEach(key => {
-      const users = userCurrenciesCache[key].filter(u => 
-        u.username.toLowerCase().includes(search) || 
-        u.email.toLowerCase().includes(search)
-      );
-      if (users.length) {
-        filtered[key] = users;
-      }
-    });
-
-    renderUserCurrencies(filtered);
-  }
-
-  async function openChangeCurrency(userId, username, currentCurrency) {
-    if (!availableCurrencies.length) {
-      Trovee.showToast("Loading currencies... try again.", "error");
-      return;
-    }
-
-    // Build dropdown HTML
-    let dropdownHtml = `<div style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:300px;overflow-y:auto;">`;
-    availableCurrencies.forEach(c => {
-      const isSelected = c.code === currentCurrency ? 'selected' : '';
-      dropdownHtml += `<div class="currency-option ${isSelected}" onclick="selectCurrencyOption('${c.code}', '${c.symbol.replace(/'/g, "\\'")}', '${c.name.replace(/'/g, "\\'")}', ${userId}, '${username.replace(/'/g, "\\'")}')" style="padding:10px;border-radius:6px;margin-bottom:6px;cursor:pointer;background:${isSelected ? 'rgba(10,132,255,0.2)' : 'transparent'};border:1px solid ${isSelected ? 'var(--accent)' : 'var(--line-strong)'};transition:all 0.15s;">
-        <div style="font-weight:600;color:var(--paper);">${escapeHtml(c.code)} ${escapeHtml(c.symbol)}</div>
-        <div style="font-size:12px;color:var(--slate-soft);">${escapeHtml(c.name)}</div>
-      </div>`;
-    });
-    dropdownHtml += `</div>`;
-
-    // Create modal
-    const modal = document.createElement("div");
-    modal.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;";
-    modal.innerHTML = `<div style="background:var(--ink);border:1px solid var(--line);border-radius:var(--radius-md);padding:20px;max-width:400px;width:90vw;">
-      <div style="font-weight:600;font-size:15px;color:var(--paper);margin-bottom:4px;">Change Currency for ${escapeHtml(username)}</div>
-      <div style="font-size:13px;color:var(--slate-soft);margin-bottom:16px;">Current: ${currentCurrency}</div>
-      ${dropdownHtml}
-      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn-sm btn-sm-ghost" onclick="this.closest('div').parentElement.remove()">Cancel</button>
-      </div>
-    </div>`;
-    
-    document.body.appendChild(modal);
-  }
-
-  async function selectCurrencyOption(code, symbol, name, userId, username) {
-    // Close modal
-    document.querySelectorAll('div[style*="fixed"][style*="top:0"]').forEach(m => m.remove());
-
-    try {
-      const res = await fetch(`/api/admin/users/${userId}/currency`, {
-        method: "PUT",
-        headers: { "X-Admin-Token": adminToken, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currency_code: code,
-          currency_symbol: symbol,
-          currency_name: name
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      Trovee.showToast(`${username} → ${symbol} ${name}`);
-      loadUserCurrencies();
-    } catch(e) {
-      Trovee.showToast(e.message || "Update failed.", "error");
     }
   }
 </script>

@@ -399,7 +399,9 @@
 <div class="app-shell">
   <div class="top-bar">
     <h1 class="page-title">Deposit</h1>
-    <span></span>
+    <button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout">
+      <i class="fas fa-sign-out-alt"></i>
+    </button>
   </div>
 
   <div class="balance-strip" id="balance-strip">
@@ -908,6 +910,13 @@
   loadBalance();
   loadWallets();
   loadHistory();
+
+  function userLogout() {
+    if (!confirm("Logout?")) return;
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userId");
+    location.href = "/";
+  }
 </script>
 </body>
 </html>

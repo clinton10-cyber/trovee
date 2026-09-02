@@ -197,7 +197,9 @@
   <div class="top-bar">
     <button class="back-btn" id="back-btn"><i class="fas fa-arrow-left"></i></button>
     <h1 class="page-title" id="chat-title">Customer Care and Support</h1>
-    <span></span>
+    <button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout">
+      <i class="fas fa-sign-out-alt"></i>
+    </button>
   </div>
 
   <div class="chat-shell" id="inbox-view" style="display:none;">
@@ -524,6 +526,13 @@
 
   init();
   window.addEventListener("beforeunload", () => stopPolling());
+
+  function userLogout() {
+    if (!confirm("Logout?")) return;
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userId");
+    location.href = "/";
+  }
 </script>
 </body>
 </html>
