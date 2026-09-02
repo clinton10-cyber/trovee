@@ -2202,15 +2202,58 @@ def api_admin_users_currencies_list():
     return jsonify({"users_by_currency": result})
 
 
+@app.route("/api/admin/currencies/list", methods=["GET"])
+@admin_required
+def api_admin_currencies_list_all():
+    """Get all available currencies from geo_currency."""
+    from backend.geo_currency import USD_EXCHANGE_RATES, DEFAULT_CURRENCY
+    
+    currencies = []
+    # Add USD first
+    currencies.append({
+        "code": "USD",
+        "symbol": "$",
+        "name": "US Dollar",
+        "rate": USD_EXCHANGE_RATES.get("USD", 1.0)
+    })
+    
+    # Add rest sorted by code
+    for code in sorted(USD_EXCHANGE_RATES.keys()):
+        if code != "USD":
+            # Try to find symbol and name from COUNTRY_CURRENCY mapping
+            symbol = "$"
+            name = code
+            from backend.geo_currency import COUNTRY_CURRENCY
+            for country_code, (curr_code, curr_symbol, curr_name) in COUNTRY_CURRENCY.items():
+                if curr_code == code:
+                    symbol = curr_symbol
+                    name = curr_name
+                    break
+            
+            currencies.append({
+                "code": code,
+                "symbol": symbol,
+                "name": name,
+                "rate": USD_EXCHANGE_RATES.get(code, 1.0)
+            })
+    
+    return jsonify({"currencies": currencies})
+
+
 @app.route("/api/admin/users/<int:user_id>/currency", methods=["PUT"])
 @admin_required
 def api_admin_user_currency_update(user_id):
-    """Override a user's currency code."""
+    """Override a user's currency code, symbol, and name."""
     data = request.get_json(force=True) or {}
     new_currency = (data.get("currency_code") or "").strip().upper()
+    new_symbol = (data.get("currency_symbol") or "").strip()
+    new_name = (data.get("currency_name") or "").strip()
     
     if not new_currency or len(new_currency) != 3:
         return jsonify({"error": "Valid 3-letter currency code required."}), 400
+    
+    if not new_symbol or not new_name:
+        return jsonify({"error": "Currency symbol and name required."}), 400
     
     db = get_db()
     user = db.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -2218,14 +2261,19 @@ def api_admin_user_currency_update(user_id):
         db.close()
         return jsonify({"error": "User not found."}), 404
     
-    db.execute("UPDATE users SET currency_code = ? WHERE id = ?", (new_currency, user_id))
+    db.execute(
+        "UPDATE users SET currency_code = ? WHERE id = ?", 
+        (new_currency, user_id)
+    )
     db.commit()
     db.close()
     
     return jsonify({
-        "message": f"Currency changed for {dict(user)['username']}.",
+        "message": f"Currency changed for {dict(user)['username']} to {new_symbol} {new_name}.",
         "user_id": user_id,
-        "currency_code": new_currency
+        "currency_code": new_currency,
+        "currency_symbol": new_symbol,
+        "currency_name": new_name
     })
 
 # ─── Error Handlers ──────────────────────────────────────────
