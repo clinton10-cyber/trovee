@@ -510,27 +510,67 @@ def api_support_history():
 
 # ─── API: Messages (user-facing) ──────────────────────────────
 # A "support account" is a completely normal-looking user account
-# that an admin can flag and assign to another user. While assigned,
-# loading /messages on that support account shows a chat with the
-# assigned user instead of a generic support inbox. The assigned
-# user never sees anything indicating who is on the other end —
-# it just looks like they're messaging Trovee support.
+# that an admin can flag and assign to one or more other users. While
+# assigned, loading /messages on that support account shows a chat
+# (or an inbox of chats, if assigned to several people) with the
+# assigned user(s) instead of a generic support inbox. The assigned
+# user never sees anything indicating who is on the other end — it
+# just looks like they're messaging Trovee support. The admin can
+# read and reply to every conversation without either side knowing.
 
-def _active_assignment_for_support(db, support_user_id):
+def _active_assignments_for_support(db, support_user_id):
     return db.execute(
-        "SELECT * FROM support_assignments WHERE support_user_id = ? AND is_active = 1 "
-        "ORDER BY id DESC LIMIT 1",
+        "SELECT sa.*, u.username as target_username FROM support_assignments sa "
+        "JOIN users u ON u.id = sa.target_user_id "
+        "WHERE sa.support_user_id = ? AND sa.is_active = 1 "
+        "ORDER BY sa.assigned_at DESC",
         (support_user_id,),
-    ).fetchone()
+    ).fetchall()
 
 
 def _current_chat_context(db):
-    """Resolve the target_user_id and mode ('support' or 'user') for g.user."""
+    """Resolve the target_user_id and mode ('support' or 'user') for g.user.
+    Only resolves to 'support' when there's exactly one active assignment —
+    agents with multiple assigned users use the /api/messages/context +
+    /api/messages/thread/<id> endpoints instead."""
     if g.user["is_support_account"]:
-        assignment = _active_assignment_for_support(db, g.user["id"])
-        if assignment:
-            return assignment["target_user_id"], "support"
+        assignments = _active_assignments_for_support(db, g.user["id"])
+        if len(assignments) == 1:
+            return assignments[0]["target_user_id"], "support"
     return g.user["id"], "user"
+
+
+@app.route("/api/messages/context", methods=["GET"])
+@login_required
+def api_messages_context():
+    db = get_db()
+    if g.user["is_support_account"]:
+        assignments = _active_assignments_for_support(db, g.user["id"])
+        if assignments:
+            conversations = []
+            for a in assignments:
+                target_id = a["target_user_id"]
+                last = db.execute(
+                    "SELECT body, sender, created_at FROM chat_messages "
+                    "WHERE target_user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+                    (target_id,),
+                ).fetchone()
+                unread = db.execute(
+                    "SELECT COUNT(*) as n FROM chat_messages "
+                    "WHERE target_user_id = ? AND sender = 'user' AND is_read_support = 0",
+                    (target_id,),
+                ).fetchone()
+                conversations.append({
+                    "target_user_id": target_id,
+                    "username": a["target_username"],
+                    "last_message": last["body"] if last else None,
+                    "last_message_at": last["created_at"] if last else None,
+                    "unread_count": unread["n"] if unread else 0,
+                })
+            db.close()
+            return jsonify({"role": "agent", "conversations": conversations})
+    db.close()
+    return jsonify({"role": "user"})
 
 
 @app.route("/api/messages", methods=["GET"])
@@ -604,15 +644,90 @@ def api_messages_send():
     return jsonify({"message": "Sent."})
 
 
+def _validated_agent_target(db, target_user_id):
+    """Confirm g.user is an agent actively assigned to target_user_id. Returns the target's username or None."""
+    if not g.user["is_support_account"]:
+        return None
+    row = db.execute(
+        "SELECT u.username FROM support_assignments sa JOIN users u ON u.id = sa.target_user_id "
+        "WHERE sa.support_user_id = ? AND sa.target_user_id = ? AND sa.is_active = 1",
+        (g.user["id"], target_user_id),
+    ).fetchone()
+    return row["username"] if row else None
+
+
+@app.route("/api/messages/thread/<int:target_user_id>", methods=["GET"])
+@login_required
+def api_messages_thread_get(target_user_id):
+    db = get_db()
+    username = _validated_agent_target(db, target_user_id)
+    if not username:
+        db.close()
+        return jsonify({"error": "You are not assigned to this conversation."}), 403
+
+    db.execute(
+        "UPDATE chat_messages SET is_read_support = 1 WHERE target_user_id = ? AND is_read_support = 0",
+        (target_user_id,),
+    )
+    db.commit()
+    rows = db.execute(
+        "SELECT id, sender, body, created_at FROM chat_messages "
+        "WHERE target_user_id = ? ORDER BY created_at ASC, id ASC",
+        (target_user_id,),
+    ).fetchall()
+    db.close()
+    return jsonify({
+        "mode": "support",
+        "other_name": username,
+        "messages": [dict(r) for r in rows],
+    })
+
+
+@app.route("/api/messages/thread/<int:target_user_id>", methods=["POST"])
+@login_required
+def api_messages_thread_send(target_user_id):
+    data = request.get_json(force=True) or {}
+    body = (data.get("message") or "").strip()
+    if not body:
+        return jsonify({"error": "Enter a message."}), 400
+    if len(body) > 4000:
+        return jsonify({"error": "Message is too long."}), 400
+
+    db = get_db()
+    username = _validated_agent_target(db, target_user_id)
+    if not username:
+        db.close()
+        return jsonify({"error": "You are not assigned to this conversation."}), 403
+
+    db.execute(
+        "INSERT INTO chat_messages (target_user_id, support_user_id, sender, body, "
+        "is_read_user, is_read_support) VALUES (?, ?, 'support', ?, 0, 1)",
+        (target_user_id, g.user["id"], body),
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Sent."})
+
+
 @app.route("/api/messages/unread-count", methods=["GET"])
 @login_required
 def api_messages_unread_count():
     db = get_db()
-    target_id, mode = _current_chat_context(db)
-    col = "is_read_support" if mode == "support" else "is_read_user"
+    if g.user["is_support_account"]:
+        assignments = _active_assignments_for_support(db, g.user["id"])
+        if assignments:
+            target_ids = [a["target_user_id"] for a in assignments]
+            placeholders = ",".join("?" for _ in target_ids)
+            row = db.execute(
+                f"SELECT COUNT(*) as n FROM chat_messages "
+                f"WHERE target_user_id IN ({placeholders}) AND sender = 'user' AND is_read_support = 0",
+                target_ids,
+            ).fetchone()
+            db.close()
+            return jsonify({"unread": row["n"] if row else 0})
     row = db.execute(
-        f"SELECT COUNT(*) as n FROM chat_messages WHERE target_user_id = ? AND {col} = 0 AND sender != ?",
-        (target_id, "support" if mode == "support" else "user"),
+        "SELECT COUNT(*) as n FROM chat_messages WHERE target_user_id = ? AND sender = 'support' AND is_read_user = 0",
+        (g.user["id"],),
     ).fetchone()
     db.close()
     return jsonify({"unread": row["n"] if row else 0})
@@ -731,16 +846,25 @@ def api_admin_users():
 @admin_required
 def api_admin_support_accounts():
     db = get_db()
-    rows = db.execute(
-        "SELECT u.id, u.username, u.email, sa.target_user_id, tu.username as target_username "
-        "FROM users u "
-        "LEFT JOIN support_assignments sa ON sa.support_user_id = u.id AND sa.is_active = 1 "
-        "LEFT JOIN users tu ON tu.id = sa.target_user_id "
-        "WHERE u.is_support_account = 1 "
-        "ORDER BY u.username"
+    accounts = db.execute(
+        "SELECT id, username, email FROM users WHERE is_support_account = 1 ORDER BY username"
     ).fetchall()
+    result = []
+    for acc in accounts:
+        targets = db.execute(
+            "SELECT sa.target_user_id as id, u.username FROM support_assignments sa "
+            "JOIN users u ON u.id = sa.target_user_id "
+            "WHERE sa.support_user_id = ? AND sa.is_active = 1 ORDER BY u.username",
+            (acc["id"],),
+        ).fetchall()
+        result.append({
+            "id": acc["id"],
+            "username": acc["username"],
+            "email": acc["email"],
+            "targets": [dict(t) for t in targets],
+        })
     db.close()
-    return jsonify({"accounts": [dict(r) for r in rows]})
+    return jsonify({"accounts": result})
 
 
 @app.route("/api/admin/support-accounts/<int:user_id>/toggle", methods=["POST"])
@@ -774,6 +898,7 @@ def api_admin_support_account_assign(user_id):
     target_user_id = data.get("target_user_id")
     if not target_user_id:
         return jsonify({"error": "target_user_id is required."}), 400
+    target_user_id = int(target_user_id)
 
     db = get_db()
     support_user = db.execute("SELECT id, is_support_account FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -786,17 +911,21 @@ def api_admin_support_account_assign(user_id):
         db.close()
         return jsonify({"error": "Target user not found."}), 404
 
-    if int(target_user_id) == int(user_id):
+    if target_user_id == int(user_id):
         db.close()
         return jsonify({"error": "A support account can't be assigned to itself."}), 400
 
-    # Free up this support account from any prior assignment, and make sure the
-    # target isn't simultaneously being messaged by a different support account.
-    db.execute(
-        "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
-        "WHERE support_user_id = ? AND is_active = 1",
-        (user_id,),
-    )
+    existing = db.execute(
+        "SELECT id FROM support_assignments WHERE support_user_id = ? AND target_user_id = ? AND is_active = 1",
+        (user_id, target_user_id),
+    ).fetchone()
+    if existing:
+        db.close()
+        return jsonify({"error": "Already assigned to that user."}), 400
+
+    # A user can only be actively chatted with by one agent at a time — free up
+    # any other agent currently assigned to this target. An agent, however, can
+    # be assigned to as many different users as needed.
     db.execute(
         "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
         "WHERE target_user_id = ? AND is_active = 1",
@@ -814,15 +943,25 @@ def api_admin_support_account_assign(user_id):
 @app.route("/api/admin/support-accounts/<int:user_id>/unassign", methods=["POST"])
 @admin_required
 def api_admin_support_account_unassign(user_id):
+    data = request.get_json(force=True) or {}
+    target_user_id = data.get("target_user_id")
+
     db = get_db()
-    db.execute(
-        "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
-        "WHERE support_user_id = ? AND is_active = 1",
-        (user_id,),
-    )
+    if target_user_id:
+        db.execute(
+            "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
+            "WHERE support_user_id = ? AND target_user_id = ? AND is_active = 1",
+            (user_id, int(target_user_id)),
+        )
+    else:
+        db.execute(
+            "UPDATE support_assignments SET is_active = 0, unassigned_at = datetime('now') "
+            "WHERE support_user_id = ? AND is_active = 1",
+            (user_id,),
+        )
     db.commit()
     db.close()
-    return jsonify({"message": "Support account unassigned."})
+    return jsonify({"message": "Unassigned."})
 
 
 @app.route("/api/admin/messages/<int:target_user_id>", methods=["GET"])

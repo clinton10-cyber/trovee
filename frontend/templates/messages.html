@@ -75,16 +75,76 @@
   }
   .send-fab:disabled { opacity: 0.5; cursor: default; }
   .chat-empty { margin: auto; text-align: center; color: var(--slate-soft); font-size: 13.5px; }
+
+  .back-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: var(--paper);
+    font-size: 16px;
+    cursor: pointer;
+    margin-right: 6px;
+  }
+  .back-btn.visible { display: flex; }
+
+  .inbox-list { overflow-y: auto; padding: 6px 4px; }
+  .inbox-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .inbox-row:active { background: var(--surface); }
+  .inbox-avatar {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .inbox-main { flex: 1; min-width: 0; }
+  .inbox-name-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .inbox-name { font-weight: 600; font-size: 14.5px; }
+  .inbox-time { font-size: 11px; color: var(--slate-soft); flex-shrink: 0; }
+  .inbox-preview {
+    font-size: 13px; color: var(--slate-soft);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+  .inbox-badge {
+    background: var(--accent);
+    color: #08110d;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
 <div class="app-shell">
   <div class="top-bar">
-    <h1 class="page-title" id="chat-title">Support</h1>
+    <button class="back-btn" id="back-btn"><i class="fas fa-arrow-left"></i></button>
+    <h1 class="page-title" id="chat-title">Messages</h1>
     <span></span>
   </div>
 
-  <div class="chat-shell">
+  <div class="chat-shell" id="inbox-view" style="display:none;">
+    <div class="inbox-list" id="inbox-list"></div>
+  </div>
+
+  <div class="chat-shell" id="thread-view">
     <div class="chat-scroll" id="chat-scroll">
       <div class="chat-empty" id="chat-empty">Loading conversation…</div>
     </div>
@@ -130,7 +190,11 @@
 <script>
   Trovee.requireAuth();
 
-  let mySender = "user"; // becomes "support" for an assigned support account
+  // role: "user" -> classic single thread with "Support".
+  // role: "agent" -> inbox of every assigned user; opening one shows that thread.
+  let role = null;
+  let mySender = "user";
+  let openTargetId = null; // set when an agent has opened a specific conversation
   let pollTimer = null;
 
   function escapeHtml(str) {
@@ -139,10 +203,61 @@
     return div.innerHTML;
   }
 
+  function timeAgo(iso) {
+    if (!iso) return "";
+    const d = new Date(iso.replace(" ", "T") + "Z");
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "now";
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    return `${Math.floor(hrs / 24)}d`;
+  }
+
+  function showInbox() {
+    openTargetId = null;
+    document.getElementById("inbox-view").style.display = "flex";
+    document.getElementById("thread-view").style.display = "none";
+    document.getElementById("back-btn").classList.remove("visible");
+    document.getElementById("chat-title").textContent = "Messages";
+  }
+
+  function showThread(title) {
+    document.getElementById("inbox-view").style.display = "none";
+    document.getElementById("thread-view").style.display = "flex";
+    document.getElementById("back-btn").classList.toggle("visible", role === "agent");
+    document.getElementById("chat-title").textContent = title;
+  }
+
+  function renderInbox(conversations) {
+    const list = document.getElementById("inbox-list");
+    if (!conversations.length) {
+      list.innerHTML = '<div class="chat-empty" style="margin-top:40px;">No conversations assigned yet.</div>';
+      return;
+    }
+    const sorted = [...conversations].sort((a, b) => {
+      if (!a.last_message_at) return 1;
+      if (!b.last_message_at) return -1;
+      return new Date(b.last_message_at) - new Date(a.last_message_at);
+    });
+    list.innerHTML = sorted.map(c => `
+      <div class="inbox-row" onclick="openThread(${c.target_user_id}, '${escapeHtml(c.username).replace(/'/g, "\\'")}')">
+        <div class="inbox-avatar">${escapeHtml(c.username.charAt(0).toUpperCase())}</div>
+        <div class="inbox-main">
+          <div class="inbox-name-row">
+            <span class="inbox-name">${escapeHtml(c.username)}</span>
+            <span class="inbox-time">${timeAgo(c.last_message_at)}</span>
+          </div>
+          <div class="inbox-preview">${c.last_message ? escapeHtml(c.last_message) : 'No messages yet'}</div>
+        </div>
+        ${c.unread_count > 0 ? `<span class="inbox-badge">${c.unread_count}</span>` : ''}
+      </div>
+    `).join("");
+  }
+
   function renderMessages(data) {
     mySender = data.mode === "support" ? "support" : "user";
-    document.getElementById("chat-title").textContent = data.mode === "support" ? data.other_name : "Support";
-
     const scroll = document.getElementById("chat-scroll");
     const wasNearBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
 
@@ -167,9 +282,10 @@
     if (wasNearBottom) scroll.scrollTop = scroll.scrollHeight;
   }
 
-  async function loadMessages(scrollToBottom) {
+  async function loadThread(scrollToBottom) {
     try {
-      const data = await Trovee.api("/api/messages");
+      const path = role === "agent" ? `/api/messages/thread/${openTargetId}` : "/api/messages";
+      const data = await Trovee.api(path);
       renderMessages(data);
       if (scrollToBottom) {
         const scroll = document.getElementById("chat-scroll");
@@ -181,6 +297,30 @@
     }
   }
 
+  window.openThread = function (targetId, username) {
+    openTargetId = targetId;
+    document.getElementById("chat-scroll").innerHTML = '<div class="chat-empty">Loading conversation…</div>';
+    showThread(username);
+    loadThread(true);
+    restartPolling();
+  };
+
+  document.getElementById("back-btn").addEventListener("click", () => {
+    stopPolling();
+    showInbox();
+    refreshInbox();
+    startInboxPolling();
+  });
+
+  async function refreshInbox() {
+    try {
+      const data = await Trovee.api("/api/messages/context");
+      renderInbox(data.conversations || []);
+    } catch (err) {
+      if (err.status === 401) { Trovee.logout(); }
+    }
+  }
+
   async function sendMessage() {
     const textarea = document.getElementById("chat-text");
     const btn = document.getElementById("chat-send");
@@ -189,10 +329,11 @@
 
     btn.disabled = true;
     try {
-      await Trovee.api("/api/messages", { method: "POST", body: { message: body } });
+      const path = role === "agent" ? `/api/messages/thread/${openTargetId}` : "/api/messages";
+      await Trovee.api(path, { method: "POST", body: { message: body } });
       textarea.value = "";
       textarea.style.height = "auto";
-      await loadMessages(true);
+      await loadThread(true);
     } catch (err) {
       Trovee.showToast(err.message, "error");
     } finally {
@@ -212,9 +353,42 @@
     this.style.height = Math.min(this.scrollHeight, 100) + "px";
   });
 
-  loadMessages(true);
-  pollTimer = setInterval(() => loadMessages(false), 5000);
-  window.addEventListener("beforeunload", () => clearInterval(pollTimer));
+  function stopPolling() {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  function restartPolling() {
+    stopPolling();
+    pollTimer = setInterval(() => loadThread(false), 5000);
+  }
+  function startInboxPolling() {
+    stopPolling();
+    pollTimer = setInterval(refreshInbox, 5000);
+  }
+
+  async function init() {
+    try {
+      const ctx = await Trovee.api("/api/messages/context");
+      role = ctx.role;
+      if (role === "agent") {
+        renderInbox(ctx.conversations || []);
+        showInbox();
+        startInboxPolling();
+      } else {
+        showThread("Support");
+        loadThread(true);
+        restartPolling();
+      }
+    } catch (err) {
+      if (err.status === 401) { Trovee.logout(); return; }
+      showThread("Support");
+      loadThread(true);
+      restartPolling();
+    }
+  }
+
+  init();
+  window.addEventListener("beforeunload", () => stopPolling());
 </script>
 </body>
 </html>

@@ -249,10 +249,11 @@
   <!-- MESSAGES -->
   <div class="admin-panel" id="panel-messages">
     <p class="section-desc">
-      Support accounts are ordinary user accounts you can flag here. Assign one to a specific
-      user and, from that moment, opening "Messages" inside that account shows a private chat
-      with the assigned user instead of the normal app — the assigned user just sees "Support"
-      and has no way to tell which account is on the other end.
+      Support accounts are ordinary user accounts you can flag here. Assign one to any number of
+      users and, from that moment, opening "Messages" inside that account shows a private inbox
+      of those conversations instead of the normal app — each assigned user just sees "Support"
+      and has no way to tell which account (or how many other people) is on the other end. You can
+      read and reply to every conversation from here too, without either side knowing.
     </p>
 
     <div class="data-card" style="margin-bottom:20px;">
@@ -809,27 +810,34 @@
         return;
       }
       el.innerHTML = data.accounts.map(a => {
+        const assignedIds = a.targets.map(t => t.id);
         const otherOptions = allUsersCache
-          .filter(u => u.id !== a.id)
-          .map(u => `<option value="${u.id}" ${a.target_user_id === u.id ? 'selected' : ''}>${escapeHtml(u.username)}</option>`)
+          .filter(u => u.id !== a.id && !assignedIds.includes(u.id))
+          .map(u => `<option value="${u.id}">${escapeHtml(u.username)}</option>`)
           .join("");
+        const targetChips = a.targets.length
+          ? a.targets.map(t => `
+              <span style="display:inline-flex;align-items:center;gap:6px;background:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 10px;font-size:12px;margin:3px 6px 3px 0;">
+                ${escapeHtml(t.username)}
+                <button onclick="unassignSupportAccount(${a.id}, ${t.id})"
+                  style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;">&times;</button>
+              </span>
+            `).join("")
+          : '<span class="muted small">Not assigned to anyone — behaves like a normal account</span>';
         return `
         <div style="padding:12px 0;border-top:1px solid var(--line);">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-weight:600;font-size:13.5px;">${escapeHtml(a.username)}</div>
-              <div class="muted small">${a.target_username ? `Assigned to chat with ${escapeHtml(a.target_username)}` : 'Not assigned — behaves like a normal account'}</div>
-            </div>
+            <div style="font-weight:600;font-size:13.5px;">${escapeHtml(a.username)}</div>
             <button class="btn-sm btn-sm-red" onclick="removeSupportAccount(${a.id})">Remove role</button>
           </div>
+          <div style="margin-top:8px;">${targetChips}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
             <select id="assign-target-${a.id}"
               style="flex:1;min-width:140px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:7px 10px;color:var(--paper);font-size:12.5px;outline:none;">
-              <option value="">Select target user…</option>
+              <option value="">Add another user to chat with…</option>
               ${otherOptions}
             </select>
             <button class="btn-admin" style="padding:7px 12px;font-size:12.5px;" onclick="assignSupportAccount(${a.id})">Assign</button>
-            ${a.target_user_id ? `<button class="btn-sm" style="padding:7px 12px;font-size:12.5px;" onclick="unassignSupportAccount(${a.id})">Unassign</button>` : ''}
           </div>
         </div>`;
       }).join("");
@@ -858,7 +866,7 @@
 
   async function assignSupportAccount(userId) {
     const targetId = document.getElementById(`assign-target-${userId}`).value;
-    if (!targetId) { Trovee.showToast("Select a target user first.", "error"); return; }
+    if (!targetId) { Trovee.showToast("Select a user to add first.", "error"); return; }
     try {
       await adminPost(`/api/admin/support-accounts/${userId}/assign`, { target_user_id: parseInt(targetId, 10) });
       Trovee.showToast("Assigned.");
@@ -866,9 +874,9 @@
     } catch (e) { Trovee.showToast(e.message, "error"); }
   }
 
-  async function unassignSupportAccount(userId) {
+  async function unassignSupportAccount(userId, targetId) {
     try {
-      await adminPost(`/api/admin/support-accounts/${userId}/unassign`, {});
+      await adminPost(`/api/admin/support-accounts/${userId}/unassign`, { target_user_id: targetId });
       Trovee.showToast("Unassigned.");
       loadSupportAccounts();
     } catch (e) { Trovee.showToast(e.message, "error"); }
