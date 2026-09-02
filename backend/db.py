@@ -164,58 +164,51 @@ def _seed_defaults(conn):
             )
 
     wallets = [
-        ("Bitcoin (BTC)", "bc1qegwjs26n6pt5mh0xlmpawkme98scdgn5al3wak",
-         "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=bc1qegwjs26n6pt5mh0xlmpawkme98scdgn5al3wak", 1),
-        ("USDT TRC20", "TW6qVWsbPZ5fLneWanmkLH8mEVX1GMUYSn",
-         "https://assets.coingecko.com/coins/images/325/small/Tether.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TW6qVWsbPZ5fLneWanmkLH8mEVX1GMUYSn", 2),
-        ("USDT ERC20", "0x6b916003441cdBe5b6d5FC947f38a25de234EeD6",
-         "https://assets.coingecko.com/coins/images/325/small/Tether.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x6b916003441cdBe5b6d5FC947f38a25de234EeD6", 3),
-        ("USDT Solana", "H8M9MvUBQkSfkR8QpQdjhBDKbgGXv52P2UjvC3rTRp8K",
-         "https://assets.coingecko.com/coins/images/325/small/Tether.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=H8M9MvUBQkSfkR8QpQdjhBDKbgGXv52P2UjvC3rTRp8K", 4),
-        ("Ethereum (ETH)", "0x6b916003441cdBe5b6d5FC947f38a25de234EeD6",
-         "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x6b916003441cdBe5b6d5FC947f38a25de234EeD6", 5),
-        ("Solana (SOL)", "H8M9MvUBQkSfkR8QpQdjhBDKbgGXv52P2UjvC3rTRp8K",
-         "https://assets.coingecko.com/coins/images/4128/small/solana.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=H8M9MvUBQkSfkR8QpQdjhBDKbgGXv52P2UjvC3rTRp8K", 6),
-        ("TON (Toncoin)", "UQBNib_qibCqn25M22ln5CToop4SAxBlHiQ0pouCkPj6ST2j",
-         "https://assets.coingecko.com/coins/images/17980/small/ton.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=UQBNib_qibCqn25M22ln5CToop4SAxBlHiQ0pouCkPj6ST2j", 7),
-        ("BNB (BSC)", "0x6b916003441cdBe5b6d5FC947f38a25de234EeD6",
-         "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x6b916003441cdBe5b6d5FC947f38a25de234EeD6", 8),
-        ("Litecoin (LTC)", "ltc1q7vyp9egglg2jzzfjy82cffkf5lpepzj92xwpxl",
-         "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=ltc1q7vyp9egglg2jzzfjy82cffkf5lpepzj92xwpxl", 9),
+        ("Tron (TRX)", "THDIfueyo1qDUgURk1SHBGP7ot1vdL3n0",
+         "https://cryptologos.cc/logos/tron-trx-logo.svg",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=THDIfueyo1qDUgURk1SHBGP7ot1vdL3n0", 1),
+        ("USDT (BSC)", "0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9",
+         "https://cryptologos.cc/logos/tether-usdt-logo.svg",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9", 2),
+        ("Solana (SOL)", "B6U7L2orf9yfivdmNPHAPKUH4x8gedkbUUveKtXboovTI",
+         "https://cryptologos.cc/logos/solana-sol-logo.svg",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=B6U7L2orf9yfivdmNPHAPKUH4x8gedkbUUveKtXboovTI", 3),
+        ("BNB (BSC)", "0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9",
+         "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9", 4),
+        ("Ethereum (ETH)", "0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9",
+         "https://cryptologos.cc/logos/ethereum-eth-logo.svg",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9", 5),
     ]
     for w in wallets:
         insert_wallet(*w)
 
     companies = [
-        ("Tesla, Inc.", "TSLA",
-         "Electric vehicles and clean energy",
-         "https://logo.clearbit.com/tesla.com",
-         "Automotive"),
-        ("NVIDIA Corporation", "NVDA",
-         "Graphics processing units and AI",
-         "https://logo.clearbit.com/nvidia.com",
-         "Technology"),
-        ("Microsoft Corporation", "MSFT",
-         "Software and cloud computing",
-         "https://logo.clearbit.com/microsoft.com",
-         "Technology"),
-        ("Apple Inc.", "AAPL",
-         "Consumer electronics and software",
-         "https://logo.clearbit.com/apple.com",
-         "Technology"),
-        ("SpaceX", "SPX",
-         "Space exploration, satellite internet, and aerospace",
-         "https://logo.clearbit.com/spacex.com",
-         "Aerospace"),
+        ("Apple Inc", "AAPL", "Technology - Smartphones, Computers", "https://logo.clearbit.com/apple.com", "Technology"),
+        ("Microsoft Corporation", "MSFT", "Technology - Software, Cloud", "https://logo.clearbit.com/microsoft.com", "Technology"),
+        ("Tesla Inc", "TSLA", "Automotive - Electric Vehicles", "https://logo.clearbit.com/tesla.com", "Automotive"),
+        ("Amazon.com Inc", "AMZN", "E-commerce - Cloud Services", "https://logo.clearbit.com/amazon.com", "E-commerce"),
+        ("Alphabet Inc", "GOOGL", "Technology - Search, Ads", "https://logo.clearbit.com/google.com", "Technology"),
+        ("Meta Platforms", "META", "Technology - Social Media", "https://logo.clearbit.com/facebook.com", "Technology"),
+        ("NVIDIA Corporation", "NVDA", "Technology - AI Chips", "https://logo.clearbit.com/nvidia.com", "Technology"),
+        ("Berkshire Hathaway", "BRK", "Finance - Investment", "https://logo.clearbit.com/berkshirehathaway.com", "Finance"),
+        ("JPMorgan Chase", "JPM", "Finance - Banking", "https://logo.clearbit.com/jpmorganchase.com", "Finance"),
+        ("Visa Inc", "V", "Finance - Payments", "https://logo.clearbit.com/visa.com", "Finance"),
+        ("Mastercard Inc", "MA", "Finance - Payments", "https://logo.clearbit.com/mastercard.com", "Finance"),
+        ("Netflix Inc", "NFLX", "Media - Streaming", "https://logo.clearbit.com/netflix.com", "Media"),
+        ("Disney Company", "DIS", "Media - Entertainment", "https://logo.clearbit.com/disney.com", "Media"),
+        ("Coca-Cola Company", "KO", "Consumer - Beverages", "https://logo.clearbit.com/coca-cola.com", "Consumer"),
+        ("McDonald Corporation", "MCD", "Consumer - Food & Beverage", "https://logo.clearbit.com/mcdonalds.com", "Consumer"),
+        ("Nike Inc", "NKE", "Consumer - Sportswear", "https://logo.clearbit.com/nike.com", "Consumer"),
+        ("Johnson & Johnson", "JNJ", "Healthcare - Pharmaceuticals", "https://logo.clearbit.com/jnj.com", "Healthcare"),
+        ("UnitedHealth Group", "UNH", "Healthcare - Insurance", "https://logo.clearbit.com/unitedhealthgroup.com", "Healthcare"),
+        ("Pfizer Inc", "PFE", "Healthcare - Pharmaceuticals", "https://logo.clearbit.com/pfizer.com", "Healthcare"),
+        ("AbbVie Inc", "ABBV", "Healthcare - Pharmaceuticals", "https://logo.clearbit.com/abbvie.com", "Healthcare"),
+        ("Intel Corporation", "INTC", "Technology - Semiconductors", "https://logo.clearbit.com/intel.com", "Technology"),
+        ("Qualcomm Inc", "QCOM", "Technology - Semiconductors", "https://logo.clearbit.com/qualcomm.com", "Technology"),
+        ("Advanced Micro Devices", "AMD", "Technology - Semiconductors", "https://logo.clearbit.com/amd.com", "Technology"),
+        ("Broadcom Inc", "AVGO", "Technology - Semiconductors", "https://logo.clearbit.com/broadcom.com", "Technology"),
+        ("Taiwan Semiconductor", "TSM", "Technology - Semiconductors", "https://logo.clearbit.com/tsmc.com", "Technology"),
     ]
     company_ids = {}
     for name, ticker, desc, logo, sector in companies:
@@ -260,64 +253,37 @@ def _seed_defaults(conn):
                 (tid, plan_name, shares, price_cents, rate, months)
             )
 
-    progressive_plans = [
-        ("Starter", 1, 100, 8.0, 6),
-        ("Basic", 5, 500, 9.0, 6),
-        ("Silver", 10, 1000, 10.0, 12),
-        ("Gold", 25, 2500, 12.0, 12),
-        ("Platinum", 50, 5000, 14.0, 18),
-        ("Diamond", 100, 10000, 16.0, 18),
-        ("Elite", 200, 20000, 18.0, 24),
+    plan_templates = [
+        ("Apple Inc", [("Basic", 10, 15000, 12.0, 12), ("Premium", 50, 75000, 15.0, 24)]),
+        ("Microsoft Corporation", [("Basic", 10, 32000, 12.0, 12), ("Premium", 50, 160000, 15.0, 24)]),
+        ("Tesla Inc", [("Basic", 10, 24000, 14.0, 12), ("Premium", 50, 120000, 17.0, 24)]),
+        ("Amazon.com Inc", [("Basic", 10, 16000, 11.0, 12), ("Premium", 50, 80000, 13.0, 24)]),
+        ("Alphabet Inc", [("Basic", 10, 14500, 12.0, 12), ("Premium", 50, 72500, 15.0, 24)]),
+        ("Meta Platforms", [("Basic", 10, 32000, 13.0, 12), ("Premium", 50, 160000, 16.0, 24)]),
+        ("NVIDIA Corporation", [("Basic", 10, 87000, 16.0, 12), ("Premium", 50, 435000, 19.0, 24)]),
+        ("Berkshire Hathaway", [("Basic", 10, 42500, 10.0, 12), ("Premium", 50, 212500, 12.0, 24)]),
+        ("JPMorgan Chase", [("Basic", 10, 18000, 11.0, 12), ("Premium", 50, 90000, 13.0, 24)]),
+        ("Visa Inc", [("Basic", 10, 25000, 12.0, 12), ("Premium", 50, 125000, 14.0, 24)]),
+        ("Mastercard Inc", [("Basic", 10, 18000, 11.0, 12), ("Premium", 50, 90000, 13.0, 24)]),
+        ("Netflix Inc", [("Basic", 10, 35000, 13.0, 12), ("Premium", 50, 175000, 15.0, 24)]),
+        ("Disney Company", [("Basic", 10, 26000, 12.0, 12), ("Premium", 50, 130000, 14.0, 24)]),
+        ("Coca-Cola Company", [("Basic", 10, 6500, 9.0, 12), ("Premium", 50, 32500, 11.0, 24)]),
+        ("McDonald Corporation", [("Basic", 10, 8500, 10.0, 12), ("Premium", 50, 42500, 12.0, 24)]),
+        ("Nike Inc", [("Basic", 10, 12000, 11.0, 12), ("Premium", 50, 60000, 13.0, 24)]),
+        ("Johnson & Johnson", [("Basic", 10, 17000, 11.0, 12), ("Premium", 50, 85000, 13.0, 24)]),
+        ("UnitedHealth Group", [("Basic", 10, 16000, 11.0, 12), ("Premium", 50, 80000, 13.0, 24)]),
+        ("Pfizer Inc", [("Basic", 10, 5500, 9.0, 12), ("Premium", 50, 27500, 11.0, 24)]),
+        ("AbbVie Inc", [("Basic", 10, 6500, 10.0, 12), ("Premium", 50, 32500, 12.0, 24)]),
+        ("Intel Corporation", [("Basic", 10, 34000, 13.0, 12), ("Premium", 50, 170000, 15.0, 24)]),
+        ("Qualcomm Inc", [("Basic", 10, 16000, 12.0, 12), ("Premium", 50, 80000, 14.0, 24)]),
+        ("Advanced Micro Devices", [("Basic", 10, 14000, 12.0, 12), ("Premium", 50, 70000, 14.0, 24)]),
+        ("Broadcom Inc", [("Basic", 10, 56000, 14.0, 12), ("Premium", 50, 280000, 16.0, 24)]),
+        ("Taiwan Semiconductor", [("Basic", 10, 95000, 15.0, 12), ("Premium", 50, 475000, 17.0, 24)]),
     ]
 
-    for company in companies:
-        for plan_name, shares, price_usd, rate, months in progressive_plans:
-            insert_plan(company[0], plan_name, shares, price_usd, rate, months)
-
-    tesla_plans = [
-        ("Model 3", 10, 45000, 12.0, 12),
-        ("Model Y", 15, 55000, 13.5, 12),
-        ("Model S", 20, 75000, 15.0, 18),
-        ("Model X", 25, 90000, 16.0, 18),
-        ("Cybertruck", 30, 100000, 18.0, 24),
-    ]
-    for plan_name, shares, price_usd, rate, months in tesla_plans:
-        insert_plan("Tesla, Inc.", plan_name, shares, price_usd, rate, months)
-
-    nv_plans = [
-        ("Growth", 12, 50000, 14.0, 12),
-        ("Premium", 25, 100000, 18.0, 18),
-        ("Enterprise", 50, 200000, 22.0, 24),
-    ]
-    for plan_name, shares, price_usd, rate, months in nv_plans:
-        insert_plan("NVIDIA Corporation", plan_name, shares, price_usd, rate, months)
-
-    ms_plans = [
-        ("Growth", 15, 60000, 15.0, 12),
-        ("Premium", 30, 120000, 19.0, 18),
-        ("Enterprise", 60, 250000, 23.0, 24),
-    ]
-    for plan_name, shares, price_usd, rate, months in ms_plans:
-        insert_plan("Microsoft Corporation", plan_name, shares, price_usd, rate, months)
-
-    aa_plans = [
-        ("Growth", 18, 70000, 14.5, 12),
-        ("Premium", 35, 140000, 18.5, 18),
-        ("Enterprise", 70, 280000, 22.5, 24),
-    ]
-    for plan_name, shares, price_usd, rate, months in aa_plans:
-        insert_plan("Apple Inc.", plan_name, shares, price_usd, rate, months)
-
-    spacex_plans = [
-        ("Falcon 9", 10, 50000, 13.0, 12),
-        ("Starlink", 15, 75000, 14.0, 12),
-        ("Falcon Heavy", 20, 100000, 16.0, 18),
-        ("Dragon", 25, 150000, 18.0, 18),
-        ("Starship", 30, 200000, 20.0, 24),
-        ("Mars Mission", 50, 300000, 22.0, 24),
-    ]
-    for plan_name, shares, price_usd, rate, months in spacex_plans:
-        insert_plan("SpaceX", plan_name, shares, price_usd, rate, months)
+    for company_name, plans in plan_templates:
+        for plan_name, shares, price_usd, rate, months in plans:
+            insert_plan(company_name, plan_name, shares, price_usd, rate, months)
 
     conn.commit()
 
