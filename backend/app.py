@@ -2179,99 +2179,54 @@ def api_admin_wallets_delete(wallet_id):
 
 
 
-# ─── API: Admin — Currency Overrides ─────────────────────────
+# ─── API: Admin — User Currency Override ─────────────────────
 
-@app.route("/api/admin/currencies", methods=["GET"])
+@app.route("/api/admin/users/currencies", methods=["GET"])
 @admin_required
-def api_admin_currencies_get():
+def api_admin_users_currencies_list():
+    """Get all users grouped by currency with country info."""
     db = get_db()
-    rows = db.execute("SELECT * FROM currency_overrides ORDER BY currency_code").fetchall()
+    users = db.execute(
+        "SELECT id, username, email, country_code, currency_code FROM users ORDER BY currency_code, country_code, username"
+    ).fetchall()
     db.close()
-    currencies = [dict(r) for r in rows]
     
-    # Build sorted list: USD first, then rest alphabetically
-    usd_curr = None
-    rest = []
-    for c in currencies:
-        if c["currency_code"] == "USD":
-            usd_curr = c
-        else:
-            rest.append(c)
+    result = {}
+    for u in users:
+        u_dict = dict(u)
+        key = f"{u_dict['currency_code']} ({u_dict['country_code']})"
+        if key not in result:
+            result[key] = []
+        result[key].append(u_dict)
     
-    rest.sort(key=lambda x: x["currency_code"])
-    result = [usd_curr] if usd_curr else []
-    result.extend(rest)
-    
-    return jsonify({"currencies": result})
+    return jsonify({"users_by_currency": result})
 
 
-@app.route("/api/admin/currencies", methods=["POST"])
+@app.route("/api/admin/users/<int:user_id>/currency", methods=["PUT"])
 @admin_required
-def api_admin_currencies_add():
+def api_admin_user_currency_update(user_id):
+    """Override a user's currency code."""
     data = request.get_json(force=True) or {}
-    currency_code = (data.get("currency_code") or "").strip().upper()
-    currency_symbol = (data.get("currency_symbol") or "").strip()
-    currency_name = (data.get("currency_name") or "").strip()
-    exchange_rate = data.get("exchange_rate")
-
-    if not all([currency_code, currency_symbol, currency_name, exchange_rate is not None]):
-        return jsonify({"error": "All fields required."}), 400
+    new_currency = (data.get("currency_code") or "").strip().upper()
     
-    try:
-        exchange_rate = float(exchange_rate)
-        if exchange_rate <= 0:
-            return jsonify({"error": "Exchange rate must be positive."}), 400
-    except (ValueError, TypeError):
-        return jsonify({"error": "Invalid exchange rate."}), 400
-
-    db = get_db()
-    cur = db.execute(
-        "INSERT INTO currency_overrides (currency_code, currency_symbol, currency_name, exchange_rate, is_enabled) VALUES (?, ?, ?, ?, ?)",
-        (currency_code, currency_symbol, currency_name, exchange_rate, 1)
-    )
-    cid = cur.lastrowid
-    db.commit()
-    db.close()
-    return jsonify({"id": cid, "message": "Currency added."})
-
-
-@app.route("/api/admin/currencies/<int:currency_id>", methods=["PUT"])
-@admin_required
-def api_admin_currencies_update(currency_id):
-    data = request.get_json(force=True) or {}
-    currency_symbol = (data.get("currency_symbol") or "").strip()
-    currency_name = (data.get("currency_name") or "").strip()
-    exchange_rate = data.get("exchange_rate")
-    is_enabled = int(bool(data.get("is_enabled", True)))
-
-    if not all([currency_symbol, currency_name, exchange_rate is not None]):
-        return jsonify({"error": "All fields required."}), 400
+    if not new_currency or len(new_currency) != 3:
+        return jsonify({"error": "Valid 3-letter currency code required."}), 400
     
-    try:
-        exchange_rate = float(exchange_rate)
-        if exchange_rate <= 0:
-            return jsonify({"error": "Exchange rate must be positive."}), 400
-    except (ValueError, TypeError):
-        return jsonify({"error": "Invalid exchange rate."}), 400
-
     db = get_db()
-    db.execute(
-        "UPDATE currency_overrides SET currency_symbol=?, currency_name=?, exchange_rate=?, is_enabled=? WHERE id=?",
-        (currency_symbol, currency_name, exchange_rate, is_enabled, currency_id)
-    )
+    user = db.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        db.close()
+        return jsonify({"error": "User not found."}), 404
+    
+    db.execute("UPDATE users SET currency_code = ? WHERE id = ?", (new_currency, user_id))
     db.commit()
     db.close()
-    return jsonify({"message": "Currency updated."})
-
-
-@app.route("/api/admin/currencies/<int:currency_id>", methods=["DELETE"])
-@admin_required
-def api_admin_currencies_delete(currency_id):
-    db = get_db()
-    db.execute("DELETE FROM currency_overrides WHERE id = ?", (currency_id,))
-    db.commit()
-    db.close()
-    return jsonify({"message": "Currency deleted."})
+    
+    return jsonify({
+        "message": f"Currency changed for {dict(user)['username']}.",
+        "user_id": user_id,
+        "currency_code": new_currency
+    })
 
 # ─── Error Handlers ──────────────────────────────────────────
 
