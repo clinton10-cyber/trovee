@@ -2177,6 +2177,85 @@ def api_admin_wallets_delete(wallet_id):
     return jsonify({"message": "Wallet deleted."})
 
 
+@app.route("/api/admin/currencies", methods=["GET"])
+@admin_required
+def api_admin_currencies():
+    db = get_db()
+    users = db.execute("""
+        SELECT id, email, username, currency_code, currency_symbol, balance_local 
+        FROM users 
+        ORDER BY created_at DESC
+    """).fetchall()
+    db.close()
+    return jsonify({
+        "users": [
+            {
+                "id": u["id"],
+                "email": u["email"],
+                "username": u["username"],
+                "currency_code": u["currency_code"],
+                "currency_symbol": u["currency_symbol"],
+                "balance_local": u["balance_local"],
+            }
+            for u in users
+        ]
+    })
+
+
+@app.route("/api/admin/currencies/migrate", methods=["POST"])
+@admin_required
+def api_admin_currencies_migrate():
+    data = request.get_json() or {}
+    user_id = data.get("user_id")
+    new_currency = data.get("currency_code")
+    
+    if not user_id or not new_currency:
+        return jsonify({"error": "user_id and currency_code required"}), 400
+    
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        db.close()
+        return jsonify({"error": "User not found"}), 404
+    
+    old_currency = user["currency_code"]
+    if old_currency == new_currency:
+        db.close()
+        return jsonify({"error": "Same currency, no migration needed"}), 400
+    
+    currency_map = {
+        "NGN": {"symbol": "₦", "name": "Nigerian Naira"},
+        "USD": {"symbol": "$", "name": "US Dollar"},
+        "EUR": {"symbol": "€", "name": "Euro"},
+        "GBP": {"symbol": "£", "name": "British Pound"},
+        "CAD": {"symbol": "C$", "name": "Canadian Dollar"},
+        "AUD": {"symbol": "A$", "name": "Australian Dollar"},
+        "INR": {"symbol": "₹", "name": "Indian Rupee"},
+        "ZAR": {"symbol": "R", "name": "South African Rand"},
+    }
+    
+    if new_currency not in currency_map:
+        db.close()
+        return jsonify({"error": f"Currency {new_currency} not supported"}), 400
+    
+    new_symbol = currency_map[new_currency]["symbol"]
+    
+    db.execute(
+        "UPDATE users SET currency_code = ?, currency_symbol = ? WHERE id = ?",
+        (new_currency, new_symbol, user_id)
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({
+        "message": f"Currency migrated from {old_currency} to {new_currency}",
+        "user_id": user_id,
+        "old_currency": old_currency,
+        "new_currency": new_currency,
+        "new_symbol": new_symbol
+    })
+
+
 # ─── Error Handlers ──────────────────────────────────────────
 
 @app.errorhandler(404)

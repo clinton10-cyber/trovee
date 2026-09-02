@@ -437,6 +437,38 @@
       </div>
     </div>
   </div>
+
+  <!-- Currencies Panel -->
+  <div class="admin-panel" id="panel-currencies">
+    <p class="section-desc">Migrate user currencies or change account settings.</p>
+    <div class="admin-form-card" style="max-width:700px;">
+      <h4>User Currency Migration</h4>
+      <div style="background:rgba(10,132,255,0.06);border:1px solid rgba(10,132,255,0.18);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:12px;letter-spacing:0.04em;text-transform:uppercase;">Migrate User Currency</div>
+        <div class="form-field">
+          <label>Select user</label>
+          <select id="currency-user-select" style="width:100%;padding:10px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);"><option value="">Loading users...</option></select>
+        </div>
+        <div class="form-field">
+          <label>New currency</label>
+          <select id="currency-new-code" style="width:100%;padding:10px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);">
+            <option value="NGN">NGN - Nigerian Naira (₦)</option>
+            <option value="USD">USD - US Dollar ($)</option>
+            <option value="EUR">EUR - Euro (€)</option>
+            <option value="GBP">GBP - British Pound (£)</option>
+            <option value="CAD">CAD - Canadian Dollar (C$)</option>
+            <option value="AUD">AUD - Australian Dollar (A$)</option>
+            <option value="INR">INR - Indian Rupee (₹)</option>
+            <option value="ZAR">ZAR - South African Rand (R)</option>
+          </select>
+        </div>
+        <button class="btn-admin" onclick="migrateCurrency()" style="margin-top:14px;">Migrate Currency</button>
+      </div>
+      <div id="currency-users-list">
+        <p class="muted small">Loading users...</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="/static/js/trovee.js"></script>
@@ -506,6 +538,7 @@
       document.querySelectorAll(".admin-panel").forEach(p => p.classList.remove("active"));
       tab.classList.add("active");
       document.getElementById(`panel-${tab.dataset.tab}`).classList.add("active");
+      if (tab.dataset.tab === "currencies") loadCurrencies();
     });
   });
 
@@ -1037,6 +1070,71 @@
       Trovee.showToast("Wallet deleted.");
       loadWalletSetting();
     } catch(e) { Trovee.showToast(e.message || "Failed.", "error"); }
+  }
+
+  // ─── CURRENCIES ──
+  async function loadCurrencies() {
+    try {
+      const data = await adminApi("/api/admin/currencies");
+      const select = document.getElementById("currency-user-select");
+      const list = document.getElementById("currency-users-list");
+      
+      if (!data.users.length) {
+        select.innerHTML = '<option value="">No users found</option>';
+        list.innerHTML = '<p class="muted small">No users yet.</p>';
+        return;
+      }
+
+      select.innerHTML = data.users.map(u => 
+        `<option value="${u.id}">${escapeHtml(u.username || u.email)} (${u.currency_code})</option>`
+      ).join("");
+
+      list.innerHTML = `<div style="max-height:400px;overflow-y:auto;">` +
+        data.users.map(u => `
+          <div class="data-card">
+            <div class="data-card-head">
+              <div>
+                <div class="data-card-head-title">${escapeHtml(u.username)}</div>
+                <div class="data-card-head-sub">${escapeHtml(u.email)}</div>
+              </div>
+            </div>
+            <div class="data-card-row">
+              <span class="data-card-label">Currency</span>
+              <span class="data-card-value">${u.currency_code} ${u.currency_symbol}</span>
+            </div>
+            <div class="data-card-row">
+              <span class="data-card-label">Balance</span>
+              <span class="data-card-value">${u.currency_symbol}${u.balance_local.toFixed(2)}</span>
+            </div>
+          </div>
+        `).join("") + `</div>`;
+    } catch(e) {
+      document.getElementById("currency-users-list").innerHTML = `<p class="muted small" style="color:var(--coral);">Error: ${e.message}</p>`;
+    }
+  }
+
+  async function migrateCurrency() {
+    const userId = document.getElementById("currency-user-select").value;
+    const newCode = document.getElementById("currency-new-code").value;
+    
+    if (!userId || !newCode) {
+      Trovee.showToast("Select user and currency.", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/currencies/migrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ user_id: parseInt(userId), currency_code: newCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      Trovee.showToast(`Migrated to ${newCode}`);
+      loadCurrencies();
+    } catch(e) {
+      Trovee.showToast(e.message || "Migration failed.", "error");
+    }
   }
 
   // ─── SHARES: COMPANIES ──
