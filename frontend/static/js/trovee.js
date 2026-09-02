@@ -158,6 +158,13 @@ const Trovee = (() => {
     window.location.href = "/login";
   }
 
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    });
+  }
+
   return {
     getToken: getToken,
     setToken: setToken,
@@ -170,7 +177,9 @@ const Trovee = (() => {
     showToast: showToast,
     requireAuth: requireAuth,
     logout: logout,
+    registerServiceWorker: registerServiceWorker,
   };
 })();
 
 window.Trovee = Trovee;
+Trovee.registerServiceWorker();

@@ -155,6 +155,20 @@ def favicon():
     return send_from_directory(app.static_folder + "/img", "favicon.ico")
 
 
+@app.route("/sw.js")
+def service_worker():
+    # Served from the root (not /static/js/) so its default scope covers the whole app.
+    response = send_from_directory(app.static_folder + "/js", "sw.js")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.route("/manifest.webmanifest")
+def web_manifest():
+    return send_from_directory(app.static_folder, "manifest.webmanifest", mimetype="application/manifest+json")
+
+
 # ─── API: Geo / Currency ──────────────────────────────────────
 
 @app.route("/api/geo/detect", methods=["GET"])
