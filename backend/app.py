@@ -1603,6 +1603,8 @@ def api_shares_purchase():
     db.commit()
     db.close()
 
+    new_balance_local = convert_usd_cents(new_balance, g.user["currency_code"])
+
     return jsonify({
         "message": "Shares purchased successfully.",
         "certificate_id": cert_id,
@@ -1614,6 +1616,7 @@ def api_shares_purchase():
         "total_payout_cents": total_payout,
         "maturity_date": maturity_date,
         "new_balance_usd_cents": new_balance,
+        "new_balance_local": new_balance_local,
     })
 
 

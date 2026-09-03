@@ -147,7 +147,7 @@
     <div class="balance-hero">
       <div class="balance-label">Total Balance</div>
       <div class="balance-figure" id="balance-figure">
-        $<span id="balance-amount">0.00</span>
+        <span id="balance-symbol">$</span><span id="balance-amount">0.00</span>
       </div>
       <div class="small muted mt-8" id="balance-usd">0.00 USD</div>
     </div>
@@ -234,6 +234,7 @@
       const user = await Trovee.api('/api/auth/me');
       const balance = user.balance_local || 0;
       document.getElementById('balance-amount').textContent = balance.toFixed(2);
+      document.getElementById('balance-symbol').textContent = user.currency_symbol;
       document.getElementById('balance-badge').textContent = `${user.currency_symbol}${balance.toFixed(2)}`;
       document.getElementById('balance-usd').textContent = `${user.balance_usd_cents/100} USD`;
 

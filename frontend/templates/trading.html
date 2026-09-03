@@ -622,6 +622,8 @@
   let direction = "up";
   let durationSec = 30;
   let userBalance = 0;
+  let userBalanceLocal = 0;
+  let userCurrencySymbol = "$";
   let activeTrade = null;
   let tradeInterval = null;
   let priceInterval = null;
@@ -741,8 +743,10 @@
     try {
       const me = await Trovee.api("/api/auth/me");
       userBalance = me.balance_usd_cents / 100;
-      document.getElementById("balance-display").textContent = "$" + userBalance.toFixed(2);
-      document.getElementById("balance-badge").textContent = "$" + userBalance.toFixed(2);
+      userBalanceLocal = me.balance_local || 0;
+      userCurrencySymbol = me.currency_symbol || "$";
+      document.getElementById("balance-display").textContent = userCurrencySymbol + userBalanceLocal.toFixed(2);
+      document.getElementById("balance-badge").textContent = userCurrencySymbol + userBalanceLocal.toFixed(2);
     } catch (e) {}
   }
 
@@ -832,7 +836,7 @@
     document.getElementById("modal-entry-price").textContent = "Entry: " + formatPrice(entryPrice);
     document.getElementById("modal-direction").textContent = direction === "up" ? "Buy Up ↑" : "Buy Down ↓";
     document.getElementById("modal-direction").className = "val direction-" + direction;
-    document.getElementById("modal-amount").textContent = "$" + activeTrade.amount.toFixed(2);
+    document.getElementById("modal-amount").textContent = userCurrencySymbol + activeTrade.amount.toFixed(2);
     document.getElementById("modal-profit").textContent = "Based on price move";
     document.getElementById("modal-duration").textContent = total + "s";
     document.getElementById("modal-opened").textContent = new Date().toLocaleTimeString();
@@ -875,10 +879,9 @@
       document.getElementById("live-trade-modal").classList.remove("show");
       activeTrade = null;
       userBalance = res.new_balance_usd_cents / 100;
-      document.getElementById("balance-display").textContent = "$" + userBalance.toFixed(2);
-      document.getElementById("balance-badge").textContent = "$" + userBalance.toFixed(2);
+      await loadBalance();
       if (res.outcome === "win") {
-        Trovee.showToast("Trade won! +" + "$" + (res.profit_usd_cents / 100).toFixed(2));
+        Trovee.showToast("Trade won! +" + userCurrencySymbol + (res.profit_usd_cents / 100).toFixed(2));
       } else if (res.outcome === "loss") {
         Trovee.showToast("Trade lost. Better luck next time!", "error");
       } else {
