@@ -249,7 +249,7 @@
       </div>
       <div class="section-heading" style="margin-bottom:14px;">
         <h2 style="font-size:15px;">Companies</h2>
-        <span style="font-size:12px; color:var(--slate-soft);" id="company-count-label"></span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        <span style="font-size:12px; color:var(--slate-soft);" id="company-count-label"></span>
       </div>
       <div style="padding:0 20px;margin-bottom:14px;">
         <input type="text" id="company-search" placeholder="Search companies by name or ticker..." style="width:100%;padding:10px 14px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font-size:13px;outline:none;" onkeyup="filterCompanies()">
@@ -297,27 +297,27 @@
   <nav class="bottom-nav">
     <a href="/dashboard" class="nav-item">
       <i class="fas fa-home"></i>
-      <span>Home</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+      <span>Home</span>
     </a>
     <a href="/trading" class="nav-item">
       <i class="fas fa-chart-line"></i>
-      <span>Trade</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+      <span>Trade</span>
     </a>
     <a href="/shares" class="nav-item active">
       <i class="fas fa-landmark"></i>
-      <span>Shares</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+      <span>Shares</span>
     </a>
     <a href="/deposit" class="nav-item">
       <i class="fas fa-coins"></i>
-      <span>Deposit</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+      <span>Deposit</span>
     </a>
     <a href="/withdraw" class="nav-item">
       <i class="fas fa-arrow-up"></i>
-      <span>Withdraw</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+      <span>Withdraw</span>
     </a>
     <a href="/messages" class="nav-item">
       <i class="fas fa-comment-dots"></i>
-      <span>Support</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+      <span>Support</span>
     </a>
   </nav>
 
@@ -403,12 +403,12 @@ function renderCompanies(companies) {
       <div class="company-info">
         <div class="company-name">${escHtml(c.name)}</div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:2px;">
-          <span class="company-ticker">${escHtml(c.ticker)}</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
-          <span style="color:var(--line-strong);">·</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
-          <span class="company-sector">${escHtml(c.sector || '')}</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+          <span class="company-ticker">${escHtml(c.ticker)}</span>
+          <span style="color:var(--line-strong);">·</span>
+          <span class="company-sector">${escHtml(c.sector || '')}</span>
         </div>
       </div>
-      <span class="company-plan-count">${c.plan_count || 0} plans</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+      <span class="company-plan-count">${c.plan_count || 0} plans</span>
       <svg class="company-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
     </div>
   `).join('');
@@ -472,7 +472,7 @@ function renderPlans(company, plans) {
         </div>
         <div>
           <div class="plan-price">$${price.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
-          <span class="per">investment</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+          <span class="per">investment</span>
         </div>
       </div>
       <div class="plan-stats">
@@ -496,14 +496,14 @@ function renderPlans(company, plans) {
         <label for="multiplier-${p.id}">Multiplier:</label>
         <input type="number" id="multiplier-${p.id}" value="1" min="1" max="100" step="1"
           onchange="updatePlanTotal(${p.id}, ${p.price_usd_cents}, ${p.shares_count}, ${p.return_rate_pct}, ${p.duration_months})">
-        <span class="hint">(max 100)</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+        <span class="hint">(max 100)</span>
       </div>
 
       <div class="plan-total">
-        <span class="label">Total investment:</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
-        <span class="value price" id="total-price-${p.id}">$${price.toFixed(2)}</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
-        <span class="label">Total shares:</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
-        <span class="value shares" id="total-shares-${p.id}">${p.shares_count}</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+        <span class="label">Total investment:</span>
+        <span class="value price" id="total-price-${p.id}">$${price.toFixed(2)}</span>
+        <span class="label">Total shares:</span>
+        <span class="value shares" id="total-shares-${p.id}">${p.shares_count}</span>
       </div>
 
       <button class="btn btn-primary" style="width:100%;" onclick="confirmPurchaseMultiplier(${company.id}, ${p.id}, '${escHtml(company.name)}', '${escHtml(p.plan_name)}', ${p.price_usd_cents}, ${p.shares_count}, ${p.return_rate_pct}, ${p.duration_months})">
@@ -689,7 +689,7 @@ function renderPortfolio(items) {
         <div class="stat"><div class="sv">${item.duration_months}mo</div><div class="sl">Term</div></div>
       </div>
       <div class="portfolio-footer">
-        <span style="font-size:11.5px;color:var(--slate-soft);">Purchased ${date}</span><button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout"><i class="fas fa-sign-out-alt"></i></button></div>
+        <span style="font-size:11.5px;color:var(--slate-soft);">Purchased ${date}</span>
         <button class="dl-btn" onclick="downloadCert('${escHtml(item.certificate_id)}')">
           <i class="fas fa-file-pdf"></i> Certificate
         </button>
