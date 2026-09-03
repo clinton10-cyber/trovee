@@ -73,6 +73,62 @@
     box-shadow: 0 4px 16px rgba(10, 132, 255, 0.3);
   }
 
+  /* ── MOBILE HAMBURGER MENU ── */
+  .land-hamburger {
+    display: none;
+    background: none; border: none; color: var(--paper);
+    cursor: pointer; font-size: 20px; padding: 8px; border-radius: 6px;
+  }
+  .land-hamburger:hover { background: rgba(255,255,255,0.08); }
+
+  .land-drawer-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(2px);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+    z-index: 199;
+  }
+  .land-drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .land-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 78%; max-width: 300px;
+    background: rgba(11, 18, 32, 0.98);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-left: 1px solid var(--line);
+    transform: translateX(100%); transition: transform 0.25s ease;
+    z-index: 200; display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .land-drawer.open { transform: translateX(0); }
+
+  .land-drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 14px; border-bottom: 1px solid var(--line);
+  }
+  .land-drawer-close {
+    background: none; border: none; color: var(--slate-soft);
+    cursor: pointer; font-size: 18px; padding: 8px; border-radius: 6px;
+  }
+  .land-drawer-close:hover { background: rgba(255,255,255,0.1); }
+
+  .land-drawer-links {
+    display: flex; flex-direction: column; padding: 12px; gap: 2px;
+  }
+  .land-drawer-links a {
+    padding: 14px 12px; border-radius: 10px;
+    font-size: 15px; font-weight: 500; color: var(--slate-soft);
+    text-decoration: none; transition: background 0.15s, color 0.15s;
+  }
+  .land-drawer-links a:hover { background: rgba(255,255,255,0.06); color: var(--paper); }
+  .land-drawer-links a.nav-cta {
+    background: var(--accent); color: #fff; text-align: center; margin-top: 8px;
+  }
+
+  @media (max-width: 767px) {
+    .land-nav-links { display: none; }
+    .land-hamburger { display: flex; align-items: center; justify-content: center; }
+  }
+
   /* ── GLOWING ORB BACKGROUND ── */
   .glow-orb {
     position: fixed; border-radius: 50%; pointer-events: none;
@@ -631,7 +687,6 @@
   }
 
   @media (max-width: 600px) {
-    .land-nav-links { display: none; }
     .hero-actions { flex-direction: column; align-items: center; }
     .hero-actions .btn { width: 100%; max-width: 320px; }
     .land-footer { flex-direction: column; text-align: center; }
@@ -681,7 +736,25 @@
     <a href="/login">Log in</a>
     <a href="/signup" class="nav-cta">Get started</a>
   </div>
+  <button class="land-hamburger" id="land-hamburger" aria-label="Menu"><i class="fas fa-bars"></i></button>
 </nav>
+
+<div class="land-drawer-overlay" id="land-drawer-overlay"></div>
+<div class="land-drawer" id="land-drawer">
+  <div class="land-drawer-header">
+    <span class="brand-word">Tro<span class="accent">vee</span></span>
+    <button class="land-drawer-close" id="land-drawer-close" aria-label="Close menu"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="land-drawer-links">
+    <a href="#how-it-works">How it works</a>
+    <a href="#trading">Trading</a>
+    <a href="#shares">Shares</a>
+    <a href="#withdrawals">Withdrawals</a>
+    <a href="#faq">FAQ</a>
+    <a href="/login">Log in</a>
+    <a href="/signup" class="nav-cta">Get started</a>
+  </div>
+</div>
 
 <!-- HERO -->
 <section class="hero">
@@ -1337,6 +1410,27 @@ document.querySelectorAll('.section-title, .section-body, .section-eyebrow').for
   el.style.transition = 'opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s';
   observer.observe(el);
 });
+
+const landHamburger = document.getElementById('land-hamburger');
+const landDrawer = document.getElementById('land-drawer');
+const landDrawerOverlay = document.getElementById('land-drawer-overlay');
+const landDrawerClose = document.getElementById('land-drawer-close');
+
+function openLandDrawer() {
+  landDrawer.classList.add('open');
+  landDrawerOverlay.classList.add('open');
+}
+function closeLandDrawer() {
+  landDrawer.classList.remove('open');
+  landDrawerOverlay.classList.remove('open');
+}
+
+if (landHamburger) {
+  landHamburger.addEventListener('click', openLandDrawer);
+  landDrawerOverlay.addEventListener('click', closeLandDrawer);
+  landDrawerClose.addEventListener('click', closeLandDrawer);
+  landDrawer.querySelectorAll('a').forEach(a => a.addEventListener('click', closeLandDrawer));
+}
 </script>
 
 </body>

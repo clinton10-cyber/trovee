@@ -165,68 +165,6 @@ const Trovee = (() => {
     });
   }
 
-  function initMobileMenu() {
-    const topBar = document.querySelector(".top-bar");
-    const bottomNav = document.querySelector(".bottom-nav");
-    if (!topBar || !bottomNav) return;
-    if (document.querySelector(".hamburger-btn")) return; // already initialized
-
-    // Hamburger toggle button, inserted before the top-bar's existing right-side controls
-    const hamburger = document.createElement("button");
-    hamburger.className = "hamburger-btn";
-    hamburger.setAttribute("aria-label", "Menu");
-    hamburger.innerHTML = '<i class="fas fa-bars"></i>';
-    topBar.insertBefore(hamburger, topBar.firstChild);
-
-    // Overlay
-    const overlay = document.createElement("div");
-    overlay.className = "mobile-drawer-overlay";
-
-    // Drawer, links mirror the bottom nav so there's a single source of truth
-    const drawer = document.createElement("div");
-    drawer.className = "mobile-drawer";
-    const navLinksHtml = Array.from(bottomNav.querySelectorAll("a.nav-item"))
-      .map(a => {
-        const icon = a.querySelector("i, svg")?.outerHTML || "";
-        const label = a.querySelector("span")?.textContent || "";
-        const active = a.classList.contains("active") ? " active" : "";
-        return `<a href="${a.getAttribute("href")}" class="drawer-item${active}">${icon}<span>${label}</span></a>`;
-      }).join("");
-
-    drawer.innerHTML = `
-      <div class="drawer-header">
-        <span class="brand-word">Tro<span class="accent">vee</span></span>
-        <button class="drawer-close" aria-label="Close menu"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="drawer-links">${navLinksHtml}</div>
-      <div class="drawer-footer">
-        <button class="drawer-item drawer-logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-    document.body.appendChild(drawer);
-
-    function openDrawer() {
-      drawer.classList.add("open");
-      overlay.classList.add("open");
-    }
-    function closeDrawer() {
-      drawer.classList.remove("open");
-      overlay.classList.remove("open");
-    }
-
-    hamburger.addEventListener("click", openDrawer);
-    overlay.addEventListener("click", closeDrawer);
-    drawer.querySelector(".drawer-close").addEventListener("click", closeDrawer);
-    drawer.querySelectorAll(".drawer-item[href]").forEach(a => a.addEventListener("click", closeDrawer));
-    drawer.querySelector(".drawer-logout").addEventListener("click", () => {
-      closeDrawer();
-      if (typeof window.userLogout === "function") window.userLogout();
-      else logout();
-    });
-  }
-
   return {
     getToken: getToken,
     setToken: setToken,
@@ -240,10 +178,8 @@ const Trovee = (() => {
     requireAuth: requireAuth,
     logout: logout,
     registerServiceWorker: registerServiceWorker,
-    initMobileMenu: initMobileMenu,
   };
 })();
 
 window.Trovee = Trovee;
 Trovee.registerServiceWorker();
-document.addEventListener("DOMContentLoaded", () => Trovee.initMobileMenu());

@@ -414,6 +414,20 @@ function renderCompanies(companies) {
   `).join('');
 }
 
+function filterCompanies() {
+  const query = document.getElementById('company-search').value.trim().toLowerCase();
+  if (!query) {
+    renderCompanies(allCompanies);
+    return;
+  }
+  const filtered = allCompanies.filter(c =>
+    c.name.toLowerCase().includes(query) ||
+    c.ticker.toLowerCase().includes(query) ||
+    (c.sector || '').toLowerCase().includes(query)
+  );
+  renderCompanies(filtered);
+}
+
 async function selectCompany(id) {
   document.getElementById('section-companies').style.display = 'none';
   document.getElementById('section-plans').style.display = '';
