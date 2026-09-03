@@ -27,7 +27,7 @@ COUNTRY_CURRENCY = {
     "BG": ("BGN", "\u043b\u0432", "Bulgarian Lev"), "IS": ("ISK", "kr", "Icelandic Krona"),
     "RU": ("RUB", "\u20bd", "Russian Ruble"), "UA": ("UAH", "\u20b4", "Ukrainian Hryvnia"),
     "TR": ("TRY", "\u20ba", "Turkish Lira"),
-    "NG": ("NGN", "\u20a6", "Nigerian Naira"), "GH": ("GHS", "\u20b5", "Ghanaian Cedi"),
+    "NG": ("USD", "$", "US Dollar"), "GH": ("GHS", "\u20b5", "Ghanaian Cedi"),
     "KE": ("KES", "KSh", "Kenyan Shilling"), "ZA": ("ZAR", "R", "South African Rand"),
     "EG": ("EGP", "\u00a3", "Egyptian Pound"), "MA": ("MAD", "MAD", "Moroccan Dirham"),
     "TZ": ("TZS", "TSh", "Tanzanian Shilling"), "UG": ("UGX", "USh", "Ugandan Shilling"),

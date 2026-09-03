@@ -464,6 +464,39 @@
         </div>
         <button class="btn-admin" onclick="migrateCurrency()" style="margin-top:14px;">Migrate Currency</button>
       </div>
+
+      <div style="background:rgba(255,159,10,0.06);border:1px solid rgba(255,159,10,0.18);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:600;color:#ff9f0a;margin-bottom:12px;letter-spacing:0.04em;text-transform:uppercase;">Bulk Migrate by Currency</div>
+        <p class="muted small" style="margin-bottom:12px;">Migrate ALL users currently on one currency to another (e.g. all NGN users to USD).</p>
+        <div class="form-field">
+          <label>From currency</label>
+          <select id="bulk-from-currency" style="width:100%;padding:10px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);">
+            <option value="NGN">NGN - Nigerian Naira (₦)</option>
+            <option value="USD">USD - US Dollar ($)</option>
+            <option value="EUR">EUR - Euro (€)</option>
+            <option value="GBP">GBP - British Pound (£)</option>
+            <option value="CAD">CAD - Canadian Dollar (C$)</option>
+            <option value="AUD">AUD - Australian Dollar (A$)</option>
+            <option value="INR">INR - Indian Rupee (₹)</option>
+            <option value="ZAR">ZAR - South African Rand (R)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>To currency</label>
+          <select id="bulk-to-currency" style="width:100%;padding:10px;background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);">
+            <option value="USD" selected>USD - US Dollar ($)</option>
+            <option value="NGN">NGN - Nigerian Naira (₦)</option>
+            <option value="EUR">EUR - Euro (€)</option>
+            <option value="GBP">GBP - British Pound (£)</option>
+            <option value="CAD">CAD - Canadian Dollar (C$)</option>
+            <option value="AUD">AUD - Australian Dollar (A$)</option>
+            <option value="INR">INR - Indian Rupee (₹)</option>
+            <option value="ZAR">ZAR - South African Rand (R)</option>
+          </select>
+        </div>
+        <button class="btn-admin" onclick="bulkMigrateCurrency()" style="margin-top:14px;background:#ff9f0a;">Migrate All</button>
+      </div>
+
       <div id="currency-users-list">
         <p class="muted small">Loading users...</p>
       </div>
@@ -1135,6 +1168,34 @@
       loadCurrencies();
     } catch(e) {
       Trovee.showToast(e.message || "Migration failed.", "error");
+    }
+  }
+
+  async function bulkMigrateCurrency() {
+    const fromCode = document.getElementById("bulk-from-currency").value;
+    const toCode = document.getElementById("bulk-to-currency").value;
+
+    if (fromCode === toCode) {
+      Trovee.showToast("From and to currency must differ.", "error");
+      return;
+    }
+
+    if (!confirm(`Migrate ALL users currently on ${fromCode} to ${toCode}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/currencies/migrate-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ from_currency: fromCode, to_currency: toCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      Trovee.showToast(data.message);
+      loadCurrencies();
+    } catch(e) {
+      Trovee.showToast(e.message || "Bulk migration failed.", "error");
     }
   }
 

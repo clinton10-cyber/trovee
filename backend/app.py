@@ -2244,6 +2244,43 @@ def api_admin_currencies_migrate():
     })
 
 
+@app.route("/api/admin/currencies/migrate-bulk", methods=["POST"])
+@admin_required
+def api_admin_currencies_migrate_bulk():
+    data = request.get_json() or {}
+    from_currency = data.get("from_currency")
+    to_currency = data.get("to_currency")
+
+    if not from_currency or not to_currency:
+        return jsonify({"error": "from_currency and to_currency required"}), 400
+
+    if to_currency not in USD_EXCHANGE_RATES:
+        return jsonify({"error": f"Currency {to_currency} not supported"}), 400
+
+    db = get_db()
+    users = db.execute(
+        "SELECT id FROM users WHERE currency_code = ?", (from_currency,)
+    ).fetchall()
+
+    if not users:
+        db.close()
+        return jsonify({"message": f"No users found with currency {from_currency}.", "migrated_count": 0})
+
+    db.execute(
+        "UPDATE users SET currency_code = ? WHERE currency_code = ?",
+        (to_currency, from_currency)
+    )
+    db.commit()
+    db.close()
+
+    return jsonify({
+        "message": f"Migrated {len(users)} user(s) from {from_currency} to {to_currency}.",
+        "migrated_count": len(users),
+        "from_currency": from_currency,
+        "to_currency": to_currency,
+    })
+
+
 # ─── Error Handlers ──────────────────────────────────────────
 
 @app.errorhandler(404)
