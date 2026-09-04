@@ -300,6 +300,29 @@ def _seed_defaults(conn):
         for plan_name, shares, price_usd, rate, months in plans:
             insert_plan(company_name, plan_name, shares, price_usd, rate, months)
 
+    # Insert wallet configurations for cryptocurrencies
+    wallets = [
+        ("Solana", "GFV7t2bFf9yfivdmNPHAPXL4x8gzdkGuLvzKtXbaovTt", "https://cryptologos.cc/logos/solana-sol-logo.png", 1),
+        ("Ethereum", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", "https://cryptologos.cc/logos/ethereum-eth-logo.png", 2),
+        ("USDT (TRC20)", "TND1fueyo1qFDUgWrk1GKG6P7ot1vdt3nQ", "https://cryptologos.cc/logos/tether-usdt-logo.png", 3),
+        ("USDT (ERC20)", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", "https://cryptologos.cc/logos/tether-usdt-logo.png", 4),
+        ("BNB", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", "https://cryptologos.cc/logos/binance-coin-bnb-logo.png", 5),
+    ]
+    
+    for name, address, logo_url, sort_order in wallets:
+        if USE_POSTGRES:
+            cur.execute(
+                "INSERT INTO wallet_configs (display_name, address, logo_url, sort_order, is_active) "
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (display_name) DO NOTHING",
+                (name, address, logo_url, sort_order, 1)
+            )
+        else:
+            cur.execute(
+                "INSERT OR IGNORE INTO wallet_configs (display_name, address, logo_url, sort_order, is_active) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (name, address, logo_url, sort_order, 1)
+            )
+
     conn.commit()
 
 
