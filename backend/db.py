@@ -179,21 +179,21 @@ def _seed_defaults(conn):
             )
 
     wallets = [
-        ("Tron (TRX)", "THDIfueyo1qDUgURk1SHBGP7ot1vdL3n0",
-         "https://cryptologos.cc/logos/tron-trx-logo.svg",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=THDIfueyo1qDUgURk1SHBGP7ot1vdL3n0", 1),
-        ("USDT (BSC)", "0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9",
-         "https://cryptologos.cc/logos/tether-usdt-logo.svg",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9", 2),
-        ("Solana (SOL)", "B6U7L2orf9yfivdmNPHAPKUH4x8gedkbUUveKtXboovTI",
+        ("Solana (SOL)", "GFV7t2bFf9yfivdmNPHAPXL4x8gzdkGuLvzKtXbaovTt",
          "https://cryptologos.cc/logos/solana-sol-logo.svg",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=B6U7L2orf9yfivdmNPHAPKUH4x8gedkbUUveKtXboovTI", 3),
-        ("BNB (BSC)", "0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9",
-         "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9", 4),
-        ("Ethereum (ETH)", "0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=GFV7t2bFf9yfivdmNPHAPXL4x8gzdkGuLvzKtXbaovTt", 1),
+        ("Ethereum (ETH)", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19",
          "https://cryptologos.cc/logos/ethereum-eth-logo.svg",
-         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9", 5),
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", 2),
+        ("USDT (TRC20)", "TND1fueyo1qFDUgWrk1GKG6P7ot1vdt3nQ",
+         "https://cryptologos.cc/logos/tether-usdt-logo.svg",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TND1fueyo1qFDUgWrk1GKG6P7ot1vdt3nQ", 3),
+        ("USDT (ERC20)", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19",
+         "https://cryptologos.cc/logos/tether-usdt-logo.svg",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", 4),
+        ("BNB (BEP20)", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19",
+         "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg",
+         "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", 5),
     ]
     for w in wallets:
         insert_wallet(*w)
