@@ -314,6 +314,7 @@
   .trade-modal-row .label { color: var(--slate-soft); }
   .trade-modal-row .val { font-family: var(--font-mono); }
   .trade-modal-row .val.profit { color: #4ade80; }
+  .trade-modal-row .val.profit.loss { color: #f87171; }
   .trade-modal-row .val.direction-down { color: #f87171; font-weight: 600; }
   .trade-modal-row .val.direction-up { color: #4ade80; font-weight: 600; }
 
@@ -679,8 +680,22 @@
     
     if (activeTrade) {
       document.getElementById("modal-live-price").textContent = "Live: " + formatPrice(newPrice);
+      updateLiveProfit(newPrice);
     }
     document.getElementById("trade-btn").disabled = false;
+  }
+
+  function updateLiveProfit(currentPrice) {
+    if (!activeTrade) return;
+    // Win/loss is the raw price movement itself, matching backend:
+    // buy wins by however much price rose, sell wins by however much it fell.
+    const delta = activeTrade.direction === "up"
+      ? (currentPrice - activeTrade.entryPrice)
+      : (activeTrade.entryPrice - currentPrice);
+    const profitEl = document.getElementById("modal-profit");
+    const sign = delta >= 0 ? "+" : "-";
+    profitEl.textContent = sign + userCurrencySymbol + Math.abs(delta).toFixed(2);
+    profitEl.classList.toggle("loss", delta < 0);
   }
 
   function formatPrice(p) {
@@ -824,6 +839,8 @@
         }
       });
       activeTrade = { id: res.trade_id, asset: currentAsset, direction, durationSec, amount, entryPrice };
+      await loadBalance();
+      Trovee.showToast(userCurrencySymbol + amount.toFixed(2) + " added to your open trade.");
       startCountdown(res.trade_id, entryPrice, durationSec);
     } catch (err) {
       Trovee.showToast(err.message || "Something went wrong. Please try again.", "error");
@@ -837,7 +854,8 @@
     document.getElementById("modal-direction").textContent = direction === "up" ? "Buy Up ↑" : "Buy Down ↓";
     document.getElementById("modal-direction").className = "val direction-" + direction;
     document.getElementById("modal-amount").textContent = userCurrencySymbol + activeTrade.amount.toFixed(2);
-    document.getElementById("modal-profit").textContent = "Based on price move";
+    document.getElementById("modal-profit").textContent = userCurrencySymbol + "0.00";
+    document.getElementById("modal-profit").classList.remove("loss");
     document.getElementById("modal-duration").textContent = total + "s";
     document.getElementById("modal-opened").textContent = new Date().toLocaleTimeString();
     modal.classList.add("show");
@@ -878,14 +896,13 @@
       });
       document.getElementById("live-trade-modal").classList.remove("show");
       activeTrade = null;
-      userBalance = res.new_balance_usd_cents / 100;
       await loadBalance();
       if (res.outcome === "win") {
-        Trovee.showToast("Trade won! +" + userCurrencySymbol + (res.profit_usd_cents / 100).toFixed(2));
+        Trovee.showToast(userCurrencySymbol + (res.profit_usd_cents / 100).toFixed(2) + " added to your balance. Trade won!");
       } else if (res.outcome === "loss") {
-        Trovee.showToast("Trade lost. Better luck next time!", "error");
+        Trovee.showToast(userCurrencySymbol + Math.abs(res.profit_usd_cents / 100).toFixed(2) + " removed from your balance. Trade lost.", "error");
       } else {
-        Trovee.showToast("Trade ended in a draw.");
+        Trovee.showToast(userCurrencySymbol + (res.amount_usd_cents / 100).toFixed(2) + " returned to your balance. Trade ended in a draw.");
       }
       loadHistory();
     } catch (e) {
