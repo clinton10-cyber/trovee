@@ -1186,9 +1186,17 @@ def api_trade_place():
         if trade_id is None:
             db.close()
             return jsonify({"error": "Failed to create trade – please try again."}), 500
+        new_balance = db.execute(
+            "SELECT balance_usd_cents FROM users WHERE id = ?", (g.user["id"],)
+        ).fetchone()["balance_usd_cents"]
         db.commit()
         db.close()
-        return jsonify({"trade_id": trade_id, "message": "Trade placed."})
+        return jsonify({
+            "trade_id": trade_id,
+            "message": "Trade placed.",
+            "amount_usd_cents": amount_usd_cents,
+            "new_balance_usd_cents": new_balance,
+        })
 
     except Exception as e:
         print(f"[trovee] ERROR in /api/trades/place: {type(e).__name__}: {e}")
@@ -1217,15 +1225,17 @@ def api_trade_close():
             return jsonify({"error": "Trade not found or already closed."}), 404
 
         entry = trade["entry_price"]
-        change_pct = (exit_price - entry) / entry
         amount = trade["amount_usd_cents"]
 
+        # Win/loss amount is the raw price movement itself — not a
+        # percentage of the stake. Buy wins by however much price rose;
+        # sell wins by however much price fell.
         if trade["direction"] == "up":
-            profit_pct = change_pct
+            price_delta = exit_price - entry
         else:
-            profit_pct = -change_pct
+            price_delta = entry - exit_price
 
-        profit_usd_cents = int(amount * profit_pct)
+        profit_usd_cents = int(round(price_delta * 100))
 
         if profit_usd_cents > 0:
             outcome = "win"
@@ -1251,7 +1261,9 @@ def api_trade_close():
 
         return jsonify({
             "outcome": outcome,
+            "amount_usd_cents": amount,
             "profit_usd_cents": profit_usd_cents,
+            "credit_back_usd_cents": credit_back,
             "new_balance_usd_cents": new_balance,
         })
     except Exception as e:

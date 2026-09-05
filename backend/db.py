@@ -142,61 +142,49 @@ def init_db():
 
 def _seed_defaults(conn):
     cur = conn.cursor()
-    
-    # Clear old hardcoded wallets and companies
-    try:
-        if USE_POSTGRES:
-            cur.execute("DELETE FROM share_purchases")
-            cur.execute("DELETE FROM share_plans")
-            cur.execute("DELETE FROM share_companies")
-            cur.execute("DELETE FROM wallet_configs")
-        else:
-            cur.execute("DELETE FROM share_purchases")
-            cur.execute("DELETE FROM share_plans")
-            cur.execute("DELETE FROM share_companies")
-            cur.execute("DELETE FROM wallet_configs")
-    except Exception as e:
-        print(f"Cleanup warning: {e}")
+    # NOTE: previously this wiped share_purchases/share_plans/share_companies/
+    # wallet_configs on every startup. Removed — the inserts below are already
+    # idempotent (ON CONFLICT DO NOTHING / INSERT OR IGNORE / upsert), so
+    # defaults still get seeded on a fresh DB without erasing real user data
+    # (purchases, admin-added wallets, etc.) on every restart.
 
-    def insert_wallet(name, address, logo, qr, order):
-        if USE_POSTGRES:
-            cur.execute("SELECT id FROM wallet_configs WHERE display_name = %s", (name,))
-        else:
-            cur.execute("SELECT id FROM wallet_configs WHERE display_name = ?", (name,))
-        if cur.fetchone() is not None:
-            return
-        if USE_POSTGRES:
-            cur.execute(
-                "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (name, address, logo, qr, order)
-            )
-        else:
-            cur.execute(
-                "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (name, address, logo, qr, order)
-            )
-
+    # Single source of truth for wallets — upserts on every restart so
+    # re-deploys correct stale data instead of creating duplicate rows
+    # under a second display_name for the same coin.
     wallets = [
         ("Solana (SOL)", "GFV7t2bFf9yfivdmNPHAPXL4x8gzdkGuLvzKtXbaovTt",
-         "https://cryptologos.cc/logos/solana-sol-logo.svg",
+         "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/info/logo.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=GFV7t2bFf9yfivdmNPHAPXL4x8gzdkGuLvzKtXbaovTt", 1),
         ("Ethereum (ETH)", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19",
-         "https://cryptologos.cc/logos/ethereum-eth-logo.svg",
+         "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", 2),
         ("USDT (TRC20)", "TND1fueyo1qFDUgWrk1GKG6P7ot1vdt3nQ",
-         "https://cryptologos.cc/logos/tether-usdt-logo.svg",
+         "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/assets/TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t/logo.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TND1fueyo1qFDUgWrk1GKG6P7ot1vdt3nQ", 3),
         ("USDT (ERC20)", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19",
-         "https://cryptologos.cc/logos/tether-usdt-logo.svg",
+         "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", 4),
         ("BNB (BEP20)", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19",
-         "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg",
+         "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png",
          "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", 5),
     ]
-    for w in wallets:
-        insert_wallet(*w)
+    for name, address, logo, qr, order in wallets:
+        if USE_POSTGRES:
+            cur.execute(
+                "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order, is_active) "
+                "VALUES (%s, %s, %s, %s, %s, 1) ON CONFLICT (display_name) DO UPDATE SET "
+                "address = EXCLUDED.address, logo_url = EXCLUDED.logo_url, "
+                "qr_url = EXCLUDED.qr_url, sort_order = EXCLUDED.sort_order, is_active = 1",
+                (name, address, logo, qr, order)
+            )
+        else:
+            cur.execute(
+                "INSERT INTO wallet_configs (display_name, address, logo_url, qr_url, sort_order, is_active) "
+                "VALUES (?, ?, ?, ?, ?, 1) ON CONFLICT (display_name) DO UPDATE SET "
+                "address = excluded.address, logo_url = excluded.logo_url, "
+                "qr_url = excluded.qr_url, sort_order = excluded.sort_order, is_active = 1",
+                (name, address, logo, qr, order)
+            )
 
     companies = [
         ("Tesla Inc", "TSLA", "Automotive - Electric Vehicles", "https://companiesmarketcap.com/img/company-logos/64/tsla.png", "Automotive"),
@@ -299,29 +287,6 @@ def _seed_defaults(conn):
     for company_name, plans in plan_templates:
         for plan_name, shares, price_usd, rate, months in plans:
             insert_plan(company_name, plan_name, shares, price_usd, rate, months)
-
-    # Insert wallet configurations for cryptocurrencies
-    wallets = [
-        ("Solana", "GFV7t2bFf9yfivdmNPHAPXL4x8gzdkGuLvzKtXbaovTt", "https://cryptologos.cc/logos/solana-sol-logo.png", 1),
-        ("Ethereum", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", "https://cryptologos.cc/logos/ethereum-eth-logo.png", 2),
-        ("USDT (TRC20)", "TND1fueyo1qFDUgWrk1GKG6P7ot1vdt3nQ", "https://cryptologos.cc/logos/tether-usdt-logo.png", 3),
-        ("USDT (ERC20)", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", "https://cryptologos.cc/logos/tether-usdt-logo.png", 4),
-        ("BNB", "0x8cC0E5BD371592D8D136DC95b94dBaBfb8324a19", "https://cryptologos.cc/logos/binance-coin-bnb-logo.png", 5),
-    ]
-    
-    for name, address, logo_url, sort_order in wallets:
-        if USE_POSTGRES:
-            cur.execute(
-                "INSERT INTO wallet_configs (display_name, address, logo_url, sort_order, is_active) "
-                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (display_name) DO NOTHING",
-                (name, address, logo_url, sort_order, 1)
-            )
-        else:
-            cur.execute(
-                "INSERT OR IGNORE INTO wallet_configs (display_name, address, logo_url, sort_order, is_active) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (name, address, logo_url, sort_order, 1)
-            )
 
     conn.commit()
 
