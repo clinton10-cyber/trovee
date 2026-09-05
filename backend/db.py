@@ -354,6 +354,27 @@ def _migrate_postgres(cur):
         except Exception:
             pass
 
+    # The live table may predate the UNIQUE constraint declared in schema.sql
+    # (CREATE TABLE IF NOT EXISTS is a no-op on an already-existing table),
+    # which is what made every ON CONFLICT (display_name) upsert fail with
+    # "no unique or exclusion constraint matching the ON CONFLICT specification".
+    # De-duplicate any pre-existing rows first so the constraint can attach,
+    # then add it.
+    try:
+        cur.execute("""
+            DELETE FROM wallet_configs a USING wallet_configs b
+            WHERE a.id > b.id AND a.display_name = b.display_name
+        """)
+    except Exception as e:
+        print(f"[trovee] Migration warning (wallet_configs dedupe): {e}")
+    try:
+        cur.execute(
+            "ALTER TABLE wallet_configs ADD CONSTRAINT wallet_configs_display_name_key UNIQUE (display_name)"
+        )
+        print("[trovee] Migration: added unique constraint on wallet_configs.display_name")
+    except Exception:
+        pass
+
 
 if __name__ == "__main__":
     init_db()
