@@ -318,6 +318,9 @@ def _migrate_sqlite(conn):
         ("deposits", "front_image_path", "TEXT"),
         ("deposits", "back_image_path", "TEXT"),
         ("users", "is_support_account", "INTEGER DEFAULT 0"),
+        ("chat_messages", "edited_at", "TEXT"),
+        ("chat_messages", "deleted_at", "TEXT"),
+        ("users", "last_seen_at", "TEXT"),
     ]
     existing = {(row[0], row[1]) for row in conn.execute(
         "SELECT m.name, p.name FROM sqlite_master m "
@@ -346,6 +349,9 @@ def _migrate_postgres(cur):
         ("deposits", "front_image_path", "TEXT"),
         ("deposits", "back_image_path", "TEXT"),
         ("users", "is_support_account", "INTEGER DEFAULT 0"),
+        ("chat_messages", "edited_at", "TEXT"),
+        ("chat_messages", "deleted_at", "TEXT"),
+        ("users", "last_seen_at", "TEXT"),
     ]
     for table, col, col_def in migrations:
         try:

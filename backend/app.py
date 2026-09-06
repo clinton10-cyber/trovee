@@ -54,6 +54,21 @@ def decode_token(token: str):
         return None
 
 
+ONLINE_THRESHOLD_SECONDS = 60
+
+
+def _is_recently_active(last_seen_at):
+    """True if last_seen_at (a 'YYYY-MM-DD HH:MM:SS' UTC string) is within
+    ONLINE_THRESHOLD_SECONDS of now."""
+    if not last_seen_at:
+        return False
+    try:
+        seen = datetime.datetime.strptime(str(last_seen_at)[:19], "%Y-%m-%d %H:%M:%S")
+        return (datetime.datetime.utcnow() - seen).total_seconds() <= ONLINE_THRESHOLD_SECONDS
+    except (ValueError, TypeError):
+        return False
+
+
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -66,9 +81,13 @@ def login_required(f):
             return jsonify({"error": "Session expired or invalid. Please log in again."}), 401
         db = get_db()
         user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        db.close()
         if not user:
+            db.close()
             return jsonify({"error": "Account not found."}), 401
+        now_str = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        db.execute("UPDATE users SET last_seen_at = ? WHERE id = ?", (now_str, user_id))
+        db.commit()
+        db.close()
         g.user = user
         return f(*args, **kwargs)
     return wrapper
@@ -411,12 +430,32 @@ def api_me():
     u = g.user
     currency_code, symbol, name = get_currency_for_country(u["country_code"])
     balance_local = convert_usd_cents(u["balance_usd_cents"], currency_code)
+
+    db = get_db()
+    if u["is_support_account"]:
+        unread_row = db.execute(
+            "SELECT COUNT(*) as c FROM chat_messages cm "
+            "JOIN support_assignments sa ON sa.target_user_id = cm.target_user_id "
+            "WHERE sa.support_user_id = ? AND sa.is_active = 1 "
+            "AND cm.sender = 'user' AND cm.is_read_support = 0 AND cm.deleted_at IS NULL",
+            (u["id"],),
+        ).fetchone()
+    else:
+        unread_row = db.execute(
+            "SELECT COUNT(*) as c FROM chat_messages "
+            "WHERE target_user_id = ? AND sender = 'support' AND is_read_user = 0 AND deleted_at IS NULL",
+            (u["id"],),
+        ).fetchone()
+    unread_message_count = unread_row["c"] if unread_row else 0
+    db.close()
+
     return jsonify({
         "username": u["username"], "email": u["email"], "phone": u["phone"],
         "country_code": u["country_code"], "currency_code": currency_code,
         "currency_symbol": symbol, "balance_usd_cents": u["balance_usd_cents"],
         "balance_local": balance_local, "trust_level": u["trust_level"],
         "exchange_rate": USD_EXCHANGE_RATES.get(currency_code, 1.0),
+        "unread_message_count": unread_message_count,
     })
 
 
@@ -496,7 +535,8 @@ def api_withdraw_history():
 
 def _active_assignments_for_support(db, support_user_id):
     return db.execute(
-        "SELECT sa.*, u.username as target_username FROM support_assignments sa "
+        "SELECT sa.*, u.username as target_username, u.last_seen_at as target_last_seen_at "
+        "FROM support_assignments sa "
         "JOIN users u ON u.id = sa.target_user_id "
         "WHERE sa.support_user_id = ? AND sa.is_active = 1 "
         "ORDER BY sa.assigned_at DESC",
@@ -528,12 +568,12 @@ def api_messages_context():
                 target_id = a["target_user_id"]
                 last = db.execute(
                     "SELECT body, sender, created_at FROM chat_messages "
-                    "WHERE target_user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+                    "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1",
                     (target_id,),
                 ).fetchone()
                 unread = db.execute(
                     "SELECT COUNT(*) as n FROM chat_messages "
-                    "WHERE target_user_id = ? AND sender = 'user' AND is_read_support = 0",
+                    "WHERE target_user_id = ? AND sender = 'user' AND is_read_support = 0 AND deleted_at IS NULL",
                     (target_id,),
                 ).fetchone()
                 conversations.append({
@@ -542,6 +582,8 @@ def api_messages_context():
                     "last_message": last["body"] if last else None,
                     "last_message_at": last["created_at"] if last else None,
                     "unread_count": unread["n"] if unread else 0,
+                    "is_online": _is_recently_active(a["target_last_seen_at"]),
+                    "last_seen_at": a["target_last_seen_at"],
                 })
             db.close()
             return jsonify({"role": "agent", "conversations": conversations})
@@ -571,8 +613,8 @@ def api_messages_get():
     db.commit()
 
     rows = db.execute(
-        "SELECT id, sender, body, created_at FROM chat_messages "
-        "WHERE target_user_id = ? ORDER BY created_at ASC, id ASC",
+        "SELECT id, sender, body, created_at, edited_at FROM chat_messages "
+        "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_id,),
     ).fetchall()
     db.close()
@@ -626,7 +668,7 @@ def _validated_agent_target(db, target_user_id):
     if not g.user["is_support_account"]:
         return None
     row = db.execute(
-        "SELECT u.username, u.balance_usd_cents, u.currency_code "
+        "SELECT u.username, u.balance_usd_cents, u.currency_code, u.last_seen_at "
         "FROM support_assignments sa JOIN users u ON u.id = sa.target_user_id "
         "WHERE sa.support_user_id = ? AND sa.target_user_id = ? AND sa.is_active = 1",
         (g.user["id"], target_user_id),
@@ -649,8 +691,8 @@ def api_messages_thread_get(target_user_id):
     )
     db.commit()
     rows = db.execute(
-        "SELECT id, sender, body, created_at FROM chat_messages "
-        "WHERE target_user_id = ? ORDER BY created_at ASC, id ASC",
+        "SELECT id, sender, body, created_at, edited_at FROM chat_messages "
+        "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_user_id,),
     ).fetchall()
     db.close()
@@ -659,6 +701,8 @@ def api_messages_thread_get(target_user_id):
         "other_name": target["username"],
         "target_balance_usd_cents": target["balance_usd_cents"],
         "target_currency_code": target["currency_code"],
+        "target_is_online": _is_recently_active(target["last_seen_at"]),
+        "target_last_seen_at": target["last_seen_at"],
         "messages": [dict(r) for r in rows],
     })
 
@@ -842,10 +886,16 @@ def api_admin_users():
     db = get_db()
     rows = db.execute(
         "SELECT id, username, email, phone, country_code, currency_code, "
-        "balance_usd_cents, trust_level, is_support_account, created_at FROM users ORDER BY created_at DESC"
+        "balance_usd_cents, trust_level, is_support_account, created_at, last_seen_at, "
+        "(SELECT COUNT(*) FROM chat_messages cm WHERE cm.target_user_id = users.id "
+        " AND cm.sender = 'user' AND cm.is_read_support = 0 AND cm.deleted_at IS NULL) as unread_count "
+        "FROM users ORDER BY created_at DESC"
     ).fetchall()
     db.close()
-    return jsonify({"users": [dict(r) for r in rows]})
+    users = [dict(r) for r in rows]
+    for u in users:
+        u["is_online"] = _is_recently_active(u.get("last_seen_at"))
+    return jsonify({"users": users})
 
 
 @app.route("/api/admin/support-accounts", methods=["GET"])
@@ -974,7 +1024,9 @@ def api_admin_support_account_unassign(user_id):
 @admin_required
 def api_admin_messages_thread(target_user_id):
     db = get_db()
-    target = db.execute("SELECT id, username, email FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    target = db.execute(
+        "SELECT id, username, email, last_seen_at FROM users WHERE id = ?", (target_user_id,)
+    ).fetchone()
     if not target:
         db.close()
         return jsonify({"error": "User not found."}), 404
@@ -984,14 +1036,21 @@ def api_admin_messages_thread(target_user_id):
         "WHERE sa.target_user_id = ? AND sa.is_active = 1 ORDER BY sa.id DESC LIMIT 1",
         (target_user_id,),
     ).fetchone()
+    db.execute(
+        "UPDATE chat_messages SET is_read_support = 1 WHERE target_user_id = ? AND is_read_support = 0",
+        (target_user_id,),
+    )
+    db.commit()
     rows = db.execute(
-        "SELECT id, sender, body, created_at FROM chat_messages "
-        "WHERE target_user_id = ? ORDER BY created_at ASC, id ASC",
+        "SELECT id, sender, body, created_at, edited_at FROM chat_messages "
+        "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_user_id,),
     ).fetchall()
     db.close()
+    target_dict = dict(target)
+    target_dict["is_online"] = _is_recently_active(target_dict.get("last_seen_at"))
     return jsonify({
-        "target": dict(target),
+        "target": target_dict,
         "assigned_support": dict(assignment) if assignment else None,
         "messages": [dict(r) for r in rows],
     })
@@ -1026,6 +1085,59 @@ def api_admin_messages_send(target_user_id):
     db.commit()
     db.close()
     return jsonify({"message": "Sent."})
+
+
+@app.route("/api/admin/messages/<int:target_user_id>/<int:message_id>", methods=["PUT"])
+@admin_required
+def api_admin_messages_edit(target_user_id, message_id):
+    data = request.get_json(force=True) or {}
+    body = (data.get("message") or "").strip()
+    if not body:
+        return jsonify({"error": "Enter a message."}), 400
+
+    db = get_db()
+    msg = db.execute(
+        "SELECT id, sender FROM chat_messages WHERE id = ? AND target_user_id = ? AND deleted_at IS NULL",
+        (message_id, target_user_id),
+    ).fetchone()
+    if not msg:
+        db.close()
+        return jsonify({"error": "Message not found."}), 404
+    if msg["sender"] != "support":
+        db.close()
+        return jsonify({"error": "You can only edit messages you sent."}), 403
+
+    db.execute(
+        "UPDATE chat_messages SET body = ?, edited_at = datetime('now') WHERE id = ?",
+        (body, message_id),
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Updated."})
+
+
+@app.route("/api/admin/messages/<int:target_user_id>/<int:message_id>", methods=["DELETE"])
+@admin_required
+def api_admin_messages_delete(target_user_id, message_id):
+    db = get_db()
+    msg = db.execute(
+        "SELECT id, sender FROM chat_messages WHERE id = ? AND target_user_id = ? AND deleted_at IS NULL",
+        (message_id, target_user_id),
+    ).fetchone()
+    if not msg:
+        db.close()
+        return jsonify({"error": "Message not found."}), 404
+    if msg["sender"] != "support":
+        db.close()
+        return jsonify({"error": "You can only delete messages you sent."}), 403
+
+    db.execute(
+        "UPDATE chat_messages SET deleted_at = datetime('now') WHERE id = ?",
+        (message_id,),
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Deleted."})
 
 
 @app.route("/api/admin/deposits", methods=["GET"])
