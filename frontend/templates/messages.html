@@ -196,7 +196,10 @@
 <div class="app-shell">
   <div class="top-bar">
     <button class="back-btn" id="back-btn"><i class="fas fa-arrow-left"></i></button>
-    <h1 class="page-title" id="chat-title">Customer Care and Support</h1>
+    <div style="display:flex;flex-direction:column;min-width:0;">
+      <h1 class="page-title" id="chat-title" style="margin-bottom:0;">Customer Care and Support</h1>
+      <div id="chat-presence" style="font-size:11px;color:var(--slate-soft);display:none;"></div>
+    </div>
     <button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout">
       <i class="fas fa-sign-out-alt"></i>
     </button>
@@ -298,6 +301,7 @@
     document.getElementById("thread-view").style.display = "none";
     document.getElementById("back-btn").classList.remove("visible");
     document.getElementById("chat-title").textContent = "Customer Care and Support";
+    document.getElementById("chat-presence").style.display = "none";
     document.getElementById("balance-bar").classList.remove("visible");
     document.getElementById("balance-edit-form").classList.remove("visible");
   }
@@ -307,6 +311,7 @@
     document.getElementById("thread-view").style.display = "flex";
     document.getElementById("back-btn").classList.toggle("visible", role === "agent");
     document.getElementById("chat-title").textContent = title;
+    document.getElementById("chat-presence").style.display = role === "agent" ? "block" : "none";
     document.getElementById("balance-edit-form").classList.remove("visible");
     document.getElementById("balance-bar").classList.toggle("visible", role === "agent");
   }
@@ -329,10 +334,17 @@
     });
     list.innerHTML = sorted.map(c => `
       <div class="inbox-row" onclick="openThread(${c.target_user_id}, '${escapeHtml(c.username).replace(/'/g, "\\'")}')">
-        <div class="inbox-avatar">${escapeHtml(c.username.charAt(0).toUpperCase())}</div>
+        <div class="inbox-avatar" style="position:relative;">
+          ${escapeHtml(c.username.charAt(0).toUpperCase())}
+          <span style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg, #0b0f14);background:${c.is_online ? '#4ade80' : '#6b7280'};"></span>
+        </div>
         <div class="inbox-main">
           <div class="inbox-name-row">
-            <span class="inbox-name">${escapeHtml(c.username)}</span>
+            <span class="inbox-name">${escapeHtml(c.username)}
+              <span style="font-size:10.5px;font-weight:600;color:${c.is_online ? '#4ade80' : 'var(--slate-soft)'};">
+                · ${c.is_online ? 'Online' : (c.last_seen_at ? 'Last seen ' + timeAgo(c.last_seen_at) + ' ago' : 'Offline')}
+              </span>
+            </span>
             <span class="inbox-time">${timeAgo(c.last_message_at)}</span>
           </div>
           <div class="inbox-preview">${c.last_message ? escapeHtml(c.last_message) : 'No messages yet'}</div>
@@ -349,6 +361,16 @@
       currentBalanceCents = data.target_balance_usd_cents;
       currentCurrency = data.target_currency_code || "USD";
       document.getElementById("balance-amount").textContent = formatMoney(currentBalanceCents, currentCurrency);
+    }
+
+    if (role === "agent" && "target_is_online" in data) {
+      const sub = document.getElementById("chat-presence");
+      if (sub) {
+        sub.textContent = data.target_is_online
+          ? "Online"
+          : (data.target_last_seen_at ? "Last seen " + timeAgo(data.target_last_seen_at) + " ago" : "Offline");
+        sub.style.color = data.target_is_online ? "#4ade80" : "";
+      }
     }
 
     const scroll = document.getElementById("chat-scroll");

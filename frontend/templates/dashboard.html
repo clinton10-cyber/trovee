@@ -47,6 +47,26 @@
       margin-bottom: 6px;
       display: block;
       color: var(--accent);
+      position: relative;
+    }
+    .quick-card .icon .unread-badge {
+      position: absolute;
+      top: -6px;
+      right: 50%;
+      transform: translateX(18px);
+      background: #f87171;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      font-family: var(--font-mono, inherit);
     }
     .quick-card .label {
       font-size: 13px;
@@ -177,7 +197,7 @@
         <div class="sub">Invest</div>
       </a>
       <a href="/messages" class="quick-card">
-        <span class="icon"><i class="fas fa-comment-dots"></i></span>
+        <span class="icon"><i class="fas fa-comment-dots"></i><span class="unread-badge" id="care-unread-badge"></span></span>
         <div class="label">Customer Care</div>
         <div class="sub">& Support</div>
       </a>
@@ -238,6 +258,15 @@
       document.getElementById('balance-badge').textContent = `${user.currency_symbol}${balance.toFixed(2)}`;
       document.getElementById('balance-usd').textContent = `${user.balance_usd_cents/100} USD`;
 
+      const badge = document.getElementById('care-unread-badge');
+      const unread = user.unread_message_count || 0;
+      if (unread > 0) {
+        badge.textContent = unread > 9 ? '9+' : String(unread);
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+
       try {
         const trades = await Trovee.api('/api/trades/history');
         const container = document.getElementById('recent-container');
@@ -269,6 +298,7 @@
   }
 
   loadDashboard();
+  setInterval(loadDashboard, 20000);
 
   function userLogout() {
     if (!confirm("Logout?")) return;

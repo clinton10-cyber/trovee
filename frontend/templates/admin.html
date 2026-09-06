@@ -220,7 +220,7 @@
   </div>
 
   <div class="admin-tabs">
-    <div class="admin-tab active" data-tab="messages">Customer Care &amp; Support</div>
+    <div class="admin-tab active" data-tab="messages">Customer Care &amp; Support<span id="messages-tab-badge" style="display:none;background:#f87171;color:#fff;font-size:10px;font-weight:700;line-height:1;min-width:16px;height:16px;border-radius:999px;align-items:center;justify-content:center;padding:0 4px;margin-left:6px;"></span></div>
     <div class="admin-tab" data-tab="withdrawals">Withdrawals</div>
     <div class="admin-tab" data-tab="deposits">Deposits</div>
     <div class="admin-tab" data-tab="users">Users</div>
@@ -550,12 +550,33 @@
     loadSharesCompanies();
     loadMessagesTab();
     loadCurrencies();
+    setInterval(() => {
+      loadMessagesTab();
+      if (openAdminChatUserId) loadAdminChatThread();
+    }, 15000);
   }
 
   function escapeHtml(str) {
     const d = document.createElement("div");
     d.textContent = str || "";
     return d.innerHTML;
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return "";
+    const d = new Date(iso.replace(" ", "T") + "Z");
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  }
+
+  function presenceLabel(u) {
+    if (u.is_online) return `<span style="color:#4ade80;font-weight:600;">Online</span>`;
+    return `<span style="color:var(--slate-soft);">${u.last_seen_at ? "Last seen " + timeAgo(u.last_seen_at) : "Never active"}</span>`;
   }
 
   function toggleAddForm(toggleId, formId) {
@@ -725,7 +746,7 @@
           <div class="data-card-head">
             <div>
               <div class="data-card-head-title">${escapeHtml(u.username)}</div>
-              <div class="data-card-head-sub">${escapeHtml(u.email)} · ${u.country_code}</div>
+              <div class="data-card-head-sub">${escapeHtml(u.email)} · ${u.country_code} · ${presenceLabel(u)}</div>
             </div>
             <span class="mono" style="font-size:15px;color:var(--teal);" id="bal-display-${u.id}">$${(u.balance_usd_cents/100).toFixed(2)}</span>
           </div>
@@ -831,11 +852,24 @@
 
       const supportSelect = document.getElementById("new-support-user");
       const chatSelect = document.getElementById("chat-open-user");
-      const optionsHtml = allUsersCache.map(u =>
-        `<option value="${u.id}">${escapeHtml(u.username)} (${escapeHtml(u.email)})</option>`
-      ).join("");
+      const previousChatSelection = chatSelect.value;
+      const optionsHtml = allUsersCache.map(u => {
+        const dot = u.is_online ? "🟢 " : "";
+        const unread = u.unread_count > 0 ? ` — ${u.unread_count} new` : "";
+        return `<option value="${u.id}">${dot}${escapeHtml(u.username)} (${escapeHtml(u.email)})${unread}</option>`;
+      }).join("");
       supportSelect.innerHTML = '<option value="">Select a user to flag as support…</option>' + optionsHtml;
       chatSelect.innerHTML = '<option value="">Select a user…</option>' + optionsHtml;
+      if (previousChatSelection) chatSelect.value = previousChatSelection;
+
+      const totalUnread = allUsersCache.reduce((sum, u) => sum + (u.unread_count || 0), 0);
+      const badge = document.getElementById("messages-tab-badge");
+      if (totalUnread > 0) {
+        badge.textContent = totalUnread > 9 ? "9+" : String(totalUnread);
+        badge.style.display = "inline-flex";
+      } else {
+        badge.style.display = "none";
+      }
 
       await loadSupportAccounts();
     } catch (e) { console.error("loadMessagesTab", e); }
@@ -935,9 +969,10 @@
     try {
       const data = await adminApi(`/api/admin/messages/${openAdminChatUserId}`);
       const meta = document.getElementById("admin-chat-meta");
-      meta.textContent = data.assigned_support
-        ? `Chatting with ${data.target.username} — currently assigned to support account "${data.assigned_support.support_username}"`
-        : `Chatting with ${data.target.username} — no support account currently assigned`;
+      const assignmentText = data.assigned_support
+        ? `currently assigned to support account "${escapeHtml(data.assigned_support.support_username)}"`
+        : `no support account currently assigned`;
+      meta.innerHTML = `Chatting with ${escapeHtml(data.target.username)} — ${presenceLabel(data.target)} — ${assignmentText}`;
 
       const thread = document.getElementById("admin-chat-thread");
       if (!data.messages.length) {
@@ -946,14 +981,53 @@
       }
       thread.innerHTML = data.messages.map(m => {
         const mine = m.sender === "support";
+        const editedTag = m.edited_at ? `<span class="muted" style="font-style:italic;"> (edited)</span>` : "";
+        const controls = mine ? `
+            <div style="display:flex;gap:8px;margin-top:3px;justify-content:flex-end;">
+              <button onclick="editAdminChatMessage(${m.id}, ${JSON.stringify(m.body)})"
+                style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:11px;padding:0;">Edit</button>
+              <button onclick="deleteAdminChatMessage(${m.id})"
+                style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:11px;padding:0;">Delete</button>
+            </div>` : "";
         return `
           <div style="align-self:${mine ? 'flex-end' : 'flex-start'};max-width:80%;">
             <div style="background:${mine ? 'var(--accent)' : 'var(--surface)'};color:${mine ? '#08110d' : 'var(--paper)'};border:1px solid var(--line);padding:8px 11px;border-radius:12px;font-size:13px;white-space:pre-wrap;">${escapeHtml(m.body)}</div>
-            <div class="muted" style="font-size:10.5px;margin-top:2px;text-align:${mine ? 'right' : 'left'};">${new Date(m.created_at).toLocaleString()}</div>
+            <div class="muted" style="font-size:10.5px;margin-top:2px;text-align:${mine ? 'right' : 'left'};">${new Date(m.created_at).toLocaleString()}${editedTag}</div>
+            ${controls}
           </div>`;
       }).join("");
       thread.scrollTop = thread.scrollHeight;
     } catch (e) { console.error("loadAdminChatThread", e); }
+  }
+
+  async function editAdminChatMessage(messageId, currentBody) {
+    const updated = prompt("Edit message:", currentBody);
+    if (updated === null) return;
+    const trimmed = updated.trim();
+    if (!trimmed) { Trovee.showToast("Message can't be empty.", "error"); return; }
+    try {
+      const res = await fetch(`/api/admin/messages/${openAdminChatUserId}/${messageId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ message: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      loadAdminChatThread();
+    } catch (e) { Trovee.showToast(e.message || "Failed.", "error"); }
+  }
+
+  async function deleteAdminChatMessage(messageId) {
+    if (!confirm("Delete this message? This can't be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/messages/${openAdminChatUserId}/${messageId}`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      loadAdminChatThread();
+    } catch (e) { Trovee.showToast(e.message || "Failed.", "error"); }
   }
 
   async function sendAdminChat() {
