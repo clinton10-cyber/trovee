@@ -3,13 +3,22 @@
 Migration: update existing company logo URLs to real, verified logos.
 17 companies use Simple Icons (cdn.simpleicons.org) - actual official brand
 SVG marks, verified to exist via direct HTTP check against the project's
-repo before being added here. The remaining 8 companies (Microsoft, Amazon,
-Berkshire Hathaway, Disney, Johnson & Johnson, Pfizer, UnitedHealth, Taiwan
-Semiconductor) are not in that library, so they use Google's favicon
-service as a fallback - still a real logo/icon, just smaller resolution.
+repo before being added here. The remaining companies not covered by that
+library (Microsoft, Amazon, Berkshire Hathaway, Disney, Johnson & Johnson,
+Pfizer, UnitedHealth, Taiwan Semiconductor, xAI, Neuralink) use Google's
+favicon service as a fallback - still a real logo/icon, just smaller
+resolution.
 
 Clearbit's Logo API was permanently shut down Dec 8, 2025, hence this
 migration away from it.
+
+IMPORTANT - this script only UPDATEs logo_url on companies that already
+exist in your database. It does NOT insert brand-new companies (e.g.
+SpaceX, Samsung, Toyota, etc. added later) or their investment plans -
+those require a server restart, since db.py's seed step now upserts
+companies AND creates their plans on boot. If you added new companies
+to db.py, restart your server instead of (or in addition to) running
+this script.
 
 Safe to run on a live database - only UPDATEs the logo_url column on
 existing share_companies rows, matched by company name. No data is
@@ -53,6 +62,26 @@ COMPANY_LOGOS = {
     "Advanced Micro Devices": "https://cdn.simpleicons.org/amd",
     "Broadcom Inc": "https://cdn.simpleicons.org/broadcom",
     "AbbVie Inc": "https://cdn.simpleicons.org/abbvie",
+    "SpaceX Inc": "https://cdn.simpleicons.org/spacex",
+    "X Corp": "https://cdn.simpleicons.org/x",
+    "The Boring Company": "https://cdn.simpleicons.org/theboringcompany",
+    "xAI Corp": "https://www.google.com/s2/favicons?domain=x.ai&sz=128",
+    "Neuralink Corp": "https://www.google.com/s2/favicons?domain=neuralink.com&sz=128",
+    "Samsung Electronics": "https://cdn.simpleicons.org/samsung",
+    "Toyota Motor Corporation": "https://cdn.simpleicons.org/toyota",
+    "Sony Group Corporation": "https://cdn.simpleicons.org/sony",
+    "LG Electronics": "https://cdn.simpleicons.org/lg",
+    "Adidas AG": "https://cdn.simpleicons.org/adidas",
+    "Uber Technologies": "https://cdn.simpleicons.org/uber",
+    "Airbnb Inc": "https://cdn.simpleicons.org/airbnb",
+    "PayPal Holdings": "https://cdn.simpleicons.org/paypal",
+    "Starbucks Corporation": "https://cdn.simpleicons.org/starbucks",
+    "Honda Motor Co": "https://cdn.simpleicons.org/honda",
+    "BMW Group": "https://cdn.simpleicons.org/bmw",
+    "Volkswagen AG": "https://cdn.simpleicons.org/volkswagen",
+    "Boeing Company": "https://cdn.simpleicons.org/boeing",
+    "Spotify Technology": "https://cdn.simpleicons.org/spotify",
+    "Siemens AG": "https://cdn.simpleicons.org/siemens",
 }
 
 # USDT wallet display-name rename (TRC20 -> Tron), address unchanged.
