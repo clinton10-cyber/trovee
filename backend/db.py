@@ -218,20 +218,20 @@ def _seed_defaults(conn):
         if USE_POSTGRES:
             cur.execute(
                 "INSERT INTO share_companies (name, ticker, description, logo_url, sector) "
-                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (name) DO NOTHING RETURNING id",
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (name) DO UPDATE SET "
+                "ticker = EXCLUDED.ticker, description = EXCLUDED.description, "
+                "logo_url = EXCLUDED.logo_url, sector = EXCLUDED.sector "
+                "RETURNING id",
                 (name, ticker, desc, logo, sector)
             )
             row = cur.fetchone()
-            if row:
-                company_ids[name] = row[0]
-            else:
-                cur.execute("SELECT id FROM share_companies WHERE name = %s", (name,))
-                row = cur.fetchone()
-                company_ids[name] = row[0] if row else None
+            company_ids[name] = row[0] if row else None
         else:
             cur.execute(
-                "INSERT OR IGNORE INTO share_companies (name, ticker, description, logo_url, sector) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO share_companies (name, ticker, description, logo_url, sector) "
+                "VALUES (?, ?, ?, ?, ?) ON CONFLICT (name) DO UPDATE SET "
+                "ticker = excluded.ticker, description = excluded.description, "
+                "logo_url = excluded.logo_url, sector = excluded.sector",
                 (name, ticker, desc, logo, sector)
             )
             cur.execute("SELECT id FROM share_companies WHERE name = ?", (name,))
