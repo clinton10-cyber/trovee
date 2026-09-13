@@ -907,12 +907,14 @@ def api_admin_delete_user(user_id):
         if not user:
             db.close()
             return jsonify({"error": "User not found."}), 404
-        db.execute("DELETE FROM chat_messages WHERE target_user_id = ?", (user_id,))
+        db.execute("DELETE FROM chat_messages WHERE target_user_id = ? OR support_user_id = ?", (user_id, user_id))
+        db.execute("DELETE FROM support_assignments WHERE support_user_id = ? OR target_user_id = ?", (user_id, user_id))
         db.execute("DELETE FROM share_purchases WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM withdrawals WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM deposits WHERE user_id = ?", (user_id,))
-        db.execute("DELETE FROM gift_cards WHERE user_id = ?", (user_id,))
-        db.execute("DELETE FROM support_assignments WHERE support_user_id = ? OR target_user_id = ?", (user_id, user_id))
+        db.execute("DELETE FROM trades WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM support_messages WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         db.commit()
         db.close()
@@ -951,7 +953,7 @@ def api_admin_database_stats():
     db = get_db()
     try:
         stats = {}
-        tables = ["users", "share_companies", "share_plans", "share_purchases", "deposits", "withdrawals", "gift_cards", "chat_messages", "wallet_configs"]
+        tables = ["users", "share_companies", "share_plans", "share_purchases", "deposits", "withdrawals", "trades", "sessions", "chat_messages", "wallet_configs"]
         for table in tables:
             try:
                 count = db.execute(f"SELECT COUNT(*) as cnt FROM {table}").fetchone()
@@ -962,7 +964,7 @@ def api_admin_database_stats():
         if not USE_POSTGRES and os.path.exists(DB_PATH):
             size_bytes = os.path.getsize(DB_PATH)
             storage_info["database_size_mb"] = round(size_bytes / (1024 * 1024), 2)
-        user_stats = db.execute("SELECT COUNT(*) as total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active FROM users").fetchone()
+        user_stats = db.execute("SELECT COUNT(*) as total, SUM(CASE WHEN trust_level > 0 THEN 1 ELSE 0 END) as active FROM users").fetchone()
         db.close()
         return jsonify({"success": True, "table_stats": stats, "storage": storage_info, "users": dict(user_stats) if isinstance(user_stats, dict) else {"total": user_stats[0], "active": user_stats[1]}}), 200
     except Exception as e:
