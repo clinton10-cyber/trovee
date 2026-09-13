@@ -225,6 +225,7 @@
     <div class="admin-tab" data-tab="deposits">Deposits</div>
     <div class="admin-tab" data-tab="users">Users</div>
     <div class="admin-tab" data-tab="shares">Shares</div>
+    <div class="admin-tab" data-tab="database">Database</div>
     <div class="admin-tab" data-tab="settings">Settings</div>
     <div class="admin-tab" data-tab="currencies">Currencies</div>
   </div>
@@ -245,6 +246,30 @@
   <div class="admin-panel" id="panel-users">
     <p class="section-desc">Manage user balances and account status.</p>
     <div id="users-list"></div>
+  </div>
+
+  <!-- DATABASE -->
+  <div class="admin-panel" id="panel-database">
+    <p class="section-desc">Database capacity and statistics.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+      <button class="btn-admin" onclick="loadDatabaseStats()" style="padding:10px;">Load Stats</button>
+      <button class="btn-admin" onclick="loadDatabaseCapacity()" style="padding:10px;">Check Capacity</button>
+    </div>
+    <div id="database-stats-list"></div>
+    <div id="database-capacity-list" style="margin-top:20px;"></div>
+
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--line);">
+      <p class="section-desc">Multi-database failover (only active if TROVEE_DATABASE_URL_1-4 are configured).</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <button class="btn-admin" onclick="loadMultiDbStatus()" style="padding:10px;">Load DB Status</button>
+        <button class="btn-admin" onclick="loadMultiDbCapacity()" style="padding:10px;">Capacity Per DB</button>
+      </div>
+      <button class="btn-sm btn-sm-red" onclick="triggerFailover()" style="margin-bottom:16px;">
+        <i class="fas fa-exchange-alt"></i> Trigger Manual Failover
+      </button>
+      <div id="multi-db-status-list"></div>
+      <div id="multi-db-capacity-list" style="margin-top:20px;"></div>
+    </div>
   </div>
 
   <!-- MESSAGES -->
@@ -594,6 +619,7 @@
       tab.classList.add("active");
       document.getElementById(`panel-${tab.dataset.tab}`).classList.add("active");
       if (tab.dataset.tab === "currencies") loadCurrencies();
+      if (tab.dataset.tab === "database") { loadDatabaseStats(); loadDatabaseCapacity(); loadMultiDbStatus(); loadMultiDbCapacity(); }
     });
   });
 
@@ -771,15 +797,35 @@
               <button class="btn-admin" onclick="updateBalance(${u.id})" style="padding:8px 14px;">Update</button>
             </div>
             <div id="bal-msg-${u.id}" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
-            <div style="margin-top:8px;">
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn-sm ${u.trust_level === 0 ? 'btn-sm-blue' : 'btn-sm-red'}" onclick="toggleUser(${u.id}, ${u.trust_level === 0 ? 1 : 0})">
                 ${u.trust_level === 0 ? '<i class="fas fa-check"></i> Activate' : '<i class="fas fa-times"></i> Deactivate'}
+              </button>
+              <button class="btn-sm btn-sm-red" onclick="deleteUser(${u.id}, '${u.email}')">
+                <i class="fas fa-trash"></i> Delete
               </button>
             </div>
           </div>
         </div>
       `).join("");
     } catch(e) { console.error("loadUsers", e); }
+  }
+
+  async function deleteUser(userId, email) {
+    if (!confirm(`Are you sure you want to delete user ${email}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: {"X-Admin-Token": adminToken}
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg("User deleted successfully", "success", 3000);
+        loadUsers();
+      } else {
+        showMsg(data.error || "Failed to delete user", "error");
+      }
+    } catch(e) { console.error("deleteUser", e); showMsg("Error deleting user", "error"); }
   }
 
   async function updateBalance(userId) {
@@ -828,6 +874,163 @@
     } catch(e) {
       Trovee.showToast("Failed to toggle user status.", "error");
     }
+  }
+
+  // ─── DATABASE STATS ──
+  async function loadDatabaseStats() {
+    try {
+      const res = await fetch("/api/admin/database/stats", {
+        headers: {"X-Admin-Token": adminToken}
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const el = document.getElementById("database-stats-list");
+      const stats = data.table_stats || {};
+      el.innerHTML = `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-title">Table Statistics</div>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Database</span>
+            <span class="data-card-value">${data.storage.is_sqlite ? 'SQLite' : 'PostgreSQL'}</span>
+          </div>
+          ${data.storage.database_size_mb ? `<div class="data-card-row">
+            <span class="data-card-label">Size</span>
+            <span class="data-card-value">${data.storage.database_size_mb} MB</span>
+          </div>` : ''}
+          <div class="data-card-row">
+            <span class="data-card-label">Users</span>
+            <span class="data-card-value">${stats.users || 0}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Share Purchases</span>
+            <span class="data-card-value">${stats.share_purchases || 0}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Deposits</span>
+            <span class="data-card-value">${stats.deposits || 0}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Withdrawals</span>
+            <span class="data-card-value">${stats.withdrawals || 0}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Chat Messages</span>
+            <span class="data-card-value">${stats.chat_messages || 0}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Gift Cards</span>
+            <span class="data-card-value">${stats.gift_cards || 0}</span>
+          </div>
+          <div class="data-card-row">
+            <span class="data-card-label">Wallet Configs</span>
+            <span class="data-card-value">${stats.wallet_configs || 0}</span>
+          </div>
+        </div>
+      `;
+    } catch(e) { console.error("loadDatabaseStats", e); document.getElementById("database-stats-list").innerHTML = `<p class="muted small">Error loading stats: ${e.message}</p>`; }
+  }
+
+  async function loadDatabaseCapacity() {
+    try {
+      const res = await fetch("/api/admin/database/capacity", {
+        headers: {"X-Admin-Token": adminToken}
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const el = document.getElementById("database-capacity-list");
+      const capacity = data.capacity || {};
+      const statusColor = (status) => status === 'CRITICAL' ? '#ff6b5b' : status === 'WARNING' ? '#f59e0b' : '#10b981';
+      el.innerHTML = `
+        <div class="data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-title">Capacity Status: <span style="color:${statusColor(data.overall_status)}">${data.overall_status}</span></div>
+          </div>
+          ${Object.entries(capacity).map(([key, val]) => `
+            <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:13px;font-weight:600;text-transform:capitalize;">${key}</span>
+                <span style="color:${statusColor(val.status)};font-size:12px;font-weight:600;">${val.status}</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--slate-soft);margin-bottom:4px;">
+                <span>${val.current} / ${val.critical}</span>
+              </div>
+              <div style="background:var(--ink-soft);border-radius:4px;height:8px;overflow:hidden;">
+                <div style="background:${statusColor(val.status)};height:100%;width:${Math.min((val.current/val.critical)*100, 100)}%;"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } catch(e) { console.error("loadDatabaseCapacity", e); document.getElementById("database-capacity-list").innerHTML = `<p class="muted small">Error loading capacity: ${e.message}</p>`; }
+  }
+
+  // ─── MULTI-DATABASE (FAILOVER) ──
+  async function loadMultiDbStatus() {
+    const el = document.getElementById("multi-db-status-list");
+    try {
+      const res = await fetch("/api/admin/databases/status", { headers: {"X-Admin-Token": adminToken} });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const d = data.databases;
+      el.innerHTML = `
+        <div class="data-card">
+          <div class="data-card-head"><div class="data-card-head-title">Active Database: DB ${d.active_db}</div></div>
+          <div class="data-card-row"><span class="data-card-label">Total Databases</span><span class="data-card-value">${d.total_dbs}</span></div>
+          ${Object.entries(d.health || {}).map(([idx, h]) => `
+            <div class="data-card-row">
+              <span class="data-card-label">DB ${idx} Health</span>
+              <span class="data-card-value" style="color:${h === 'healthy' ? '#10b981' : '#ff6b5b'}">${h}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } catch(e) {
+      el.innerHTML = `<p class="muted small">Multi-database not configured (set TROVEE_DATABASE_URL_1-4): ${e.message}</p>`;
+    }
+  }
+
+  async function loadMultiDbCapacity() {
+    const el = document.getElementById("multi-db-capacity-list");
+    try {
+      const res = await fetch("/api/admin/databases/capacity-by-db", { headers: {"X-Admin-Token": adminToken} });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const statusColor = (status) => status === 'CRITICAL' ? '#ff6b5b' : status === 'WARNING' ? '#f59e0b' : '#10b981';
+      el.innerHTML = Object.entries(data.capacity || {}).map(([dbName, tables]) => `
+        <div class="data-card" style="margin-bottom:14px;">
+          <div class="data-card-head"><div class="data-card-head-title">${dbName}</div></div>
+          ${Object.entries(tables).map(([table, val]) => val.error ? '' : `
+            <div style="margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                <span>${table}</span>
+                <span style="color:${statusColor(val.status)};font-weight:600;">${val.count}/${val.limit}</span>
+              </div>
+              <div style="background:var(--ink-soft);border-radius:4px;height:6px;overflow:hidden;">
+                <div style="background:${statusColor(val.status)};height:100%;width:${Math.min(val.used_percent, 100)}%;"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+    } catch(e) {
+      el.innerHTML = `<p class="muted small">Multi-database not configured: ${e.message}</p>`;
+    }
+  }
+
+  async function triggerFailover() {
+    if (!confirm("Trigger manual failover to the next database? New writes will start going to the next DB.")) return;
+    try {
+      const res = await fetch("/api/admin/databases/failover", { method: "POST", headers: {"X-Admin-Token": adminToken} });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(data.message, "success", 4000);
+        loadMultiDbStatus();
+      } else {
+        showMsg(data.error || "Failover failed", "error");
+      }
+    } catch(e) { showMsg("Error triggering failover: " + e.message, "error"); }
   }
 
   // ─── MESSAGES / SUPPORT ACCOUNTS ──

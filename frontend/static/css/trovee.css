@@ -1838,6 +1838,49 @@ button, input, select, textarea { font-family: var(--font-body); }
 .asset-opt-price { font-family: var(--font-mono); font-size: 14px; }
 
 /* =========================================================================
+   IMAGE DISPLAY ENHANCEMENTS
+   ========================================================================= */
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  image-rendering: crisp-edges;
+  -webkit-user-drag: none;
+}
+
+.logo-container,
+[class*="logo"],
+[class*="icon"],
+[class*="image"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.company-logo img,
+.icon-img,
+.brand-mark {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.gift-card-image,
+.deposit-image,
+[data-image] {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+/* =========================================================================
    RESPONSIVE OVERRIDES
    ========================================================================= */
 
