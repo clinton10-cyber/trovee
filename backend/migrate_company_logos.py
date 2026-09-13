@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """
-Migration: update existing company logo URLs to Google's favicon service
-(Clearbit's Logo API was shut down Dec 8, 2025). Safe to run on a live
-database - only UPDATEs the logo_url column on existing share_companies
-rows, matched by company name. No data is deleted, no tables are dropped,
-no other columns are touched.
+Migration: update existing company logo URLs to real, verified logos.
+17 companies use Simple Icons (cdn.simpleicons.org) - actual official brand
+SVG marks, verified to exist via direct HTTP check against the project's
+repo before being added here. The remaining 8 companies (Microsoft, Amazon,
+Berkshire Hathaway, Disney, Johnson & Johnson, Pfizer, UnitedHealth, Taiwan
+Semiconductor) are not in that library, so they use Google's favicon
+service as a fallback - still a real logo/icon, just smaller resolution.
+
+Clearbit's Logo API was permanently shut down Dec 8, 2025, hence this
+migration away from it.
+
+Safe to run on a live database - only UPDATEs the logo_url column on
+existing share_companies rows, matched by company name. No data is
+deleted, no tables are dropped, no other columns are touched.
 
 Usage:
     cd backend
@@ -19,31 +28,31 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from db import get_db
 
 COMPANY_LOGOS = {
-    "Tesla Inc": "https://www.google.com/s2/favicons?domain=tesla.com&sz=128",
+    "Tesla Inc": "https://cdn.simpleicons.org/tesla",
     "Microsoft Corporation": "https://www.google.com/s2/favicons?domain=microsoft.com&sz=128",
-    "Apple Inc": "https://www.google.com/s2/favicons?domain=apple.com&sz=128",
-    "Alphabet Inc": "https://www.google.com/s2/favicons?domain=google.com&sz=128",
+    "Apple Inc": "https://cdn.simpleicons.org/apple",
+    "Alphabet Inc": "https://cdn.simpleicons.org/google",
     "Amazon.com Inc": "https://www.google.com/s2/favicons?domain=amazon.com&sz=128",
-    "NVIDIA Corporation": "https://www.google.com/s2/favicons?domain=nvidia.com&sz=128",
-    "Meta Platforms": "https://www.google.com/s2/favicons?domain=meta.com&sz=128",
+    "NVIDIA Corporation": "https://cdn.simpleicons.org/nvidia",
+    "Meta Platforms": "https://cdn.simpleicons.org/meta",
     "Berkshire Hathaway": "https://www.google.com/s2/favicons?domain=berkshirehathaway.com&sz=128",
-    "JPMorgan Chase": "https://www.google.com/s2/favicons?domain=jpmorganchase.com&sz=128",
-    "Visa Inc": "https://www.google.com/s2/favicons?domain=visa.com&sz=128",
-    "Netflix Inc": "https://www.google.com/s2/favicons?domain=netflix.com&sz=128",
+    "JPMorgan Chase": "https://cdn.simpleicons.org/chase",
+    "Visa Inc": "https://cdn.simpleicons.org/visa",
+    "Netflix Inc": "https://cdn.simpleicons.org/netflix",
     "Disney Company": "https://www.google.com/s2/favicons?domain=disney.com&sz=128",
-    "Intel Corporation": "https://www.google.com/s2/favicons?domain=intel.com&sz=128",
-    "Mastercard Inc": "https://www.google.com/s2/favicons?domain=mastercard.com&sz=128",
+    "Intel Corporation": "https://cdn.simpleicons.org/intel",
+    "Mastercard Inc": "https://cdn.simpleicons.org/mastercard",
     "Johnson & Johnson": "https://www.google.com/s2/favicons?domain=jnj.com&sz=128",
-    "Coca-Cola Company": "https://www.google.com/s2/favicons?domain=coca-cola.com&sz=128",
+    "Coca-Cola Company": "https://cdn.simpleicons.org/cocacola",
     "Pfizer Inc": "https://www.google.com/s2/favicons?domain=pfizer.com&sz=128",
-    "Nike Inc": "https://www.google.com/s2/favicons?domain=nike.com&sz=128",
+    "Nike Inc": "https://cdn.simpleicons.org/nike",
     "UnitedHealth Group": "https://www.google.com/s2/favicons?domain=unitedhealthgroup.com&sz=128",
-    "McDonald Corporation": "https://www.google.com/s2/favicons?domain=mcdonalds.com&sz=128",
-    "Qualcomm Inc": "https://www.google.com/s2/favicons?domain=qualcomm.com&sz=128",
+    "McDonald Corporation": "https://cdn.simpleicons.org/mcdonalds",
+    "Qualcomm Inc": "https://cdn.simpleicons.org/qualcomm",
     "Taiwan Semiconductor": "https://www.google.com/s2/favicons?domain=tsmc.com&sz=128",
-    "Advanced Micro Devices": "https://www.google.com/s2/favicons?domain=amd.com&sz=128",
-    "Broadcom Inc": "https://www.google.com/s2/favicons?domain=broadcom.com&sz=128",
-    "AbbVie Inc": "https://www.google.com/s2/favicons?domain=abbvie.com&sz=128",
+    "Advanced Micro Devices": "https://cdn.simpleicons.org/amd",
+    "Broadcom Inc": "https://cdn.simpleicons.org/broadcom",
+    "AbbVie Inc": "https://cdn.simpleicons.org/abbvie",
 }
 
 # USDT wallet display-name rename (TRC20 -> Tron), address unchanged.
