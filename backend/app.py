@@ -9,7 +9,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, render_template, g, send_from_directory, redirect
 from werkzeug.utils import secure_filename
 
-from backend.db import get_db, init_db
+from backend.db import get_db, init_db, USE_POSTGRES, DB_PATH
 from backend.security import hash_password, verify_password
 from backend.email_otp import (
     generate_otp, hash_otp, verify_otp_code, otp_expiry_timestamp,
@@ -922,6 +922,29 @@ def api_admin_delete_user(user_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/admin/users/<int:user_id>/toggle", methods=["POST"])
+@admin_required
+def api_admin_toggle_user(user_id):
+    db = get_db()
+    try:
+        user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user:
+            db.close()
+            return jsonify({"error": "User not found."}), 404
+
+        body = request.get_json(silent=True) or {}
+        active = bool(body.get("active", True))
+        new_trust_level = 1 if active else 0
+
+        db.execute("UPDATE users SET trust_level = ? WHERE id = ?", (new_trust_level, user_id))
+        db.commit()
+        db.close()
+        return jsonify({"success": True, "user_id": user_id, "active": active, "trust_level": new_trust_level}), 200
+    except Exception as e:
+        db.close()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/admin/database/stats", methods=["GET"])
 @admin_required
 def api_admin_database_stats():
@@ -968,120 +991,6 @@ def api_admin_database_capacity():
             status = "CRITICAL" if current >= config["critical"] else "WARNING" if current >= config["warning"] else "HEALTHY"
             capacity_status[key] = {"current": current, "status": status, "warning": config["warning"], "critical": config["critical"]}
         return jsonify({"success": True, "capacity": capacity_status, "overall_status": "CRITICAL" if any(v["status"] == "CRITICAL" for v in capacity_status.values()) else "WARNING" if any(v["status"] == "WARNING" for v in capacity_status.values()) else "HEALTHY"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ─── Multi-Database (Failover) Admin Routes ──
-# Requires TROVEE_DATABASE_URL_1..4 env vars set and backend/db_multi.py present.
-
-@app.route("/api/admin/databases/status", methods=["GET"])
-@admin_required
-def api_admin_databases_status():
-    try:
-        from db_multi import MultiDatabaseConnection
-        mdb = MultiDatabaseConnection()
-        status = mdb.get_status()
-        return jsonify({"success": True, "databases": status, "total_shards": status["total_dbs"]}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/admin/databases/capacity-by-db", methods=["GET"])
-@admin_required
-def api_admin_databases_capacity():
-    try:
-        from db_multi import MultiDatabaseConnection, DB_CAPACITY_LIMITS
-        mdb = MultiDatabaseConnection()
-        capacity_info = {}
-        for db_idx, conn in mdb.router.connections.items():
-            cur = conn.cursor()
-            db_capacity = {}
-            for table, limit in DB_CAPACITY_LIMITS.items():
-                try:
-                    cur.execute(f"SELECT COUNT(*) as cnt FROM {table}")
-                    row = cur.fetchone()
-                    count = row["cnt"] if isinstance(row, dict) else row[0]
-                    db_capacity[table] = {
-                        "count": count, "limit": limit,
-                        "used_percent": round((count / limit) * 100, 1),
-                        "status": "CRITICAL" if count >= limit else "WARNING" if count >= (limit * 0.8) else "HEALTHY",
-                    }
-                except Exception:
-                    db_capacity[table] = {"error": "unable to query"}
-            capacity_info[f"database_{db_idx}"] = db_capacity
-        return jsonify({"success": True, "capacity": capacity_info}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/admin/databases/failover", methods=["POST"])
-@admin_required
-def api_admin_databases_failover():
-    try:
-        from db_multi import MultiDatabaseConnection
-        mdb = MultiDatabaseConnection()
-        old_index = mdb.router.active_index
-        mdb.router.failover()
-        new_index = mdb.router.active_index
-        return jsonify({"success": True, "message": f"Failover executed: DB {old_index} -> DB {new_index}", "previous_db": old_index, "active_db": new_index}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/admin/databases/sync", methods=["POST"])
-@admin_required
-def api_admin_databases_sync():
-    try:
-        from db_multi import MultiDatabaseConnection
-        mdb = MultiDatabaseConnection()
-        tables_to_sync = (request.get_json(silent=True) or {}).get("tables", ["share_companies", "share_plans"])
-        sync_results = {}
-        for table in tables_to_sync:
-            try:
-                ok = mdb.sync_databases(table, f"SELECT * FROM {table}")
-                sync_results[table] = "synced" if ok else "failed"
-            except Exception as e:
-                sync_results[table] = f"error: {str(e)}"
-        return jsonify({"success": True, "sync_results": sync_results}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/admin/databases/shard-info", methods=["GET"])
-@admin_required
-def api_admin_databases_shard_info():
-    try:
-        from db_sharding import get_sharded_db
-        sdb = get_sharded_db()
-        return jsonify({"success": True, "shards": sdb.get_shard_info(), "total_shards": len(sdb.connections)}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/admin/databases/user-shard/<int:user_id>", methods=["GET"])
-@admin_required
-def api_admin_databases_user_shard(user_id):
-    try:
-        from db_sharding import get_sharded_db
-        sdb = get_sharded_db()
-        shard_id = sdb.get_user_shard(user_id)
-        return jsonify({"success": True, "user_id": user_id, "shard_id": shard_id, "total_shards": len(sdb.connections)}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/admin/databases/read-all/<table>", methods=["GET"])
-@admin_required
-def api_admin_databases_read_all(table):
-    try:
-        from db_multi import MultiDatabaseConnection
-        allowed_tables = ["users", "share_companies", "share_plans", "deposits", "withdrawals"]
-        if table not in allowed_tables:
-            return jsonify({"error": "Invalid table"}), 400
-        mdb = MultiDatabaseConnection()
-        results = mdb.get_all_data(table, f"SELECT * FROM {table} LIMIT 1000")
-        return jsonify({"success": True, "table": table, "total_rows": len(results), "data": results}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

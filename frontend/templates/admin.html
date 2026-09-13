@@ -257,19 +257,6 @@
     </div>
     <div id="database-stats-list"></div>
     <div id="database-capacity-list" style="margin-top:20px;"></div>
-
-    <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--line);">
-      <p class="section-desc">Multi-database failover (only active if TROVEE_DATABASE_URL_1-4 are configured).</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-        <button class="btn-admin" onclick="loadMultiDbStatus()" style="padding:10px;">Load DB Status</button>
-        <button class="btn-admin" onclick="loadMultiDbCapacity()" style="padding:10px;">Capacity Per DB</button>
-      </div>
-      <button class="btn-sm btn-sm-red" onclick="triggerFailover()" style="margin-bottom:16px;">
-        <i class="fas fa-exchange-alt"></i> Trigger Manual Failover
-      </button>
-      <div id="multi-db-status-list"></div>
-      <div id="multi-db-capacity-list" style="margin-top:20px;"></div>
-    </div>
   </div>
 
   <!-- MESSAGES -->
@@ -619,7 +606,7 @@
       tab.classList.add("active");
       document.getElementById(`panel-${tab.dataset.tab}`).classList.add("active");
       if (tab.dataset.tab === "currencies") loadCurrencies();
-      if (tab.dataset.tab === "database") { loadDatabaseStats(); loadDatabaseCapacity(); loadMultiDbStatus(); loadMultiDbCapacity(); }
+      if (tab.dataset.tab === "database") { loadDatabaseStats(); loadDatabaseCapacity(); }
     });
   });
 
@@ -820,12 +807,12 @@
       });
       const data = await res.json();
       if (res.ok) {
-        showMsg("User deleted successfully", "success", 3000);
+        Trovee.showToast("User deleted successfully", "success");
         loadUsers();
       } else {
-        showMsg(data.error || "Failed to delete user", "error");
+        Trovee.showToast(data.error || "Failed to delete user", "error");
       }
-    } catch(e) { console.error("deleteUser", e); showMsg("Error deleting user", "error"); }
+    } catch(e) { console.error("deleteUser", e); Trovee.showToast("Error deleting user", "error"); }
   }
 
   async function updateBalance(userId) {
@@ -864,14 +851,17 @@
 
   async function toggleUser(userId, active) {
     try {
-      await fetch(`/api/admin/users/${userId}/toggle`, {
+      const res = await fetch(`/api/admin/users/${userId}/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
         body: JSON.stringify({ active: active === 1 }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Toggle failed");
       Trovee.showToast(`User ${active === 1 ? 'activated' : 'deactivated'}.`);
       loadUsers();
     } catch(e) {
+      console.error("toggleUser", e);
       Trovee.showToast("Failed to toggle user status.", "error");
     }
   }
@@ -964,73 +954,6 @@
         </div>
       `;
     } catch(e) { console.error("loadDatabaseCapacity", e); document.getElementById("database-capacity-list").innerHTML = `<p class="muted small">Error loading capacity: ${e.message}</p>`; }
-  }
-
-  // ─── MULTI-DATABASE (FAILOVER) ──
-  async function loadMultiDbStatus() {
-    const el = document.getElementById("multi-db-status-list");
-    try {
-      const res = await fetch("/api/admin/databases/status", { headers: {"X-Admin-Token": adminToken} });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      const d = data.databases;
-      el.innerHTML = `
-        <div class="data-card">
-          <div class="data-card-head"><div class="data-card-head-title">Active Database: DB ${d.active_db}</div></div>
-          <div class="data-card-row"><span class="data-card-label">Total Databases</span><span class="data-card-value">${d.total_dbs}</span></div>
-          ${Object.entries(d.health || {}).map(([idx, h]) => `
-            <div class="data-card-row">
-              <span class="data-card-label">DB ${idx} Health</span>
-              <span class="data-card-value" style="color:${h === 'healthy' ? '#10b981' : '#ff6b5b'}">${h}</span>
-            </div>
-          `).join('')}
-        </div>
-      `;
-    } catch(e) {
-      el.innerHTML = `<p class="muted small">Multi-database not configured (set TROVEE_DATABASE_URL_1-4): ${e.message}</p>`;
-    }
-  }
-
-  async function loadMultiDbCapacity() {
-    const el = document.getElementById("multi-db-capacity-list");
-    try {
-      const res = await fetch("/api/admin/databases/capacity-by-db", { headers: {"X-Admin-Token": adminToken} });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      const statusColor = (status) => status === 'CRITICAL' ? '#ff6b5b' : status === 'WARNING' ? '#f59e0b' : '#10b981';
-      el.innerHTML = Object.entries(data.capacity || {}).map(([dbName, tables]) => `
-        <div class="data-card" style="margin-bottom:14px;">
-          <div class="data-card-head"><div class="data-card-head-title">${dbName}</div></div>
-          ${Object.entries(tables).map(([table, val]) => val.error ? '' : `
-            <div style="margin-bottom:10px;">
-              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-                <span>${table}</span>
-                <span style="color:${statusColor(val.status)};font-weight:600;">${val.count}/${val.limit}</span>
-              </div>
-              <div style="background:var(--ink-soft);border-radius:4px;height:6px;overflow:hidden;">
-                <div style="background:${statusColor(val.status)};height:100%;width:${Math.min(val.used_percent, 100)}%;"></div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      `).join('');
-    } catch(e) {
-      el.innerHTML = `<p class="muted small">Multi-database not configured: ${e.message}</p>`;
-    }
-  }
-
-  async function triggerFailover() {
-    if (!confirm("Trigger manual failover to the next database? New writes will start going to the next DB.")) return;
-    try {
-      const res = await fetch("/api/admin/databases/failover", { method: "POST", headers: {"X-Admin-Token": adminToken} });
-      const data = await res.json();
-      if (res.ok) {
-        showMsg(data.message, "success", 4000);
-        loadMultiDbStatus();
-      } else {
-        showMsg(data.error || "Failover failed", "error");
-      }
-    } catch(e) { showMsg("Error triggering failover: " + e.message, "error"); }
   }
 
   // ─── MESSAGES / SUPPORT ACCOUNTS ──
