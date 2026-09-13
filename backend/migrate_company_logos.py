@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Migration: update existing company logo URLs to Clearbit CDN, in place.
-Safe to run on a live database - only UPDATEs the logo_url column on
-existing share_companies rows, matched by company name. No data is
-deleted, no tables are dropped, no other columns are touched.
+Migration: update existing company logo URLs to Google's favicon service
+(Clearbit's Logo API was shut down Dec 8, 2025). Safe to run on a live
+database - only UPDATEs the logo_url column on existing share_companies
+rows, matched by company name. No data is deleted, no tables are dropped,
+no other columns are touched.
 
 Usage:
     cd backend
@@ -15,34 +16,34 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from db import get_db, USE_POSTGRES
+from db import get_db
 
 COMPANY_LOGOS = {
-    "Tesla Inc": "https://logo.clearbit.com/tesla.com",
-    "Microsoft Corporation": "https://logo.clearbit.com/microsoft.com",
-    "Apple Inc": "https://logo.clearbit.com/apple.com",
-    "Alphabet Inc": "https://logo.clearbit.com/google.com",
-    "Amazon.com Inc": "https://logo.clearbit.com/amazon.com",
-    "NVIDIA Corporation": "https://logo.clearbit.com/nvidia.com",
-    "Meta Platforms": "https://logo.clearbit.com/meta.com",
-    "Berkshire Hathaway": "https://logo.clearbit.com/berkshirehathaway.com",
-    "JPMorgan Chase": "https://logo.clearbit.com/jpmorganchase.com",
-    "Visa Inc": "https://logo.clearbit.com/visa.com",
-    "Netflix Inc": "https://logo.clearbit.com/netflix.com",
-    "Disney Company": "https://logo.clearbit.com/disney.com",
-    "Intel Corporation": "https://logo.clearbit.com/intel.com",
-    "Mastercard Inc": "https://logo.clearbit.com/mastercard.com",
-    "Johnson & Johnson": "https://logo.clearbit.com/jnj.com",
-    "Coca-Cola Company": "https://logo.clearbit.com/coca-cola.com",
-    "Pfizer Inc": "https://logo.clearbit.com/pfizer.com",
-    "Nike Inc": "https://logo.clearbit.com/nike.com",
-    "UnitedHealth Group": "https://logo.clearbit.com/unitedhealthgroup.com",
-    "McDonald Corporation": "https://logo.clearbit.com/mcdonalds.com",
-    "Qualcomm Inc": "https://logo.clearbit.com/qualcomm.com",
-    "Taiwan Semiconductor": "https://logo.clearbit.com/tsmc.com",
-    "Advanced Micro Devices": "https://logo.clearbit.com/amd.com",
-    "Broadcom Inc": "https://logo.clearbit.com/broadcom.com",
-    "AbbVie Inc": "https://logo.clearbit.com/abbvie.com",
+    "Tesla Inc": "https://www.google.com/s2/favicons?domain=tesla.com&sz=128",
+    "Microsoft Corporation": "https://www.google.com/s2/favicons?domain=microsoft.com&sz=128",
+    "Apple Inc": "https://www.google.com/s2/favicons?domain=apple.com&sz=128",
+    "Alphabet Inc": "https://www.google.com/s2/favicons?domain=google.com&sz=128",
+    "Amazon.com Inc": "https://www.google.com/s2/favicons?domain=amazon.com&sz=128",
+    "NVIDIA Corporation": "https://www.google.com/s2/favicons?domain=nvidia.com&sz=128",
+    "Meta Platforms": "https://www.google.com/s2/favicons?domain=meta.com&sz=128",
+    "Berkshire Hathaway": "https://www.google.com/s2/favicons?domain=berkshirehathaway.com&sz=128",
+    "JPMorgan Chase": "https://www.google.com/s2/favicons?domain=jpmorganchase.com&sz=128",
+    "Visa Inc": "https://www.google.com/s2/favicons?domain=visa.com&sz=128",
+    "Netflix Inc": "https://www.google.com/s2/favicons?domain=netflix.com&sz=128",
+    "Disney Company": "https://www.google.com/s2/favicons?domain=disney.com&sz=128",
+    "Intel Corporation": "https://www.google.com/s2/favicons?domain=intel.com&sz=128",
+    "Mastercard Inc": "https://www.google.com/s2/favicons?domain=mastercard.com&sz=128",
+    "Johnson & Johnson": "https://www.google.com/s2/favicons?domain=jnj.com&sz=128",
+    "Coca-Cola Company": "https://www.google.com/s2/favicons?domain=coca-cola.com&sz=128",
+    "Pfizer Inc": "https://www.google.com/s2/favicons?domain=pfizer.com&sz=128",
+    "Nike Inc": "https://www.google.com/s2/favicons?domain=nike.com&sz=128",
+    "UnitedHealth Group": "https://www.google.com/s2/favicons?domain=unitedhealthgroup.com&sz=128",
+    "McDonald Corporation": "https://www.google.com/s2/favicons?domain=mcdonalds.com&sz=128",
+    "Qualcomm Inc": "https://www.google.com/s2/favicons?domain=qualcomm.com&sz=128",
+    "Taiwan Semiconductor": "https://www.google.com/s2/favicons?domain=tsmc.com&sz=128",
+    "Advanced Micro Devices": "https://www.google.com/s2/favicons?domain=amd.com&sz=128",
+    "Broadcom Inc": "https://www.google.com/s2/favicons?domain=broadcom.com&sz=128",
+    "AbbVie Inc": "https://www.google.com/s2/favicons?domain=abbvie.com&sz=128",
 }
 
 # USDT wallet display-name rename (TRC20 -> Tron), address unchanged.
