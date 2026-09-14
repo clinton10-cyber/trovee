@@ -888,176 +888,25 @@
   }
 
   // ─── DOWNLOAD PDF ──────────────────────────────────────────
-  function downloadPDF(id) {
-    const withdrawal = allWithdrawals.find(w => w.id === id);
-    if (!withdrawal) return;
-
-    const rate = methodsData?.exchange_rate || 1;
-    const amountLocal = (withdrawal.amount_usd_cents / 100) * rate;
-    const txId = `TRV-WD-${String(id).padStart(6, '0')}`;
-    const dateStr = new Date(withdrawal.requested_at).toLocaleString();
-    const methodName = METHOD_META[withdrawal.method]?.name || withdrawal.method;
-    const symbol = userInfo?.currency_symbol || '$';
-    const isNegative = true;
-
-    const win = window.open('', '_blank', 'width=600,height=800');
-    if (!win) {
-      Trovee.showToast('Please allow popups to download the receipt.', 'error');
-      return;
+  async function downloadPDF(id) {
+    const token = localStorage.getItem('trovee_token');
+    try {
+      const res = await fetch(`/api/withdrawals/${id}/receipt`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) { Trovee.showToast('Receipt download failed.', 'error'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Trovee-Receipt-TRV-WD-${String(id).padStart(6, '0')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      Trovee.showToast('Receipt downloaded!');
+    } catch(e) {
+      console.error('downloadPDF', e);
+      Trovee.showToast('Receipt download failed.', 'error');
     }
-
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Receipt ${txId}</title>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-          <style>
-            body {
-              margin: 0;
-              padding: 40px 20px;
-              background: #f5f5f5;
-              display: flex;
-              justify-content: center;
-              font-family: 'Inter', sans-serif;
-            }
-            .print-area {
-              max-width: 400px;
-              width: 100%;
-              background: white;
-              padding: 32px 28px;
-              border-radius: 16px;
-              box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-            }
-            .print-header {
-              text-align: center;
-              border-bottom: 2px dashed #e5e7eb;
-              padding-bottom: 16px;
-              margin-bottom: 16px;
-            }
-            .print-header h2 {
-              font-size: 24px;
-              font-weight: 700;
-              color: #0B1220;
-              margin: 0;
-              letter-spacing: -0.02em;
-            }
-            .print-header .print-sub {
-              font-size: 13px;
-              color: #6b7280;
-              margin: 4px 0 0;
-              font-weight: 500;
-            }
-            .print-header .print-tx {
-              font-family: 'JetBrains Mono', monospace;
-              font-size: 12px;
-              color: #9ca3af;
-              margin-top: 6px;
-              letter-spacing: 0.05em;
-            }
-            .print-body {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 8px 20px;
-              margin-bottom: 16px;
-            }
-            .print-body .pl {
-              font-size: 11px;
-              color: #9ca3af;
-              text-transform: uppercase;
-              letter-spacing: 0.05em;
-              font-weight: 600;
-            }
-            .print-body .pv {
-              font-size: 15px;
-              font-weight: 600;
-              color: #0B1220;
-              word-break: break-word;
-            }
-            .print-body .pv.mono {
-              font-family: 'JetBrains Mono', monospace;
-              font-size: 13px;
-            }
-            .print-body .pv.amount-large {
-              font-size: 26px;
-              font-weight: 700;
-              color: #0a6bff;
-            }
-            .print-body .pv.amount-large.negative {
-              color: #ef4444;
-            }
-            .print-status-badge {
-              display: inline-block;
-              padding: 4px 16px;
-              border-radius: 999px;
-              font-size: 12px;
-              font-weight: 600;
-              text-transform: uppercase;
-              letter-spacing: 0.04em;
-            }
-            .print-status-badge.pending { background: #fef3c7; color: #92400e; }
-            .print-status-badge.approved { background: #d1fae5; color: #065f46; }
-            .print-status-badge.paid { background: #dbeafe; color: #1e40af; }
-            .print-status-badge.rejected { background: #fee2e2; color: #991b1b; }
-            .print-footer {
-              text-align: center;
-              border-top: 2px dashed #e5e7eb;
-              padding-top: 14px;
-              margin-top: 4px;
-              font-size: 12px;
-              color: #9ca3af;
-            }
-            .print-footer .print-thanks {
-              font-weight: 500;
-              color: #6b7280;
-            }
-            .print-footer .print-hash {
-              font-family: 'JetBrains Mono', monospace;
-              font-size: 10px;
-              color: #d1d5db;
-              display: block;
-              margin-top: 4px;
-              word-break: break-all;
-            }
-            @media print {
-              body { background: white; padding: 0; }
-              .print-area { box-shadow: none; border: 1px solid #e5e7eb; border-radius: 0; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="print-area">
-            <div class="print-header">
-              <h2>✦ Trovee</h2>
-              <p class="print-sub">Withdrawal Receipt</p>
-              <p class="print-tx">${txId}</p>
-            </div>
-            <div class="print-body">
-              <span class="pl">Amount</span>
-              <span class="pv amount-large ${isNegative ? 'negative' : ''}">${isNegative ? '-' : ''}${symbol}${amountLocal.toFixed(2)}</span>
-              <span class="pl">Method</span>
-              <span class="pv">${methodName}</span>
-              <span class="pl">Destination</span>
-              <span class="pv mono">${withdrawal.destination_details}</span>
-              <span class="pl">Date & Time</span>
-              <span class="pv">${dateStr}</span>
-              <span class="pl">Status</span>
-              <span class="pv"><span class="print-status-badge ${withdrawal.status}">${withdrawal.status}</span></span>
-            </div>
-            <div class="print-footer">
-              <span class="print-thanks">Thank you for using Trovee</span>
-              <span class="print-hash">${txId}</span>
-            </div>
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          <\/script>
-        </body>
-      </html>
-    `);
-    win.document.close();
   }
 
   // ─── COPY RECEIPT ──────────────────────────────────────────

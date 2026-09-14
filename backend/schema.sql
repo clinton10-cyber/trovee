@@ -102,6 +102,9 @@ CREATE TABLE IF NOT EXISTS share_companies (
     logo_url TEXT,
     sector TEXT,
     is_active INTEGER DEFAULT 1,
+    current_price_cents INTEGER DEFAULT 0,
+    prev_close_price_cents INTEGER DEFAULT 0,
+    price_updated_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
 

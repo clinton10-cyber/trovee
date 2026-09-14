@@ -400,7 +400,13 @@ function renderCompanies(companies) {
     el.innerHTML = '<div class="empty-state small">No companies available yet.</div>';
     return;
   }
-  el.innerHTML = companies.map(c => `
+  el.innerHTML = companies.map(c => {
+    const price = c.current_price_usd != null ? c.current_price_usd : 0;
+    const changePct = c.change_pct_today != null ? c.change_pct_today : 0;
+    const isUp = c.is_up !== false;
+    const arrow = isUp ? '▲' : '▼';
+    const changeColor = isUp ? '#2DD4BF' : '#FF6B5B';
+    return `
     <div class="company-card" onclick="selectCompany(${c.id})">
       <div class="company-logo">
         ${c.logo_url 
@@ -415,10 +421,14 @@ function renderCompanies(companies) {
           <span class="company-sector">${escHtml(c.sector || '')}</span>
         </div>
       </div>
-      <span class="company-plan-count">${c.plan_count || 0} plans</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+        <span style="font-family:var(--font-mono, monospace);font-weight:700;font-size:13px;color:var(--paper);">$${price.toFixed(2)}</span>
+        <span style="font-size:11px;font-weight:600;color:${changeColor};">${arrow} ${Math.abs(changePct).toFixed(2)}%</span>
+      </div>
       <svg class="company-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function filterCompanies() {
@@ -453,6 +463,12 @@ async function selectCompany(id) {
 }
 
 function renderCompanyHeader(c) {
+  const price = c.current_price_usd != null ? c.current_price_usd : 0;
+  const changePct = c.change_pct_today != null ? c.change_pct_today : 0;
+  const changeUsd = c.change_usd_today != null ? c.change_usd_today : 0;
+  const isUp = c.is_up !== false;
+  const arrow = isUp ? '▲' : '▼';
+  const changeColor = isUp ? '#2DD4BF' : '#FF6B5B';
   document.getElementById('company-detail-header').innerHTML = `
     <div class="company-detail-logo">
       ${c.logo_url 
@@ -463,6 +479,10 @@ function renderCompanyHeader(c) {
       <div class="name">${escHtml(c.name)}</div>
       <div class="meta">${escHtml(c.ticker)} · ${escHtml(c.sector || '')}</div>
       ${c.description ? `<div class="desc">${escHtml(c.description)}</div>` : ''}
+      <div style="display:flex;align-items:baseline;gap:10px;margin-top:8px;">
+        <span style="font-family:var(--font-mono, monospace);font-weight:700;font-size:20px;color:var(--paper);">$${price.toFixed(2)}</span>
+        <span style="font-size:13px;font-weight:600;color:${changeColor};">${arrow} $${Math.abs(changeUsd).toFixed(2)} (${Math.abs(changePct).toFixed(2)}%) today</span>
+      </div>
     </div>
   `;
 }

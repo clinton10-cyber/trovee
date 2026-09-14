@@ -3,6 +3,8 @@ import re
 import jwt
 import json
 import uuid
+import random
+import hashlib
 import datetime
 import traceback
 from functools import wraps
@@ -1736,23 +1738,113 @@ def api_paystack_status():
 
 # ─── API: Shares ──────────────────────────────────────────────
 
+PRICE_TICK_SECONDS = 90       # how often a company's price is allowed to move
+PRICE_VOLATILITY_PCT = 0.6    # stddev of each tick's percentage move
+PRICE_MAX_TICK_PCT = 2.5      # clamp per-tick move so it never jumps unrealistically
+
+
+def _seed_base_price_cents(name, ticker):
+    """Deterministic starting price per company, in the $20-$820 range."""
+    h = int(hashlib.sha256(f"{name}:{ticker}".encode()).hexdigest(), 16)
+    return 2000 + (h % 80000)
+
+
+def _tick_company_prices(db):
+    """Lazily nudge each company's live price. No background worker needed:
+    a company only moves the first time it's read after PRICE_TICK_SECONDS
+    have elapsed, so cost stays flat regardless of traffic. prev_close resets
+    once per UTC calendar day so 'today's change' behaves like a real ticker."""
+    now = datetime.datetime.utcnow()
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    today_str = now.strftime("%Y-%m-%d")
+
+    rows = db.execute(
+        "SELECT id, name, ticker, current_price_cents, prev_close_price_cents, price_updated_at "
+        "FROM share_companies"
+    ).fetchall()
+
+    changed = False
+    for row in rows:
+        c = dict(row)
+        cid = c["id"]
+        current = c.get("current_price_cents") or 0
+        prev_close = c.get("prev_close_price_cents") or 0
+        updated_at = c.get("price_updated_at")
+
+        if not current:
+            base = _seed_base_price_cents(c["name"], c["ticker"])
+            db.execute(
+                "UPDATE share_companies SET current_price_cents = ?, prev_close_price_cents = ?, "
+                "price_updated_at = ? WHERE id = ?",
+                (base, base, now_str, cid)
+            )
+            changed = True
+            continue
+
+        needs_tick = True
+        last_day = ""
+        if updated_at:
+            last_day = updated_at[:10]
+            try:
+                last = datetime.datetime.strptime(updated_at[:19], "%Y-%m-%d %H:%M:%S")
+                elapsed = (now - last).total_seconds()
+                needs_tick = elapsed >= PRICE_TICK_SECONDS
+            except Exception:
+                needs_tick = True
+
+        if not needs_tick:
+            continue
+
+        new_prev_close = current if last_day != today_str else (prev_close or current)
+
+        pct = random.gauss(0, PRICE_VOLATILITY_PCT)
+        pct = max(-PRICE_MAX_TICK_PCT, min(PRICE_MAX_TICK_PCT, pct))
+        new_price = max(100, round(current * (1 + pct / 100)))
+
+        db.execute(
+            "UPDATE share_companies SET current_price_cents = ?, prev_close_price_cents = ?, "
+            "price_updated_at = ? WHERE id = ?",
+            (new_price, new_prev_close, now_str, cid)
+        )
+        changed = True
+
+    if changed:
+        db.commit()
+
+
+def _with_price_change(company_dict):
+    """Attach current_price_usd / change_usd_today / change_pct_today / is_up."""
+    d = dict(company_dict)
+    current = d.get("current_price_cents") or 0
+    prev = d.get("prev_close_price_cents") or current
+    change_cents = current - prev
+    change_pct = (change_cents / prev * 100) if prev else 0.0
+    d["current_price_usd"] = round(current / 100, 2)
+    d["change_usd_today"] = round(change_cents / 100, 2)
+    d["change_pct_today"] = round(change_pct, 2)
+    d["is_up"] = change_cents >= 0
+    return d
+
+
 @app.route("/api/shares/companies", methods=["GET"])
 @login_required
 def api_shares_companies():
     db = get_db()
+    _tick_company_prices(db)
     companies = db.execute(
         "SELECT c.*, COUNT(p.id) as plan_count FROM share_companies c "
         "LEFT JOIN share_plans p ON p.company_id = c.id AND p.is_active = 1 "
         "WHERE c.is_active = 1 GROUP BY c.id ORDER BY c.name"
     ).fetchall()
     db.close()
-    return jsonify({"companies": [dict(c) for c in companies]})
+    return jsonify({"companies": [_with_price_change(c) for c in companies]})
 
 
 @app.route("/api/shares/companies/<int:company_id>/plans", methods=["GET"])
 @login_required
 def api_shares_plans(company_id):
     db = get_db()
+    _tick_company_prices(db)
     company = db.execute("SELECT * FROM share_companies WHERE id = ? AND is_active = 1", (company_id,)).fetchone()
     if not company:
         db.close()
@@ -1762,7 +1854,7 @@ def api_shares_plans(company_id):
         (company_id,)
     ).fetchall()
     db.close()
-    return jsonify({"company": dict(company), "plans": [dict(p) for p in plans]})
+    return jsonify({"company": _with_price_change(company), "plans": [dict(p) for p in plans]})
 
 
 @app.route("/api/shares/purchase", methods=["POST"])
@@ -1924,9 +2016,11 @@ def api_shares_certificate(cert_id):
     from reportlab.pdfgen import canvas as rl_canvas
 
     db = get_db()
+    _tick_company_prices(db)
     purchase = db.execute(
         "SELECT sp.*, u.username, u.email, "
         "c.name as company_name, c.ticker, c.sector, c.description as company_desc, "
+        "c.current_price_cents, c.prev_close_price_cents, "
         "pl.plan_name, pl.return_rate_pct, pl.duration_months, pl.shares_count as plan_shares "
         "FROM share_purchases sp "
         "JOIN users u ON u.id = sp.user_id "
@@ -2091,7 +2185,20 @@ def api_shares_certificate(cert_id):
     c.setFont("Courier-Bold", 13)
     c.drawCentredString(w / 2, y, p["certificate_id"])
 
-    y -= 15*mm
+    y -= 6*mm
+
+    current_price = p.get("current_price_cents") or 0
+    prev_close = p.get("prev_close_price_cents") or current_price
+    live_value = (p["shares_count"] * current_price) / 100
+    change_pct = ((current_price - prev_close) / prev_close * 100) if prev_close else 0.0
+    is_up = current_price >= prev_close
+    live_color = teal if is_up else colors.HexColor("#FF6B5B")
+    arrow = "▲" if is_up else "▼"
+    c.setFillColor(live_color)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(w / 2, y, f"LIVE VALUE TODAY:  ${live_value:,.2f}   {arrow} {abs(change_pct):.2f}%")
+
+    y -= 9*mm
 
     date_str = p["purchased_at"][:10]
     left_cx = w / 4
@@ -2130,6 +2237,221 @@ def api_shares_certificate(cert_id):
         mimetype="application/pdf",
         as_attachment=True,
         download_name=f"Trovee-Certificate-{cert_id}.pdf"
+    )
+
+
+@app.route("/api/withdrawals/<int:withdrawal_id>/receipt", methods=["GET"])
+@login_required
+def api_withdrawal_receipt(withdrawal_id):
+    import io
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas as rl_canvas
+
+    db = get_db()
+    w_row = db.execute(
+        "SELECT wd.*, u.username, u.email FROM withdrawals wd "
+        "JOIN users u ON u.id = wd.user_id "
+        "WHERE wd.id = ? AND wd.user_id = ?",
+        (withdrawal_id, g.user["id"])
+    ).fetchone()
+    db.close()
+
+    if not w_row:
+        return jsonify({"error": "Withdrawal not found."}), 404
+
+    p = dict(w_row)
+    tx_id = f"TRV-WD-{str(withdrawal_id).zfill(6)}"
+
+    dest = p.get("destination_details") or ""
+    if len(dest) > 10:
+        dest_masked = f"{dest[:4]}••••••{dest[-4:]}"
+    else:
+        dest_masked = dest
+
+    status = (p.get("status") or "pending").lower()
+    status_colors = {
+        "approved": colors.HexColor("#2DD4BF"),
+        "completed": colors.HexColor("#2DD4BF"),
+        "pending": colors.HexColor("#F5A623"),
+        "rejected": colors.HexColor("#FF6B5B"),
+        "declined": colors.HexColor("#FF6B5B"),
+    }
+
+    buf = io.BytesIO()
+    w, h = A4
+    c = rl_canvas.Canvas(buf, pagesize=A4)
+
+    ink = colors.HexColor("#06080D")
+    surface = colors.HexColor("#0F1923")
+    paper = colors.HexColor("#F5F7FA")
+    slate_soft = colors.HexColor("#8E96A6")
+    accent = colors.HexColor("#0A84FF")
+    accent_dim = colors.HexColor("#0A4F9A")
+    status_color = status_colors.get(status, colors.HexColor("#8E96A6"))
+
+    c.setFillColor(ink)
+    c.rect(0, 0, w, h, fill=1, stroke=0)
+
+    c.saveState()
+    c.translate(w / 2, h / 2)
+    c.rotate(35)
+    c.setFillColor(accent)
+    c.setFillAlpha(0.045)
+    c.setFont("Helvetica-Bold", 110)
+    c.drawCentredString(0, 0, "TROVEE")
+    c.restoreState()
+
+    margin = 14 * mm
+    c.setStrokeColor(accent)
+    c.setLineWidth(3)
+    c.rect(margin, margin, w - 2*margin, h - 2*margin, fill=0, stroke=1)
+    c.setStrokeColor(accent_dim)
+    c.setLineWidth(1)
+    c.rect(margin + 3*mm, margin + 3*mm, w - 2*margin - 6*mm, h - 2*margin - 6*mm, fill=0, stroke=1)
+
+    def corner(cx, cy, flip_x=False, flip_y=False):
+        sx = -1 if flip_x else 1
+        sy = -1 if flip_y else 1
+        size = 12 * mm
+        c.setStrokeColor(accent)
+        c.setLineWidth(1.5)
+        c.line(cx, cy, cx + sx * size, cy)
+        c.line(cx, cy, cx, cy + sy * size)
+        c.setLineWidth(0.7)
+        c.line(cx + sx * 3*mm, cy + sy * 3*mm, cx + sx * 9*mm, cy + sy * 3*mm)
+        c.line(cx + sx * 3*mm, cy + sy * 3*mm, cx + sx * 3*mm, cy + sy * 9*mm)
+
+    corner(margin, margin)
+    corner(w - margin, margin, flip_x=True)
+    corner(margin, h - margin, flip_y=True)
+    corner(w - margin, h - margin, flip_x=True, flip_y=True)
+
+    band_bottom = h - 58*mm
+    band_height = 36*mm
+    c.setFillColor(surface)
+    c.rect(margin, band_bottom, w - 2*margin, band_height, fill=1, stroke=0)
+    c.setStrokeColor(accent)
+    c.setLineWidth(0.5)
+    c.line(margin, band_bottom, w - margin, band_bottom)
+
+    c.setFillColor(paper)
+    c.setFont("Helvetica-Bold", 28)
+    c.drawCentredString(w / 2, h - 34*mm, "TROVEE")
+    c.setFillColor(accent)
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(w / 2, h - 41*mm, "INVESTMENT PLATFORM")
+
+    title_y = h - 72*mm
+    c.setFillColor(accent)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawCentredString(w / 2, title_y, "OFFICIAL WITHDRAWAL RECEIPT")
+
+    line_y = title_y - 4*mm
+    c.setStrokeColor(accent)
+    c.setLineWidth(1)
+    c.line(w/2 - 60*mm, line_y, w/2 + 60*mm, line_y)
+    c.setStrokeColor(accent_dim)
+    c.setLineWidth(0.4)
+    c.line(w/2 - 45*mm, line_y - 2*mm, w/2 + 45*mm, line_y - 2*mm)
+
+    y = line_y - 16*mm
+
+    c.setFillColor(slate_soft)
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(w / 2, y, "RECEIPT NO.")
+    y -= 7*mm
+    c.setFillColor(paper)
+    c.setFont("Courier-Bold", 15)
+    c.drawCentredString(w / 2, y, tx_id)
+
+    y -= 9*mm
+    badge_w = 34*mm
+    badge_h = 7*mm
+    c.setStrokeColor(status_color)
+    c.setLineWidth(1)
+    c.roundRect(w/2 - badge_w/2, y - badge_h + 2*mm, badge_w, badge_h, 2*mm, fill=0, stroke=1)
+    c.setFillColor(status_color)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawCentredString(w / 2, y - 3.2*mm, status.upper())
+
+    y -= 20*mm
+    c.setFillColor(slate_soft)
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(w / 2, y, "WITHDRAWAL AMOUNT")
+    y -= 11*mm
+    c.setFillColor(accent)
+    c.setFont("Helvetica-Bold", 30)
+    c.drawCentredString(w / 2, y, f"${p['amount_usd_cents']/100:,.2f}")
+
+    y -= 16*mm
+    grid_h = 34*mm
+    grid_y = y - grid_h
+    c.setFillColor(surface)
+    c.roundRect(20*mm, grid_y, w - 40*mm, grid_h, 4*mm, fill=1, stroke=0)
+
+    col_w = (w - 40*mm) / 2
+    row1_items = [
+        ("Method", (p.get("method") or "").upper()),
+        ("Account Holder", p["username"]),
+    ]
+    for i, (lbl, val) in enumerate(row1_items):
+        cx = 20*mm + col_w * i + col_w / 2
+        c.setFillColor(slate_soft)
+        c.setFont("Helvetica", 8)
+        c.drawCentredString(cx, grid_y + 25*mm, lbl.upper())
+        c.setFillColor(paper)
+        c.setFont("Helvetica-Bold", 11)
+        c.drawCentredString(cx, grid_y + 18*mm, val)
+
+    c.setFillColor(slate_soft)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(w / 2, grid_y + 11*mm, "DESTINATION")
+    c.setFillColor(paper)
+    c.setFont("Courier", 10)
+    c.drawCentredString(w / 2, grid_y + 5*mm, dest_masked)
+
+    y = grid_y - 13*mm
+
+    requested_str = (p.get("requested_at") or "")[:16].replace("T", " ")
+    processed_str = (p.get("processed_at") or "")[:16].replace("T", " ") or "—"
+    left_cx = w / 4
+    right_cx = 3 * w / 4
+    c.setFillColor(slate_soft)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(left_cx, y, "REQUESTED AT")
+    c.drawCentredString(right_cx, y, "PROCESSED AT")
+    y -= 6*mm
+    c.setFillColor(paper)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(left_cx, y, requested_str)
+    c.drawCentredString(right_cx, y, processed_str)
+
+    y -= 14*mm
+
+    c.setStrokeColor(accent_dim)
+    c.setLineWidth(0.5)
+    c.line(w/2 - 40*mm, y, w/2 + 40*mm, y)
+    c.setFillColor(slate_soft)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(w / 2, y - 5*mm, "AUTHORIZED  ·  TROVEE INVESTMENT PLATFORM")
+
+    c.setFillColor(colors.HexColor("#5B6573"))
+    c.setFont("Helvetica", 7.5)
+    footer_text = ("This is an official record of your withdrawal request issued by Trovee Investment Platform. "
+                   "For queries, contact support and reference the receipt number above.")
+    c.drawCentredString(w / 2, 20*mm, footer_text)
+
+    c.save()
+    buf.seek(0)
+
+    from flask import send_file
+    return send_file(
+        buf,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"Trovee-Receipt-{tx_id}.pdf"
     )
 
 

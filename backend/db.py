@@ -361,6 +361,9 @@ def _migrate_sqlite(conn):
         ("chat_messages", "edited_at", "TEXT"),
         ("chat_messages", "deleted_at", "TEXT"),
         ("users", "last_seen_at", "TEXT"),
+        ("share_companies", "current_price_cents", "INTEGER DEFAULT 0"),
+        ("share_companies", "prev_close_price_cents", "INTEGER DEFAULT 0"),
+        ("share_companies", "price_updated_at", "TEXT"),
     ]
     existing = {(row[0], row[1]) for row in conn.execute(
         "SELECT m.name, p.name FROM sqlite_master m "
@@ -392,6 +395,9 @@ def _migrate_postgres(cur):
         ("chat_messages", "edited_at", "TEXT"),
         ("chat_messages", "deleted_at", "TEXT"),
         ("users", "last_seen_at", "TEXT"),
+        ("share_companies", "current_price_cents", "INTEGER DEFAULT 0"),
+        ("share_companies", "prev_close_price_cents", "INTEGER DEFAULT 0"),
+        ("share_companies", "price_updated_at", "TEXT"),
     ]
     for table, col, col_def in migrations:
         try:
