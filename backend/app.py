@@ -3327,6 +3327,164 @@ def api_admin_currencies_migrate_bulk():
     })
 
 
+# ─── API: Admin — Support Agents ─────────────────────────────
+
+@app.route("/api/admin/support-agents", methods=["GET"])
+@admin_required
+def api_admin_support_agents_list():
+    """List all support agents"""
+    db = get_db()
+    agents = db.execute(
+        "SELECT id, username, email, created_at FROM users WHERE is_support_account = 1 ORDER BY username"
+    ).fetchall()
+    db.close()
+    return jsonify({"agents": [dict(a) for a in agents]})
+
+
+@app.route("/api/admin/support-agents", methods=["POST"])
+@admin_required
+def api_admin_support_agents_promote():
+    """Promote a user to support agent"""
+    data = request.get_json(force=True) or {}
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    
+    db = get_db()
+    user = db.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        db.close()
+        return jsonify({"error": "User not found"}), 404
+    
+    if user["id"] == 1:
+        db.close()
+        return jsonify({"error": "Cannot modify root admin account"}), 400
+    
+    db.execute("UPDATE users SET is_support_account = 1 WHERE id = ?", (user_id,))
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": f"User '{user['username']}' promoted to support agent"})
+
+
+@app.route("/api/admin/support-agents/<int:user_id>", methods=["DELETE"])
+@admin_required
+def api_admin_support_agents_demote(user_id):
+    """Demote a support agent back to regular user"""
+    db = get_db()
+    user = db.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        db.close()
+        return jsonify({"error": "User not found"}), 404
+    
+    if user["id"] == 1:
+        db.close()
+        return jsonify({"error": "Cannot modify root admin account"}), 400
+    
+    db.execute("UPDATE users SET is_support_account = 0 WHERE id = ?", (user_id,))
+    
+    # Also remove all their assignments
+    db.execute("DELETE FROM support_assignments WHERE support_user_id = ?", (user_id,))
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": f"User '{user['username']}' demoted"})
+
+
+@app.route("/api/admin/assignments", methods=["GET"])
+@admin_required
+def api_admin_assignments_list():
+    """List all agent-to-user assignments"""
+    db = get_db()
+    assignments = db.execute("""
+        SELECT sa.id, sa.support_user_id, u.username as agent_username,
+               sa.target_user_id, tu.username as target_username, sa.is_active
+        FROM support_assignments sa
+        JOIN users u ON u.id = sa.support_user_id
+        JOIN users tu ON tu.id = sa.target_user_id
+        ORDER BY u.username, tu.username
+    """).fetchall()
+    db.close()
+    return jsonify({"assignments": [dict(a) for a in assignments]})
+
+
+@app.route("/api/admin/assignments", methods=["POST"])
+@admin_required
+def api_admin_assignments_create():
+    """Assign a user to a support agent"""
+    data = request.get_json(force=True) or {}
+    agent_id = data.get("support_user_id")
+    user_id = data.get("target_user_id")
+    
+    if not agent_id or not user_id:
+        return jsonify({"error": "support_user_id and target_user_id required"}), 400
+    
+    if agent_id == user_id:
+        return jsonify({"error": "Agent cannot be assigned to themselves"}), 400
+    
+    db = get_db()
+    
+    # Verify agent exists and is a support account
+    agent = db.execute(
+        "SELECT username FROM users WHERE id = ? AND is_support_account = 1",
+        (agent_id,)
+    ).fetchone()
+    if not agent:
+        db.close()
+        return jsonify({"error": "Support agent not found or not active"}), 404
+    
+    # Verify user exists
+    user = db.execute(
+        "SELECT username FROM users WHERE id = ?",
+        (user_id,)
+    ).fetchone()
+    if not user:
+        db.close()
+        return jsonify({"error": "User not found"}), 404
+    
+    # Check if assignment already exists
+    existing = db.execute(
+        "SELECT id FROM support_assignments WHERE support_user_id = ? AND target_user_id = ?",
+        (agent_id, user_id)
+    ).fetchone()
+    if existing:
+        db.close()
+        return jsonify({"error": "Assignment already exists"}), 400
+    
+    db.execute(
+        "INSERT INTO support_assignments (support_user_id, target_user_id, is_active) VALUES (?, ?, 1)",
+        (agent_id, user_id)
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": f"User '{user['username']}' assigned to agent '{agent['username']}'"})
+
+
+@app.route("/api/admin/assignments/<int:assignment_id>", methods=["DELETE"])
+@admin_required
+def api_admin_assignments_delete(assignment_id):
+    """Remove an assignment"""
+    db = get_db()
+    assignment = db.execute(
+        "SELECT sa.id, u.username as agent, tu.username as target FROM support_assignments sa "
+        "JOIN users u ON u.id = sa.support_user_id "
+        "JOIN users tu ON tu.id = sa.target_user_id "
+        "WHERE sa.id = ?",
+        (assignment_id,)
+    ).fetchone()
+    if not assignment:
+        db.close()
+        return jsonify({"error": "Assignment not found"}), 404
+    
+    db.execute("DELETE FROM support_assignments WHERE id = ?", (assignment_id,))
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": f"Removed: '{assignment['target']}' from agent '{assignment['agent']}'"})
+
+
 # ─── Error Handlers ──────────────────────────────────────────
 
 @app.errorhandler(404)
