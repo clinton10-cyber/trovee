@@ -1595,9 +1595,13 @@ def api_admin_messages_thread(target_user_id):
     ).fetchall()
     db.close()
     
+    target_dict = dict(target)
+    target_dict["is_online"] = _is_recently_active(target_dict.get("last_seen_at"))
+    assignment_dict = dict(assignment) if assignment else None
+    
     return jsonify({
-        "target": dict(target),
-        "assigned_support": dict(assignment) if assignment else None,
+        "target": target_dict,
+        "assigned_support": assignment_dict,
         "messages": [dict(r) for r in rows],
     })
 
