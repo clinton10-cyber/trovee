@@ -495,11 +495,18 @@ function renderPlans(company, plans) {
   }
 
   plans.sort((a, b) => a.price_usd_cents - b.price_usd_cents);
+  const livePrice = company.current_price_usd || 0;
 
-  el.innerHTML = plans.map((p, i) => {
+  el.innerHTML = `
+    <div style="background:var(--ink-soft);border:1px solid var(--line-strong);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;line-height:1.5;color:var(--slate-soft);">
+      <strong style="color:var(--paper);">How payout works:</strong> you own real shares priced at ${company.ticker}'s live market rate.
+      Your payout is your invested amount adjusted by how ${escHtml(company.name)}'s share price moves before your lock-up ends —
+      if it rises, you receive more than you invested; if it falls, you receive less. This is not a guaranteed return.
+    </div>
+  ` + plans.map((p, i) => {
     const featured = i === Math.floor(plans.length / 2);
     const price = p.price_usd_cents / 100;
-    const projected = price * p.return_rate_pct / 100 * p.duration_months / 12;
+    const liveValue = livePrice > 0 ? p.shares_count * livePrice : price;
 
     return `
     <div class="plan-card ${featured ? 'featured' : ''}">
@@ -508,7 +515,7 @@ function renderPlans(company, plans) {
         <div>
           <div class="plan-name">${escHtml(p.plan_name)}</div>
           <div style="font-size:12px;color:var(--slate-soft);margin-top:2px;">
-            ${p.shares_count} shares · ${p.duration_months} months
+            ${p.shares_count} shares · ${p.duration_months} month lock-up
           </div>
         </div>
         <div>
@@ -518,17 +525,17 @@ function renderPlans(company, plans) {
       </div>
       <div class="plan-stats">
         <div class="plan-stat">
-          <div class="stat-lbl">Return</div>
-          <div class="stat-val">${p.return_rate_pct}%</div>
+          <div class="stat-lbl">Shares</div>
+          <div class="stat-val">${p.shares_count}</div>
         </div>
         <div class="plan-stat">
-          <div class="stat-lbl">Period</div>
+          <div class="stat-lbl">Lock-Up</div>
           <div class="stat-val">${p.duration_months}mo</div>
         </div>
         <div class="plan-stat">
-          <div class="stat-lbl">Projected</div>
-          <div class="stat-val" id="projected-${p.id}">
-            +$${projected.toFixed(0)}
+          <div class="stat-lbl">Live Value Now</div>
+          <div class="stat-val" id="projected-${p.id}" style="color:var(--paper);">
+            $${liveValue.toFixed(0)}
           </div>
         </div>
       </div>
@@ -536,7 +543,7 @@ function renderPlans(company, plans) {
       <div class="multiplier-row">
         <label for="multiplier-${p.id}">Multiplier:</label>
         <input type="number" id="multiplier-${p.id}" value="1" min="1" max="100" step="1"
-          onchange="updatePlanTotal(${p.id}, ${p.price_usd_cents}, ${p.shares_count}, ${p.return_rate_pct}, ${p.duration_months})">
+          onchange="updatePlanTotal(${p.id}, ${p.price_usd_cents}, ${p.shares_count}, ${livePrice}, ${p.duration_months})">
         <span class="hint">(max 100)</span>
       </div>
 
@@ -547,7 +554,7 @@ function renderPlans(company, plans) {
         <span class="value shares" id="total-shares-${p.id}">${p.shares_count}</span>
       </div>
 
-      <button class="btn btn-primary" style="width:100%;" onclick="confirmPurchaseMultiplier(${company.id}, ${p.id}, '${escHtml(company.name)}', '${escHtml(p.plan_name)}', ${p.price_usd_cents}, ${p.shares_count}, ${p.return_rate_pct}, ${p.duration_months})">
+      <button class="btn btn-primary" style="width:100%;" onclick="confirmPurchaseMultiplier(${company.id}, ${p.id}, '${escHtml(company.name)}', '${escHtml(p.plan_name)}', ${p.price_usd_cents}, ${p.shares_count}, ${livePrice}, ${p.duration_months})">
         <i class="fas fa-shopping-cart"></i> Buy Shares
       </button>
     </div>
@@ -555,7 +562,7 @@ function renderPlans(company, plans) {
   }).join('');
 }
 
-function updatePlanTotal(planId, priceCents, sharesCount, returnRate, months) {
+function updatePlanTotal(planId, priceCents, sharesCount, livePrice, months) {
   const input = document.getElementById(`multiplier-${planId}`);
   let multiplier = parseInt(input.value) || 1;
   if (multiplier < 1) multiplier = 1;
@@ -565,14 +572,14 @@ function updatePlanTotal(planId, priceCents, sharesCount, returnRate, months) {
   const price = priceCents / 100;
   const totalPrice = price * multiplier;
   const totalShares = sharesCount * multiplier;
-  const projected = totalPrice * (returnRate / 100) * (months / 12);
+  const liveValue = livePrice > 0 ? totalShares * livePrice : totalPrice;
 
   document.getElementById(`total-price-${planId}`).textContent = `$${totalPrice.toFixed(2)}`;
   document.getElementById(`total-shares-${planId}`).textContent = totalShares;
-  document.getElementById(`projected-${planId}`).textContent = `+$${projected.toFixed(0)}`;
+  document.getElementById(`projected-${planId}`).textContent = `$${liveValue.toFixed(0)}`;
 }
 
-function confirmPurchaseMultiplier(companyId, planId, companyName, planName, priceCents, sharesCount, returnRate, months) {
+function confirmPurchaseMultiplier(companyId, planId, companyName, planName, priceCents, sharesCount, livePrice, months) {
   const input = document.getElementById(`multiplier-${planId}`);
   let multiplier = parseInt(input.value) || 1;
   if (multiplier < 1) multiplier = 1;
@@ -582,7 +589,7 @@ function confirmPurchaseMultiplier(companyId, planId, companyName, planName, pri
   const price = priceCents / 100;
   const totalPrice = price * multiplier;
   const totalShares = sharesCount * multiplier;
-  const projected = totalPrice * (returnRate / 100) * (months / 12);
+  const liveValue = livePrice > 0 ? totalShares * livePrice : totalPrice;
   const balance = currentUser ? currentUser.balance_usd_cents / 100 : 0;
   const symbol = currentUser ? currentUser.currency_symbol : "$";
   const balanceLocal = currentUser ? currentUser.balance_local : 0;
@@ -597,13 +604,15 @@ function confirmPurchaseMultiplier(companyId, planId, companyName, planName, pri
     <div class="confirm-row"><span class="label">Multiplier</span><span class="value">× ${multiplier}</span></div>
     <div class="confirm-row"><span class="label">Shares</span><span class="value">${totalShares}</span></div>
     <div class="confirm-row"><span class="label">Investment</span><span class="value" style="color:var(--coral);">-$${totalPrice.toFixed(2)}</span></div>
-    <div class="confirm-row"><span class="label">Return Rate</span><span class="value">${returnRate}% p.a.</span></div>
-    <div class="confirm-row"><span class="label">Projected Return</span><span class="value" style="color:var(--teal);">+$${projected.toFixed(2)}</span></div>
-    <div class="confirm-row"><span class="label">Duration</span><span class="value">${months} months</span></div>
+    <div class="confirm-row"><span class="label">Entry Price/Share</span><span class="value">$${livePrice.toFixed(2)}</span></div>
+    <div class="confirm-row"><span class="label">Lock-Up Period</span><span class="value">${months} months</span></div>
     <div class="confirm-row"><span class="label">Balance After</span><span class="value">${symbol}${balanceAfterLocal.toFixed(2)}</span></div>
     <p style="font-size:11.5px;color:var(--slate-soft);margin:12px 0 0;line-height:1.5;">
       A signed investment certificate will be generated for download after purchase.
-      Returns are projected based on the plan rate and are not guaranteed.
+      Your payout at the end of the lock-up equals your shares valued at
+      ${escHtml(companyName)}'s live price then — if it's risen since today, you receive more
+      than you invested; if it's fallen, you receive less. This is a real market-linked
+      investment, not a guaranteed return.
     </p>
   `;
 
@@ -707,8 +716,14 @@ function renderPortfolio(items) {
 
   el.innerHTML = items.map(item => {
     const invested = (item.price_usd_cents || 0) / 100;
-    const projected = invested * (item.return_rate_pct || 0) / 100 * (item.duration_months || 12) / 12;
+    const liveValue = (item.live_value_cents != null ? item.live_value_cents : item.price_usd_cents) / 100;
+    const gainLoss = (item.gain_loss_cents || 0) / 100;
+    const gainLossPct = item.gain_loss_pct || 0;
+    const isGain = item.is_gain !== false;
+    const gainColor = isGain ? 'var(--teal)' : 'var(--coral)';
+    const arrow = isGain ? '▲' : '▼';
     const date = item.purchased_at ? item.purchased_at.slice(0, 10) : '';
+    const statusLabel = item.is_matured ? 'Paid Out' : 'Live Value';
     return `
     <div class="portfolio-card">
       <div class="portfolio-card-header">
@@ -725,9 +740,9 @@ function renderPortfolio(items) {
       </div>
       <div class="portfolio-stats">
         <div class="stat"><div class="sv">$${invested.toFixed(2)}</div><div class="sl">Invested</div></div>
-        <div class="stat"><div class="sv">${item.return_rate_pct}% p.a.</div><div class="sl">Rate</div></div>
-        <div class="stat"><div class="sv">+$${projected.toFixed(0)}</div><div class="sl">Projected</div></div>
-        <div class="stat"><div class="sv">${item.duration_months}mo</div><div class="sl">Term</div></div>
+        <div class="stat"><div class="sv" style="color:${gainColor};">$${liveValue.toFixed(2)}</div><div class="sl">${statusLabel}</div></div>
+        <div class="stat"><div class="sv" style="color:${gainColor};">${arrow} ${Math.abs(gainLossPct).toFixed(1)}%</div><div class="sl">${isGain ? 'Gain' : 'Loss'}</div></div>
+        <div class="stat"><div class="sv">${item.duration_months}mo</div><div class="sl">Lock-Up</div></div>
       </div>
       <div class="portfolio-footer">
         <span style="font-size:11.5px;color:var(--slate-soft);">Purchased ${date}</span>

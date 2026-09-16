@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS share_purchases (
     duration_months INTEGER DEFAULT 12,
     return_usd_cents INTEGER DEFAULT 0,
     total_payout_cents INTEGER DEFAULT 0,
+    entry_price_cents INTEGER DEFAULT 0,
+    exit_price_cents INTEGER,
     certificate_id TEXT NOT NULL,
     status TEXT DEFAULT 'active',
     purchased_at TEXT DEFAULT (datetime('now')),

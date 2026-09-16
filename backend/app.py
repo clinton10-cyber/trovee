@@ -1741,12 +1741,18 @@ def api_paystack_status():
 PRICE_TICK_SECONDS = 90       # how often a company's price is allowed to move
 PRICE_VOLATILITY_PCT = 0.6    # stddev of each tick's percentage move
 PRICE_MAX_TICK_PCT = 2.5      # clamp per-tick move so it never jumps unrealistically
+PRICE_ANCHOR_CENTS = 5000     # $50.00 - matches the fixed per-share price of every plan tier
+PRICE_BAND_LOW = 0.5          # price can drift down to 50% of anchor...
+PRICE_BAND_HIGH = 2.0         # ...or up to 200% of anchor, never further
 
 
 def _seed_base_price_cents(name, ticker):
-    """Deterministic starting price per company, in the $20-$820 range."""
+    """Starting price per company: $50 anchor with a small, deterministic
+    company-specific jitter (±8%) so listings don't all look identical on
+    day one, while staying anchored to what a share actually costs."""
     h = int(hashlib.sha256(f"{name}:{ticker}".encode()).hexdigest(), 16)
-    return 2000 + (h % 80000)
+    jitter_pct = ((h % 1601) - 800) / 100.0  # -8.00 .. +8.00
+    return max(100, round(PRICE_ANCHOR_CENTS * (1 + jitter_pct / 100)))
 
 
 def _tick_company_prices(db):
@@ -1800,6 +1806,14 @@ def _tick_company_prices(db):
         pct = random.gauss(0, PRICE_VOLATILITY_PCT)
         pct = max(-PRICE_MAX_TICK_PCT, min(PRICE_MAX_TICK_PCT, pct))
         new_price = max(100, round(current * (1 + pct / 100)))
+
+        # Hard band: price can never drift below 50% or above 200% of the
+        # real $50/share anchor, no matter how long the server has been
+        # running. This keeps "live value" always sane relative to what
+        # people actually paid, instead of an unbounded random walk.
+        band_low = round(PRICE_ANCHOR_CENTS * PRICE_BAND_LOW)
+        band_high = round(PRICE_ANCHOR_CENTS * PRICE_BAND_HIGH)
+        new_price = max(band_low, min(band_high, new_price))
 
         db.execute(
             "UPDATE share_companies SET current_price_cents = ?, prev_close_price_cents = ?, "
@@ -1874,6 +1888,7 @@ def api_shares_purchase():
         multiplier = 100
 
     db = get_db()
+    _tick_company_prices(db)
     plan = db.execute(
         "SELECT p.*, c.name as company_name FROM share_plans p "
         "JOIN share_companies c ON c.id = p.company_id "
@@ -1884,6 +1899,9 @@ def api_shares_purchase():
         db.close()
         return jsonify({"error": "Plan not found or no longer available."}), 404
 
+    company = db.execute("SELECT current_price_cents FROM share_companies WHERE id = ?", (company_id,)).fetchone()
+    entry_price = (dict(company).get("current_price_cents") if company else 0) or PRICE_ANCHOR_CENTS
+
     user = db.execute("SELECT * FROM users WHERE id = ?", (g.user["id"],)).fetchone()
 
     principal = plan["price_usd_cents"] * multiplier
@@ -1893,10 +1911,14 @@ def api_shares_purchase():
         db.close()
         return jsonify({"error": "Insufficient balance. Please deposit funds first."}), 400
 
+    # Payout is no longer a guaranteed fixed return - it's mark-to-market.
+    # return_rate_pct/duration_months are kept only as the lock-up period
+    # reference shown at purchase time; the real payout at maturity is
+    # shares_count * the company's live price then, computed in
+    # _process_matured_purchases. total_payout_cents starts equal to
+    # principal (break-even) and is overwritten for real at maturity.
     rate = plan["return_rate_pct"]
     months = plan["duration_months"]
-    return_cents = int(principal * (rate / 100) * (months / 12))
-    total_payout = principal + return_cents
     maturity_date = (datetime.utcnow() + timedelta(days=months * 30)).strftime("%Y-%m-%d")
     cert_id = f"TRV-{uuid_lib.uuid4().hex[:8].upper()}"
 
@@ -1906,10 +1928,10 @@ def api_shares_purchase():
         "INSERT INTO share_purchases "
         "(user_id, company_id, plan_id, plan_name, shares_count, price_usd_cents, "
         " return_rate_pct, duration_months, return_usd_cents, total_payout_cents, "
-        " certificate_id, status, maturity_date) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)",
+        " entry_price_cents, certificate_id, status, maturity_date) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)",
         (g.user["id"], company_id, plan_id, plan["plan_name"], shares,
-         principal, rate, months, return_cents, total_payout, cert_id, maturity_date)
+         principal, rate, months, 0, principal, entry_price, cert_id, maturity_date)
     )
     purchase_id = cur.lastrowid
     new_balance = db.execute(
@@ -1927,8 +1949,8 @@ def api_shares_purchase():
         "multiplier": multiplier,
         "shares_purchased": shares,
         "principal_usd_cents": principal,
-        "return_usd_cents": return_cents,
-        "total_payout_cents": total_payout,
+        "entry_price_cents": entry_price,
+        "total_payout_cents": principal,
         "maturity_date": maturity_date,
         "new_balance_usd_cents": new_balance,
         "new_balance_local": new_balance_local,
@@ -1940,9 +1962,11 @@ def api_shares_purchase():
 def api_shares_portfolio():
     from datetime import datetime
     db = get_db()
+    _tick_company_prices(db)
     newly_paid = _process_matured_purchases(db, g.user["id"])
     rows = db.execute(
-        "SELECT sp.*, c.name as company_name, c.ticker, c.sector, c.logo_url "
+        "SELECT sp.*, c.name as company_name, c.ticker, c.sector, c.logo_url, "
+        "c.current_price_cents as company_current_price_cents "
         "FROM share_purchases sp "
         "JOIN share_companies c ON c.id = sp.company_id "
         "WHERE sp.user_id = ? ORDER BY sp.purchased_at DESC",
@@ -1963,6 +1987,20 @@ def api_shares_portfolio():
         p["progress_pct"] = min(100, max(0, round(
             100 - (days_remaining / max(1, p["duration_months"] * 30)) * 100
         )))
+
+        entry_price = p.get("entry_price_cents") or PRICE_ANCHOR_CENTS
+        if p["is_matured"]:
+            live_price = p.get("exit_price_cents") or entry_price
+        else:
+            live_price = p.get("company_current_price_cents") or entry_price
+        live_value_cents = p["shares_count"] * live_price
+        gain_loss_cents = live_value_cents - p["price_usd_cents"]
+        gain_loss_pct = (gain_loss_cents / p["price_usd_cents"] * 100) if p["price_usd_cents"] else 0.0
+        p["live_value_cents"] = live_value_cents
+        p["gain_loss_cents"] = gain_loss_cents
+        p["gain_loss_pct"] = round(gain_loss_pct, 2)
+        p["is_gain"] = gain_loss_cents >= 0
+
         portfolio.append(p)
 
     new_balance = db.execute(
@@ -2160,10 +2198,11 @@ def api_shares_certificate(cert_id):
     c.roundRect(20*mm, grid_y, w - 40*mm, grid_h, 4*mm, fill=1, stroke=0)
 
     col_w = (w - 40*mm) / 4
+    entry_price_disp = (p.get("entry_price_cents") or 0) / 100
     info_items = [
         ("Plan", p["plan_name"]),
-        ("Return Rate", f"{p['return_rate_pct']:.1f}% p.a."),
-        ("Duration", f"{p['duration_months']} months"),
+        ("Entry Price/Share", f"${entry_price_disp:,.2f}"),
+        ("Lock-Up Period", f"{p['duration_months']} months"),
         ("Investment", f"${p['price_usd_cents']/100:,.2f}"),
     ]
     for i, (lbl, val) in enumerate(info_items):
@@ -2188,15 +2227,15 @@ def api_shares_certificate(cert_id):
     y -= 6*mm
 
     current_price = p.get("current_price_cents") or 0
-    prev_close = p.get("prev_close_price_cents") or current_price
+    entry_price = p.get("entry_price_cents") or current_price
     live_value = (p["shares_count"] * current_price) / 100
-    change_pct = ((current_price - prev_close) / prev_close * 100) if prev_close else 0.0
-    is_up = current_price >= prev_close
+    change_pct = ((current_price - entry_price) / entry_price * 100) if entry_price else 0.0
+    is_up = current_price >= entry_price
     live_color = teal if is_up else colors.HexColor("#FF6B5B")
     arrow = "▲" if is_up else "▼"
     c.setFillColor(live_color)
     c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(w / 2, y, f"LIVE VALUE TODAY:  ${live_value:,.2f}   {arrow} {abs(change_pct):.2f}%")
+    c.drawCentredString(w / 2, y, f"LIVE VALUE:  ${live_value:,.2f}   {arrow} {abs(change_pct):.2f}% since purchase")
 
     y -= 9*mm
 
@@ -2456,20 +2495,37 @@ def api_withdrawal_receipt(withdrawal_id):
 
 
 def _process_matured_purchases(db, user_id: int) -> list:
+    """Pays out matured share purchases at their true mark-to-market value:
+    shares_count * the company's live price at maturity. If the company's
+    price rose since purchase, the payout is more than principal. If it
+    fell, the payout is less - the user's balance moves with it, same as
+    holding real shares."""
     from datetime import datetime
+    _tick_company_prices(db)
     today = datetime.utcnow().strftime("%Y-%m-%d")
     matured = db.execute(
-        "SELECT * FROM share_purchases "
-        "WHERE user_id = ? AND status = 'active' AND maturity_date <= ?",
+        "SELECT sp.*, c.current_price_cents FROM share_purchases sp "
+        "JOIN share_companies c ON c.id = sp.company_id "
+        "WHERE sp.user_id = ? AND sp.status = 'active' AND sp.maturity_date <= ?",
         (user_id, today)
     ).fetchall()
     newly_paid = []
     for p in matured:
         p = dict(p)
+        exit_price = p.get("current_price_cents") or p.get("entry_price_cents") or PRICE_ANCHOR_CENTS
+        payout_cents = p["shares_count"] * exit_price
+
         db.execute("UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
-                   (p["total_payout_cents"], user_id))
-        db.execute("UPDATE share_purchases SET status = 'paid', paid_at = ? WHERE id = ?",
-                   (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"), p["id"]))
+                   (payout_cents, user_id))
+        db.execute(
+            "UPDATE share_purchases SET status = 'paid', paid_at = ?, "
+            "exit_price_cents = ?, total_payout_cents = ?, "
+            "return_usd_cents = ? WHERE id = ?",
+            (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"), exit_price, payout_cents,
+             payout_cents - p["price_usd_cents"], p["id"])
+        )
+        p["exit_price_cents"] = exit_price
+        p["total_payout_cents"] = payout_cents
         newly_paid.append(p)
     if newly_paid:
         db.commit()
