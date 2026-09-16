@@ -468,7 +468,7 @@
       const imageHtml = m.picture_filename ? `
         <div style="position: relative;">
           <img class="message-image" src="/api/messages/${m.id}/picture" onclick="this.style.maxHeight = this.style.maxHeight === 'none' ? '300px' : 'none'">
-          ${role === 'admin' ? `<button class="message-delete-btn" onclick="deleteMessagePicture(${m.id})">Delete</button>` : ''}
+          ${role === 'agent' ? `<button class="message-delete-btn" onclick="deleteMessagePicture(${m.id})">Delete</button>` : ''}
         </div>
       ` : '';
       return `
