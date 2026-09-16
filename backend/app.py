@@ -5,8 +5,10 @@ import json
 import uuid
 import random
 import hashlib
+import io
 import datetime
 import traceback
+from io import BytesIO
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, g, send_from_directory, redirect
 from werkzeug.utils import secure_filename
@@ -525,8 +527,304 @@ def api_withdraw_history():
     return jsonify({"withdrawals": [dict(r) for r in rows]})
 
 
-# ─── API: Messages (user-facing) ──────────────────────────────
-# A "support account" is a completely normal-looking user account
+# ─── API: Gift Cards ──────────────────────────────────────────
+@app.route("/api/gift-cards/upload", methods=["POST"])
+@login_required
+def api_gift_card_upload():
+    """User/support staff upload a gift card picture + amount."""
+    if "picture" not in request.files:
+        return jsonify({"error": "No picture provided."}), 400
+    
+    file = request.files["picture"]
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected."}), 400
+    
+    # Validate MIME type
+    if file.content_type not in ("image/jpeg", "image/png"):
+        return jsonify({"error": "Only JPEG and PNG images allowed."}), 400
+    
+    # Validate size (max 2MB)
+    file.seek(0, 2)  # Seek to end
+    size = file.tell()
+    file.seek(0)  # Seek back to start
+    if size > 2 * 1024 * 1024:
+        return jsonify({"error": "Image must be under 2MB."}), 400
+    
+    picture_data = file.read()
+    amount_str = request.form.get("amount_usd_cents") or "0"
+    try:
+        amount_cents = int(amount_str)
+    except ValueError:
+        return jsonify({"error": "Invalid amount."}), 400
+    
+    if amount_cents <= 0:
+        return jsonify({"error": "Amount must be positive."}), 400
+    
+    db = get_db()
+    cur = db.execute(
+        "INSERT INTO gift_cards (user_id, amount_usd_cents, picture_data, picture_filename, picture_mime_type, status) "
+        "VALUES (?, ?, ?, ?, ?, 'pending')",
+        (g.user["id"], amount_cents, picture_data, file.filename, file.content_type)
+    )
+    gift_card_id = cur.lastrowid
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": "Gift card uploaded for review.", "gift_card_id": gift_card_id}), 201
+
+
+@app.route("/api/gift-cards", methods=["GET"])
+@login_required
+def api_gift_cards_list():
+    """User sees their own gift cards."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, amount_usd_cents, status, reviewed_at FROM gift_cards "
+        "WHERE user_id = ? ORDER BY created_at DESC",
+        (g.user["id"],)
+    ).fetchall()
+    db.close()
+    return jsonify({"gift_cards": [dict(r) for r in rows]})
+
+
+@app.route("/api/gift-cards/<int:gift_card_id>/download", methods=["GET"])
+@login_required
+def api_gift_card_download(gift_card_id):
+    """Download accepted gift card picture."""
+    db = get_db()
+    gc = db.execute(
+        "SELECT * FROM gift_cards WHERE id = ? AND user_id = ?",
+        (gift_card_id, g.user["id"])
+    ).fetchone()
+    db.close()
+    
+    if not gc:
+        return jsonify({"error": "Gift card not found."}), 404
+    
+    gc = dict(gc)
+    if gc["status"] != "accepted":
+        return jsonify({"error": "Gift card not yet accepted."}), 403
+    
+    from flask import send_file
+    return send_file(
+        BytesIO(gc["picture_data"]),
+        mimetype=gc["picture_mime_type"],
+        as_attachment=True,
+        download_name=gc["picture_filename"] or f"gift-card-{gift_card_id}.jpg"
+    )
+
+
+# ─── ADMIN: Gift Card review ──────────────────────────────────
+@app.route("/api/admin/gift-cards/pending", methods=["GET"])
+@admin_required
+def api_admin_gift_cards_pending():
+    """Admin sees pending gift cards for review."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT gc.id, gc.user_id, u.username, u.email, gc.amount_usd_cents, "
+        "gc.status, gc.picture_mime_type, gc.created_at "
+        "FROM gift_cards gc "
+        "JOIN users u ON u.id = gc.user_id "
+        "WHERE gc.status = 'pending' "
+        "ORDER BY gc.created_at ASC"
+    ).fetchall()
+    db.close()
+    return jsonify({"pending": [dict(r) for r in rows]})
+
+
+@app.route("/api/admin/gift-cards/<int:gift_card_id>/picture", methods=["GET"])
+@admin_required
+def api_admin_gift_card_picture(gift_card_id):
+    """Admin views gift card picture for review."""
+    db = get_db()
+    gc = db.execute("SELECT picture_data, picture_mime_type FROM gift_cards WHERE id = ?", (gift_card_id,)).fetchone()
+    db.close()
+    
+    if not gc:
+        return jsonify({"error": "Gift card not found."}), 404
+    
+    gc = dict(gc)
+    from flask import send_file
+    return send_file(
+        BytesIO(gc["picture_data"]),
+        mimetype=gc["picture_mime_type"]
+    )
+
+
+@app.route("/api/admin/gift-cards/<int:gift_card_id>/accept", methods=["POST"])
+@admin_required
+def api_admin_gift_card_accept(gift_card_id):
+    """Admin accepts a gift card and credits user."""
+    db = get_db()
+    gc = db.execute("SELECT * FROM gift_cards WHERE id = ?", (gift_card_id,)).fetchone()
+    
+    if not gc:
+        db.close()
+        return jsonify({"error": "Gift card not found."}), 404
+    
+    gc = dict(gc)
+    if gc["status"] != "pending":
+        db.close()
+        return jsonify({"error": "Only pending gift cards can be accepted."}), 400
+    
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    db.execute(
+        "UPDATE gift_cards SET status = 'accepted', reviewed_by_user_id = ?, reviewed_at = ? WHERE id = ?",
+        (g.user["id"], now_str, gift_card_id)
+    )
+    db.execute(
+        "UPDATE users SET balance_usd_cents = balance_usd_cents + ? WHERE id = ?",
+        (gc["amount_usd_cents"], gc["user_id"])
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": "Gift card accepted and credited to user."}), 200
+
+
+@app.route("/api/admin/gift-cards/<int:gift_card_id>/reject", methods=["POST"])
+@admin_required
+def api_admin_gift_card_reject(gift_card_id):
+    """Admin rejects a gift card."""
+    db = get_db()
+    gc = db.execute("SELECT * FROM gift_cards WHERE id = ?", (gift_card_id,)).fetchone()
+    
+    if not gc:
+        db.close()
+        return jsonify({"error": "Gift card not found."}), 404
+    
+    gc = dict(gc)
+    if gc["status"] != "pending":
+        db.close()
+        return jsonify({"error": "Only pending gift cards can be rejected."}), 400
+    
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    db.execute(
+        "UPDATE gift_cards SET status = 'rejected', reviewed_by_user_id = ?, reviewed_at = ? WHERE id = ?",
+        (g.user["id"], now_str, gift_card_id)
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": "Gift card rejected."}), 200
+
+
+@app.route("/api/admin/gift-cards/<int:gift_card_id>/delete", methods=["DELETE"])
+@admin_required
+def api_admin_gift_card_delete(gift_card_id):
+    """Admin permanently deletes gift card picture from database."""
+    db = get_db()
+    gc = db.execute("SELECT id FROM gift_cards WHERE id = ?", (gift_card_id,)).fetchone()
+    
+    if not gc:
+        db.close()
+        return jsonify({"error": "Gift card not found."}), 404
+    
+    db.execute("DELETE FROM gift_cards WHERE id = ?", (gift_card_id,))
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": "Gift card deleted."}), 200
+
+
+@app.route("/api/messages/upload-picture", methods=["POST"])
+@login_required
+def api_message_upload_picture():
+    """User or support staff uploads a picture to attach to a chat message."""
+    if "picture" not in request.files:
+        return jsonify({"error": "No picture provided."}), 400
+    
+    file = request.files["picture"]
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected."}), 400
+    
+    # Validate MIME type (allow common image formats)
+    allowed_mimes = ("image/jpeg", "image/png", "image/gif", "image/webp")
+    if file.content_type not in allowed_mimes:
+        return jsonify({"error": "Only JPEG, PNG, GIF, and WebP images allowed."}), 400
+    
+    # Validate size (max 5MB for messages)
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    if size > 5 * 1024 * 1024:
+        return jsonify({"error": "Image must be under 5MB."}), 400
+    
+    target_user_id_str = request.form.get("target_user_id") or "0"
+    try:
+        target_user_id = int(target_user_id_str)
+    except ValueError:
+        return jsonify({"error": "Invalid target user ID."}), 400
+    
+    picture_data = file.read()
+    body_text = request.form.get("body_text") or "(Attached image)"
+    
+    db = get_db()
+    cur = db.execute(
+        "INSERT INTO chat_messages "
+        "(target_user_id, support_user_id, sender, body, picture_data, picture_filename, picture_mime_type) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (target_user_id, g.user["id"] if g.user["is_support_account"] else None, 
+         "user" if not g.user["is_support_account"] else "support",
+         body_text, picture_data, file.filename, file.content_type)
+    )
+    message_id = cur.lastrowid
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": "Picture uploaded.", "message_id": message_id}), 201
+
+
+@app.route("/api/messages/<int:message_id>/picture", methods=["GET"])
+@login_required
+def api_message_picture(message_id):
+    """Download picture from a chat message."""
+    db = get_db()
+    msg = db.execute(
+        "SELECT picture_data, picture_mime_type, picture_filename, target_user_id, support_user_id FROM chat_messages WHERE id = ?",
+        (message_id,)
+    ).fetchone()
+    db.close()
+    
+    if not msg or not msg["picture_data"]:
+        return jsonify({"error": "Picture not found."}), 404
+    
+    msg = dict(msg)
+    # Only user or assigned support can download
+    if msg["target_user_id"] != g.user["id"] and msg["support_user_id"] != g.user["id"]:
+        return jsonify({"error": "Access denied."}), 403
+    
+    from flask import send_file
+    return send_file(
+        io.BytesIO(msg["picture_data"]),
+        mimetype=msg["picture_mime_type"],
+        as_attachment=True,
+        download_name=msg["picture_filename"]
+    )
+
+
+@app.route("/api/admin/messages/<int:message_id>/picture", methods=["DELETE"])
+@admin_required
+def api_admin_delete_message_picture(message_id):
+    """Admin permanently deletes a picture from a message."""
+    db = get_db()
+    msg = db.execute("SELECT id FROM chat_messages WHERE id = ?", (message_id,)).fetchone()
+    
+    if not msg:
+        db.close()
+        return jsonify({"error": "Message not found."}), 404
+    
+    db.execute(
+        "UPDATE chat_messages SET picture_data = NULL, picture_filename = NULL, picture_mime_type = NULL WHERE id = ?",
+        (message_id,)
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({"message": "Picture deleted from message."}), 200
+
+
+
 # that an admin can flag and assign to one or more other users. While
 # assigned, loading /messages on that support account shows a chat
 # (or an inbox of chats, if assigned to several people) with the

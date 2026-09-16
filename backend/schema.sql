@@ -47,6 +47,9 @@ CREATE TABLE IF NOT EXISTS support_messages (
     email TEXT NOT NULL,
     subject TEXT NOT NULL,
     message TEXT NOT NULL,
+    picture_data BLOB,
+    picture_filename TEXT,
+    picture_mime_type TEXT,
     status TEXT DEFAULT 'open',
     emailed_ok INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
@@ -173,6 +176,9 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     support_user_id INTEGER,
     sender TEXT NOT NULL,
     body TEXT NOT NULL,
+    picture_data BLOB,
+    picture_filename TEXT,
+    picture_mime_type TEXT,
     is_read_user INTEGER DEFAULT 0,
     is_read_support INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
@@ -184,6 +190,21 @@ CREATE TABLE IF NOT EXISTS admin_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS gift_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    amount_usd_cents INTEGER NOT NULL,
+    picture_data BLOB NOT NULL,
+    picture_filename TEXT,
+    picture_mime_type TEXT DEFAULT 'image/jpeg',
+    status TEXT DEFAULT 'pending',
+    reviewed_by_user_id INTEGER,
+    reviewed_at TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS currency_overrides (
