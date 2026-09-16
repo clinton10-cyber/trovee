@@ -913,7 +913,7 @@ def api_messages_get():
     db.commit()
 
     rows = db.execute(
-        "SELECT id, sender, body, created_at, edited_at FROM chat_messages "
+        "SELECT id, sender, body, created_at, edited_at, picture_data, picture_filename, picture_mime_type FROM chat_messages "
         "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_id,),
     ).fetchall()
@@ -1004,7 +1004,7 @@ def api_messages_thread_get(target_user_id):
     )
     db.commit()
     rows = db.execute(
-        "SELECT id, sender, body, created_at, edited_at FROM chat_messages "
+        "SELECT id, sender, body, created_at, edited_at, picture_data, picture_filename, picture_mime_type FROM chat_messages "
         "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_user_id,),
     ).fetchall()
@@ -1500,18 +1500,10 @@ def api_admin_messages_thread(target_user_id):
     )
     db.commit()
     rows = db.execute(
-        "SELECT id, sender, body, created_at, edited_at FROM chat_messages "
+        "SELECT id, sender, body, created_at, edited_at, picture_data, picture_filename, picture_mime_type FROM chat_messages "
         "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_user_id,),
     ).fetchall()
-    db.close()
-    target_dict = dict(target)
-    target_dict["is_online"] = _is_recently_active(target_dict.get("last_seen_at"))
-    return jsonify({
-        "target": target_dict,
-        "assigned_support": dict(assignment) if assignment else None,
-        "messages": [dict(r) for r in rows],
-    })
 
 
 @app.route("/api/admin/messages/<int:target_user_id>", methods=["POST"])
