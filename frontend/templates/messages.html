@@ -404,7 +404,7 @@
 
   function renderInbox(conversations) {
     const list = document.getElementById("inbox-list");
-    if (!conversations.length) {
+    if (!conversations || !conversations.length) {
       list.innerHTML = '<div class="chat-empty" style="margin-top:40px;">No conversations assigned yet.</div>';
       return;
     }
@@ -413,26 +413,30 @@
       if (!b.last_message_at) return -1;
       return new Date(b.last_message_at) - new Date(a.last_message_at);
     });
-    list.innerHTML = sorted.map(c => `
-      <div class="inbox-row" onclick="openThread(${c.target_user_id}, '${escapeHtml(c.username).replace(/'/g, "\\'")}')">
+    list.innerHTML = sorted.map(c => {
+      const isOnline = c.is_online || false;
+      const username = c.username || 'Unknown';
+      const lastSeen = c.last_seen_at || null;
+      return `
+      <div class="inbox-row" onclick="openThread(${c.target_user_id}, '${escapeHtml(username).replace(/'/g, "\\'")}')">
         <div class="inbox-avatar" style="position:relative;">
-          ${escapeHtml(c.username.charAt(0).toUpperCase())}
-          <span style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg, #0b0f14);background:${c.is_online ? '#4ade80' : '#6b7280'};"></span>
+          ${escapeHtml(username.charAt(0).toUpperCase())}
+          <span style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg, #0b0f14);background:${isOnline ? '#4ade80' : '#6b7280'};"></span>
         </div>
         <div class="inbox-main">
           <div class="inbox-name-row">
-            <span class="inbox-name">${escapeHtml(c.username)}
-              <span style="font-size:10.5px;font-weight:600;color:${c.is_online ? '#4ade80' : 'var(--slate-soft)'};">
-                · ${c.is_online ? 'Online' : (c.last_seen_at ? 'Last seen ' + timeAgo(c.last_seen_at) + ' ago' : 'Offline')}
+            <span class="inbox-name">${escapeHtml(username)}
+              <span style="font-size:10.5px;font-weight:600;color:${isOnline ? '#4ade80' : 'var(--slate-soft)'};">
+                · ${isOnline ? 'Online' : (lastSeen ? 'Last seen ' + timeAgo(lastSeen) + ' ago' : 'Offline')}
               </span>
             </span>
             <span class="inbox-time">${timeAgo(c.last_message_at)}</span>
           </div>
           <div class="inbox-preview">${c.last_message ? escapeHtml(c.last_message) : 'No messages yet'}</div>
         </div>
-        ${c.unread_count > 0 ? `<span class="inbox-badge">${c.unread_count}</span>` : ''}
-      </div>
-    `).join("");
+        ${(c.unread_count || 0) > 0 ? `<span class="inbox-badge">${c.unread_count}</span>` : ''}
+      </div>`;
+    }).join("");
   }
 
   function renderMessages(data) {
@@ -625,20 +629,6 @@
     }
   }
 
-    btn.disabled = true;
-    try {
-      const path = role === "agent" ? `/api/messages/thread/${openTargetId}` : "/api/messages";
-      await Trovee.api(path, { method: "POST", body: { message: body } });
-      textarea.value = "";
-      textarea.style.height = "auto";
-      await loadThread(true);
-    } catch (err) {
-      Trovee.showToast(err.message, "error");
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
   document.getElementById("chat-send").addEventListener("click", sendMessage);
   document.getElementById("chat-text").addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -727,7 +717,6 @@
     return outputArray;
   }
 
-  function stopPolling() {
   function restartPolling() {
     stopPolling();
     pollTimer = setInterval(() => loadThread(false), 5000);
@@ -740,7 +729,7 @@
   async function init() {
     try {
       const ctx = await Trovee.api("/api/messages/context");
-      role = ctx.role;
+      role = ctx.role || "user";
       
       // Request push notification permission - auto-grant if not determined yet
       if ("serviceWorker" in navigator && "PushManager" in window) {
@@ -763,9 +752,16 @@
       }
       
       if (role === "agent") {
-        renderInbox(ctx.conversations || []);
-        showInbox();
-        startInboxPolling();
+        const conversations = ctx.conversations || [];
+        if (conversations.length > 0) {
+          renderInbox(conversations);
+          showInbox();
+          startInboxPolling();
+        } else {
+          showThread("No assigned conversations");
+          document.getElementById("chat-empty").textContent = "No users assigned to you.";
+          startInboxPolling();
+        }
       } else {
         showThread("Customer Care and Support");
         loadThread(true);
