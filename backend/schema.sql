@@ -229,3 +229,13 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (recipient_user_id) REFERENCES users(id),
     FOREIGN KEY (message_id) REFERENCES chat_messages(id)
 );
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
+    endpoint TEXT NOT NULL,
+    auth_key TEXT NOT NULL,
+    p256dh_key TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

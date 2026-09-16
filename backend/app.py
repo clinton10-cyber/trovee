@@ -13,6 +13,11 @@ from functools import wraps
 from flask import Flask, request, jsonify, render_template, g, send_from_directory, redirect
 from werkzeug.utils import secure_filename
 
+try:
+    from pywebpush import webpush
+except ImportError:
+    webpush = None
+
 from backend.db import get_db, init_db, USE_POSTGRES, DB_PATH
 from backend.security import hash_password, verify_password
 from backend.email_otp import (
@@ -59,6 +64,44 @@ def decode_token(token: str):
 
 
 ONLINE_THRESHOLD_SECONDS = 60
+
+
+def _send_push_notification(recipient_user_id, title, message_preview):
+    """Send web push notification to user if they have a subscription."""
+    if not webpush:
+        return  # pywebpush not installed
+    
+    db = get_db()
+    sub = db.execute(
+        "SELECT endpoint, auth_key, p256dh_key FROM push_subscriptions WHERE user_id = ?",
+        (recipient_user_id,)
+    ).fetchone()
+    
+    if not sub:
+        db.close()
+        return
+    
+    try:
+        webpush(
+            subscription_info={
+                "endpoint": sub["endpoint"],
+                "keys": {
+                    "p256dh": sub["p256dh_key"],
+                    "auth": sub["auth_key"]
+                }
+            },
+            data=json.dumps({
+                "title": title,
+                "message_preview": message_preview,
+                "url": "/messages"
+            }),
+            ttl=60
+        )
+    except Exception as e:
+        # Log but don't fail - push notification is best-effort
+        print(f"Push notification error: {e}")
+    finally:
+        db.close()
 
 
 def _is_recently_active(last_seen_at):
@@ -913,7 +956,7 @@ def api_messages_get():
     db.commit()
 
     rows = db.execute(
-        "SELECT id, sender, body, created_at, edited_at, picture_data, picture_filename, picture_mime_type FROM chat_messages "
+        "SELECT id, sender, body, created_at, edited_at, picture_filename, picture_mime_type FROM chat_messages "
         "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_id,),
     ).fetchall()
@@ -972,6 +1015,11 @@ def api_messages_send():
             )
     db.commit()
     db.close()
+    
+    # Send push notification to support agent if assigned
+    if support_user_id:
+        _send_push_notification(support_user_id, f"Message from {g.user.get('username', 'User')}", body[:100])
+    
     return jsonify({"message": "Sent."})
 
 
@@ -1004,7 +1052,7 @@ def api_messages_thread_get(target_user_id):
     )
     db.commit()
     rows = db.execute(
-        "SELECT id, sender, body, created_at, edited_at, picture_data, picture_filename, picture_mime_type FROM chat_messages "
+        "SELECT id, sender, body, created_at, edited_at, picture_filename, picture_mime_type FROM chat_messages "
         "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_user_id,),
     ).fetchall()
@@ -1049,6 +1097,10 @@ def api_messages_thread_send(target_user_id):
     )
     db.commit()
     db.close()
+    
+    # Send push notification
+    _send_push_notification(target_user_id, "New message from support", body[:100])
+    
     return jsonify({"message": "Sent."})
 
 
@@ -1149,6 +1201,43 @@ def api_notifications_unread_count():
     ).fetchone()
     db.close()
     return jsonify({"unread_count": row["n"] if row else 0})
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+@login_required
+def api_push_subscribe():
+    data = request.get_json(force=True) or {}
+    subscription = data.get("subscription")
+    
+    if not subscription or not subscription.get("endpoint"):
+        return jsonify({"error": "Invalid subscription."}), 400
+    
+    keys = subscription.get("keys", {})
+    auth_key = keys.get("auth")
+    p256dh_key = keys.get("p256dh")
+    
+    if not auth_key or not p256dh_key:
+        return jsonify({"error": "Missing keys."}), 400
+    
+    db = get_db()
+    db.execute(
+        "INSERT OR REPLACE INTO push_subscriptions (user_id, endpoint, auth_key, p256dh_key) "
+        "VALUES (?, ?, ?, ?)",
+        (g.user["id"], subscription["endpoint"], auth_key, p256dh_key)
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Subscribed to push notifications."})
+
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+@login_required
+def api_push_unsubscribe():
+    db = get_db()
+    db.execute("DELETE FROM push_subscriptions WHERE user_id = ?", (g.user["id"],))
+    db.commit()
+    db.close()
+    return jsonify({"message": "Unsubscribed from push notifications."})
 
 
 # ─── API: Admin ───────────────────────────────────────────────
@@ -1500,7 +1589,7 @@ def api_admin_messages_thread(target_user_id):
     )
     db.commit()
     rows = db.execute(
-        "SELECT id, sender, body, created_at, edited_at, picture_data, picture_filename, picture_mime_type FROM chat_messages "
+        "SELECT id, sender, body, created_at, edited_at, picture_filename, picture_mime_type FROM chat_messages "
         "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_user_id,),
     ).fetchall()
