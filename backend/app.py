@@ -1593,6 +1593,13 @@ def api_admin_messages_thread(target_user_id):
         "WHERE target_user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC, id ASC",
         (target_user_id,),
     ).fetchall()
+    db.close()
+    
+    return jsonify({
+        "target": dict(target),
+        "assigned_support": dict(assignment) if assignment else None,
+        "messages": [dict(r) for r in rows],
+    })
 
 
 @app.route("/api/admin/messages/<int:target_user_id>", methods=["POST"])
