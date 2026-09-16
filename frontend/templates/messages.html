@@ -465,7 +465,7 @@
     scroll.innerHTML = data.messages.map(m => {
       const mine = m.sender === mySender;
       const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const imageHtml = m.picture_data ? `
+      const imageHtml = m.picture_filename ? `
         <div style="position: relative;">
           <img class="message-image" src="/api/messages/${m.id}/picture" onclick="this.style.maxHeight = this.style.maxHeight === 'none' ? '300px' : 'none'">
           ${role === 'admin' ? `<button class="message-delete-btn" onclick="deleteMessagePicture(${m.id})">Delete</button>` : ''}
@@ -699,6 +699,35 @@
     clearInterval(pollTimer);
     pollTimer = null;
   }
+  
+  async function subscribeToPush(registration) {
+    try {
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array("BEn8_R-3qR6UfZLspFKBjGdVqfn8Ub65NShOwzCd6p1lIzvhfJKPCDWXzvFQ7kLJ6E3pXlZ_7YKNlpvgBVrspNI=")
+      });
+      
+      await Trovee.api("/api/push/subscribe", {
+        method: "POST",
+        body: { subscription: subscription.toJSON() }
+      });
+    } catch (err) {
+      console.log("Push subscription failed:", err);
+    }
+  }
+  
+  function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  function stopPolling() {
   function restartPolling() {
     stopPolling();
     pollTimer = setInterval(() => loadThread(false), 5000);
@@ -712,6 +741,27 @@
     try {
       const ctx = await Trovee.api("/api/messages/context");
       role = ctx.role;
+      
+      // Request push notification permission - auto-grant if not determined yet
+      if ("serviceWorker" in navigator && "PushManager" in window) {
+        navigator.serviceWorker.ready.then(async (registration) => {
+          const permission = Notification.permission;
+          if (permission === "granted") {
+            subscribeToPush(registration);
+          } else if (permission === "default") {
+            // Auto-grant without prompting user
+            try {
+              const result = await Notification.requestPermission();
+              if (result === "granted") {
+                subscribeToPush(registration);
+              }
+            } catch (err) {
+              console.log("Push permission error:", err);
+            }
+          }
+        });
+      }
+      
       if (role === "agent") {
         renderInbox(ctx.conversations || []);
         showInbox();
