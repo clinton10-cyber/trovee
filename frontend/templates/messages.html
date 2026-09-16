@@ -190,6 +190,82 @@
   }
   .balance-save-btn { background: var(--accent); color: #08110d; }
   .balance-cancel-btn { background: var(--ink-soft); color: var(--slate-soft); border: 1px solid var(--line-strong) !important; }
+
+  .message-with-image {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .message-image {
+    max-width: 100%;
+    height: auto;
+    max-height: 300px;
+    border-radius: 8px;
+    cursor: pointer;
+    object-fit: contain;
+  }
+  .image-preview-container {
+    position: relative;
+    display: inline-block;
+    margin-top: 8px;
+  }
+  .image-preview {
+    max-width: 100%;
+    max-height: 120px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    object-fit: contain;
+  }
+  .preview-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.6);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .message-delete-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(220,38,38,0.8);
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: white;
+    font-size: 11px;
+    cursor: pointer;
+    display: none;
+  }
+  .bubble-row.mine .message-delete-btn { display: block; }
+  .file-input-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+  .file-input-label:hover {
+    background: var(--surface);
+  }
+  #image-file-input {
+    display: none;
+  }
 </style>
 </head>
 <body>
@@ -230,7 +306,12 @@
     <div class="chat-scroll" id="chat-scroll">
       <div class="chat-empty" id="chat-empty">Loading conversation…</div>
     </div>
+    <div id="image-preview-area"></div>
     <div class="chat-input-bar">
+      <label class="file-input-label" title="Attach image">
+        <i class="fas fa-image"></i>
+        <input type="file" id="image-file-input" accept="image/*">
+      </label>
       <textarea id="chat-text" rows="1" placeholder="Type a message…"></textarea>
       <button class="send-fab" id="chat-send"><i class="fas fa-paper-plane"></i></button>
     </div>
@@ -384,10 +465,17 @@
     scroll.innerHTML = data.messages.map(m => {
       const mine = m.sender === mySender;
       const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const imageHtml = m.picture_data ? `
+        <div style="position: relative;">
+          <img class="message-image" src="/api/messages/${m.id}/picture" onclick="this.style.maxHeight = this.style.maxHeight === 'none' ? '300px' : 'none'">
+          ${role === 'admin' ? `<button class="message-delete-btn" onclick="deleteMessagePicture(${m.id})">Delete</button>` : ''}
+        </div>
+      ` : '';
       return `
         <div class="bubble-row ${mine ? 'mine' : 'theirs'}">
           <div>
             <div class="bubble">${escapeHtml(m.body)}</div>
+            ${imageHtml}
             <div class="bubble-time">${time}</div>
           </div>
         </div>
@@ -436,11 +524,106 @@
     }
   }
 
-  async function sendMessage() {
+  let pendingImageFile = null;
+
+  document.getElementById("image-file-input").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+      Trovee.showToast("Image must be under 5MB", "error");
+      return;
+    }
+    
+    pendingImageFile = file;
+    const reader = new FileReader();
+    reader.onload = function (evt) {
+      const preview = document.getElementById("image-preview-area");
+      preview.innerHTML = `
+        <div class="image-preview-container">
+          <img class="image-preview" src="${evt.target.result}">
+          <button class="preview-remove" onclick="clearPendingImage()">×</button>
+        </div>
+      `;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  window.clearPendingImage = function () {
+    pendingImageFile = null;
+    document.getElementById("image-file-input").value = "";
+    document.getElementById("image-preview-area").innerHTML = "";
+  };
+
+  async function sendMessageWithImage() {
     const textarea = document.getElementById("chat-text");
     const btn = document.getElementById("chat-send");
     const body = textarea.value.trim();
-    if (!body) return;
+    const hasImage = pendingImageFile !== null;
+    const hasText = body.length > 0;
+
+    if (!hasText && !hasImage) return;
+
+    btn.disabled = true;
+    try {
+      if (hasImage) {
+        const formData = new FormData();
+        formData.append("picture", pendingImageFile);
+        formData.append("body_text", body || "(Attached image)");
+        formData.append("target_user_id", role === "agent" ? openTargetId : "0");
+        
+        const response = await fetch("/api/messages/upload-picture", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${localStorage.getItem("userToken")}` },
+          body: formData
+        });
+        
+        if (!response.ok) {
+          const err = await response.json();
+          Trovee.showToast(err.error || "Upload failed", "error");
+          return;
+        }
+        
+        clearPendingImage();
+      }
+      
+      if (hasText) {
+        const path = role === "agent" ? `/api/messages/thread/${openTargetId}` : "/api/messages";
+        await Trovee.api(path, { method: "POST", body: { message: body } });
+      }
+      
+      textarea.value = "";
+      textarea.style.height = "auto";
+      await loadThread(true);
+    } catch (err) {
+      Trovee.showToast(err.message || "Error sending message", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function sendMessage() {
+    await sendMessageWithImage();
+  }
+
+  async function deleteMessagePicture(messageId) {
+    if (!confirm("Delete this image?")) return;
+    try {
+      const response = await fetch(`/api/admin/messages/${messageId}/picture`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("userToken")}` }
+      });
+      if (response.ok) {
+        Trovee.showToast("Image deleted");
+        await loadThread(false);
+      } else {
+        const err = await response.json();
+        Trovee.showToast(err.error || "Delete failed", "error");
+      }
+    } catch (err) {
+      Trovee.showToast("Error deleting image", "error");
+    }
+  }
 
     btn.disabled = true;
     try {

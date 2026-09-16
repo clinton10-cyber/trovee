@@ -217,3 +217,15 @@ CREATE TABLE IF NOT EXISTS currency_overrides (
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recipient_user_id INTEGER NOT NULL,
+    message_id INTEGER NOT NULL,
+    sender_name TEXT NOT NULL,
+    message_preview TEXT NOT NULL,
+    is_read INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (recipient_user_id) REFERENCES users(id),
+    FOREIGN KEY (message_id) REFERENCES chat_messages(id)
+);

@@ -940,10 +940,16 @@ def api_messages_send():
     target_id, mode = _current_chat_context(db)
 
     if mode == "support":
-        db.execute(
+        cur = db.execute(
             "INSERT INTO chat_messages (target_user_id, support_user_id, sender, body, "
             "is_read_user, is_read_support) VALUES (?, ?, 'support', ?, 0, 1)",
             (target_id, g.user["id"], body),
+        )
+        message_id = cur.lastrowid
+        db.execute(
+            "INSERT INTO notifications (recipient_user_id, message_id, sender_name, message_preview, is_read) "
+            "VALUES (?, ?, ?, ?, 0)",
+            (target_id, message_id, g.user["username"], body[:100])
         )
     else:
         assignment = db.execute(
@@ -952,11 +958,18 @@ def api_messages_send():
             (target_id,),
         ).fetchone()
         support_user_id = assignment["support_user_id"] if assignment else None
-        db.execute(
+        cur = db.execute(
             "INSERT INTO chat_messages (target_user_id, support_user_id, sender, body, "
             "is_read_user, is_read_support) VALUES (?, ?, 'user', ?, 1, 0)",
             (target_id, support_user_id, body),
         )
+        message_id = cur.lastrowid
+        if support_user_id:
+            db.execute(
+                "INSERT INTO notifications (recipient_user_id, message_id, sender_name, message_preview, is_read) "
+                "VALUES (?, ?, ?, ?, 0)",
+                (support_user_id, message_id, g.user.get("username", "User"), body[:100])
+            )
     db.commit()
     db.close()
     return jsonify({"message": "Sent."})
@@ -1023,10 +1036,16 @@ def api_messages_thread_send(target_user_id):
         db.close()
         return jsonify({"error": "You are not assigned to this conversation."}), 403
 
-    db.execute(
+    cur = db.execute(
         "INSERT INTO chat_messages (target_user_id, support_user_id, sender, body, "
         "is_read_user, is_read_support) VALUES (?, ?, 'support', ?, 0, 1)",
         (target_user_id, g.user["id"], body),
+    )
+    message_id = cur.lastrowid
+    db.execute(
+        "INSERT INTO notifications (recipient_user_id, message_id, sender_name, message_preview, is_read) "
+        "VALUES (?, ?, ?, ?, 0)",
+        (target_user_id, message_id, g.user["username"], body[:100])
     )
     db.commit()
     db.close()
@@ -1090,6 +1109,46 @@ def api_messages_unread_count():
     ).fetchone()
     db.close()
     return jsonify({"unread": row["n"] if row else 0})
+
+
+@app.route("/api/notifications", methods=["GET"])
+@login_required
+def api_notifications_get():
+    db = get_db()
+    notifications = db.execute(
+        "SELECT id, sender_name, message_preview, is_read, created_at FROM notifications "
+        "WHERE recipient_user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (g.user["id"],)
+    ).fetchall()
+    db.close()
+    return jsonify({
+        "notifications": [dict(n) for n in notifications]
+    })
+
+
+@app.route("/api/notifications/<int:notification_id>/read", methods=["POST"])
+@login_required
+def api_notification_mark_read(notification_id):
+    db = get_db()
+    db.execute(
+        "UPDATE notifications SET is_read = 1 WHERE id = ? AND recipient_user_id = ?",
+        (notification_id, g.user["id"])
+    )
+    db.commit()
+    db.close()
+    return jsonify({"message": "Marked as read."})
+
+
+@app.route("/api/notifications/unread-count", methods=["GET"])
+@login_required
+def api_notifications_unread_count():
+    db = get_db()
+    row = db.execute(
+        "SELECT COUNT(*) as n FROM notifications WHERE recipient_user_id = ? AND is_read = 0",
+        (g.user["id"],)
+    ).fetchone()
+    db.close()
+    return jsonify({"unread_count": row["n"] if row else 0})
 
 
 # ─── API: Admin ───────────────────────────────────────────────
