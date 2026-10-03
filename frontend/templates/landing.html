@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trovee — Earn from your phone</title>
+<title>Trovee — Trade, Invest & Earn</title>
 <link rel="icon" href="/static/img/favicon.ico">
 <link rel="manifest" href="/static/manifest.webmanifest">
 <meta name="theme-color" content="#06080D">
@@ -849,6 +849,193 @@
   .device-img-wrap:hover img { transform: translateY(-6px) scale(1.04); filter: drop-shadow(0 18px 36px rgba(10,132,255,0.25)); }
   .device-img-label { font-size: 12px; color: var(--slate-soft); font-weight: 500; }
   @media (max-width: 600px) { .devices-strip { gap: 16px; } .device-img-wrap img { height: 110px; } }
+
+  /* ── PLAY STORE BUTTON ── */
+  .btn-playstore {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: #fff; color: #1a1a2e;
+    border: none; padding: 13px 22px; border-radius: var(--radius-sm);
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+    transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+    width: auto; min-width: 180px; font-family: var(--font-body);
+    position: relative; overflow: hidden;
+  }
+  .btn-playstore:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,0.35); background: #f0f0f0; }
+  .btn-playstore:active { transform: scale(0.96); }
+
+  /* ── PWA BOTTOM SHEET OVERLAY ── */
+  .pwa-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    z-index: 1000; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .pwa-overlay.open { opacity: 1; pointer-events: auto; }
+
+  /* ── BOTTOM SHEET ── */
+  .pwa-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 1001;
+    background: #FAFAFA;
+    border-radius: 20px 20px 0 0;
+    padding: 0 0 env(safe-area-inset-bottom, 20px);
+    transform: translateY(100%);
+    transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+    max-width: 480px; margin: 0 auto;
+    box-shadow: 0 -8px 48px rgba(0,0,0,0.28);
+  }
+  .pwa-sheet.open { transform: translateY(0); }
+
+  .pwa-sheet-handle {
+    width: 40px; height: 4px; background: #ccc; border-radius: 2px;
+    margin: 12px auto 0;
+  }
+
+  /* Play Store Header */
+  .pwa-ps-header {
+    background: linear-gradient(135deg, #01875f 0%, #01a86e 100%);
+    padding: 18px 20px 14px; margin-top: 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pwa-ps-logo {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pwa-ps-logo svg { width: 22px; height: 22px; }
+  .pwa-ps-logo span { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.01em; font-family: var(--font-body); }
+  .pwa-ps-subtitle { color: rgba(255,255,255,0.75); font-size: 11px; margin-left: auto; font-family: var(--font-body); }
+
+  /* App listing */
+  .pwa-app-row {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 20px 20px 16px; background: #fff;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  .pwa-app-icon {
+    width: 72px; height: 72px; border-radius: 16px;
+    background: linear-gradient(135deg, #06080D 0%, #0a1628 100%);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .pwa-app-icon img { width: 56px; height: 56px; object-fit: contain; }
+  .pwa-app-info { flex: 1; min-width: 0; }
+  .pwa-app-name { font-size: 17px; font-weight: 700; color: #1a1a1a; margin-bottom: 1px; font-family: var(--font-body); }
+  .pwa-app-dev { font-size: 12px; color: #01875f; font-weight: 600; margin-bottom: 6px; font-family: var(--font-body); }
+  .pwa-app-meta { display: flex; align-items: center; gap: 10px; }
+  .pwa-app-rating { display: flex; align-items: center; gap: 3px; font-size: 12px; color: #555; font-family: var(--font-body); }
+  .pwa-app-rating svg { width: 12px; height: 12px; }
+  .pwa-app-dot { color: #ccc; }
+  .pwa-app-installs { font-size: 12px; color: #555; font-family: var(--font-body); }
+  .pwa-app-tag {
+    display: inline-block; background: #e8f5e9; color: #2e7d32;
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+    font-family: var(--font-body); letter-spacing: 0.03em;
+  }
+
+  /* Screenshots strip */
+  .pwa-screenshots {
+    display: flex; gap: 8px; padding: 14px 20px;
+    overflow-x: auto; background: #fff; scrollbar-width: none;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  .pwa-screenshots::-webkit-scrollbar { display: none; }
+  .pwa-screenshot {
+    flex-shrink: 0; width: 90px; height: 160px; border-radius: 10px;
+    overflow: hidden; border: 1px solid #e0e0e0;
+  }
+  .pwa-screenshot img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Description */
+  .pwa-desc {
+    background: #fff; padding: 14px 20px 12px;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  .pwa-desc p { font-size: 13px; color: #444; line-height: 1.55; margin: 0; font-family: var(--font-body); }
+
+  /* Ratings row */
+  .pwa-ratings-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 20px; background: #fff;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  .pwa-big-rating { text-align: center; }
+  .pwa-big-num { font-size: 36px; font-weight: 300; color: #1a1a1a; line-height: 1; font-family: var(--font-body); }
+  .pwa-stars-row { display: flex; gap: 2px; margin-top: 4px; }
+  .pwa-stars-row svg { width: 13px; height: 13px; }
+  .pwa-bar-col { flex: 1; }
+  .pwa-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .pwa-bar-num { font-size: 11px; color: #888; width: 8px; text-align: right; font-family: var(--font-body); }
+  .pwa-bar-track { flex: 1; height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden; }
+  .pwa-bar-fill { height: 100%; background: #01875f; border-radius: 2px; }
+
+  /* Install button area */
+  .pwa-install-area {
+    padding: 16px 20px 8px; background: #fff;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pwa-install-btn {
+    flex: 1; background: #01875f; color: #fff; border: none;
+    padding: 13px; border-radius: 8px; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: var(--font-body);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+  .pwa-install-btn:hover { background: #017a55; }
+  .pwa-install-btn:active { transform: scale(0.97); }
+  .pwa-install-btn:disabled { background: #a5d6a7; cursor: default; }
+  .pwa-install-btn .pwa-spin {
+    width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff; border-radius: 50%;
+    animation: pwa-spin 0.7s linear infinite; display: none;
+  }
+  @keyframes pwa-spin { to { transform: rotate(360deg); } }
+  .pwa-wishlist-btn {
+    width: 46px; height: 46px; border: 1px solid #ddd; background: #fff;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s ease; flex-shrink: 0;
+  }
+  .pwa-wishlist-btn:hover { background: #f5f5f5; border-color: #bbb; }
+  .pwa-wishlist-btn svg { width: 20px; height: 20px; }
+
+  /* Progress bar */
+  .pwa-progress-wrap {
+    padding: 0 20px 16px; background: #fff; display: none;
+  }
+  .pwa-progress-wrap.show { display: block; }
+  .pwa-progress-label {
+    font-size: 12px; color: #555; margin-bottom: 6px; font-family: var(--font-body);
+    display: flex; justify-content: space-between;
+  }
+  .pwa-progress-track {
+    height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden;
+  }
+  .pwa-progress-fill {
+    height: 100%; width: 0%; background: #01875f; border-radius: 3px;
+    transition: width 0.15s linear;
+  }
+
+  /* Success state */
+  .pwa-success-wrap {
+    padding: 0 20px 16px; background: #fff; display: none;
+    align-items: center; gap: 10px;
+  }
+  .pwa-success-wrap.show { display: flex; }
+  .pwa-success-icon { color: #01875f; font-size: 18px; }
+  .pwa-success-text { font-size: 13px; color: #333; font-family: var(--font-body); }
+  .pwa-success-text strong { color: #01875f; }
+  .pwa-open-btn {
+    margin-left: auto; background: none; border: 1px solid #01875f;
+    color: #01875f; padding: 7px 14px; border-radius: 6px;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font-body);
+    transition: all 0.2s ease; flex-shrink: 0;
+  }
+  .pwa-open-btn:hover { background: #01875f; color: #fff; }
+
+  .pwa-footer-note {
+    text-align: center; padding: 10px 20px 4px; background: #fff;
+    font-size: 11px; color: #aaa; font-family: var(--font-body);
+  }
 </style>
 </head>
 <body>
@@ -901,7 +1088,7 @@
   </div>
 
   <h1 class="hero-headline">
-    Trade markets and <span class="highlight">invest in shares</span> —<br><span class="accent">from your phone.</span>
+    <span class="accent">Trade.</span> <span class="highlight">Invest.</span> Earn —<br>all from your phone.
   </h1>
 
   <p class="hero-sub">
@@ -910,7 +1097,15 @@
 
   <div class="hero-actions">
     <a href="/signup" class="btn btn-primary">Start earning free</a>
-    <a href="#how-it-works" class="btn btn-secondary">See how it works</a>
+    <button class="btn btn-playstore" id="playstore-btn" onclick="openPWASheet()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+        <path d="M3.18 1.4C2.76 1.64 2.5 2.08 2.5 2.6v18.8c0 .52.26.96.68 1.2l.1.06 10.54-10.54v-.24L3.28 1.34l-.1.06z" fill="#EA4335"/>
+        <path d="M17.3 15.64l-3.5-3.5v-.28l3.5-3.5.08.04 4.14 2.36c1.18.67 1.18 1.77 0 2.44l-4.14 2.36-.08.08z" fill="#FBBC05"/>
+        <path d="M17.38 15.56L13.8 12 3.18 22.6c.4.42 1.04.48 1.76.08l12.44-7.12" fill="#34A853"/>
+        <path d="M17.38 8.44L4.94 1.32C4.22.9 3.58.98 3.18 1.4L13.8 12l3.58-3.56z" fill="#EA4335"/>
+      </svg>
+      Get it on Google Play
+    </button>
   </div>
 
   <div class="hero-stats">
@@ -1626,6 +1821,115 @@
   </div>
 </footer>
 
+<!-- PWA INSTALL SHEET -->
+<div class="pwa-overlay" id="pwa-overlay" onclick="closePWASheet()"></div>
+<div class="pwa-sheet" id="pwa-sheet">
+  <div class="pwa-sheet-handle"></div>
+
+  <!-- Play Store header -->
+  <div class="pwa-ps-header">
+    <div class="pwa-ps-logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3.18 1.4C2.76 1.64 2.5 2.08 2.5 2.6v18.8c0 .52.26.96.68 1.2l.1.06 10.54-10.54v-.24L3.28 1.34l-.1.06z" fill="#fff"/>
+        <path d="M17.3 15.64l-3.5-3.5v-.28l3.5-3.5.08.04 4.14 2.36c1.18.67 1.18 1.77 0 2.44l-4.14 2.36-.08.08z" fill="#fff" opacity=".85"/>
+        <path d="M17.38 15.56L13.8 12 3.18 22.6c.4.42 1.04.48 1.76.08l12.44-7.12" fill="#fff" opacity=".7"/>
+        <path d="M17.38 8.44L4.94 1.32C4.22.9 3.58.98 3.18 1.4L13.8 12l3.58-3.56z" fill="#fff" opacity=".6"/>
+      </svg>
+      <span>Google Play</span>
+    </div>
+    <span class="pwa-ps-subtitle">Install app</span>
+  </div>
+
+  <!-- App info row -->
+  <div class="pwa-app-row">
+    <div class="pwa-app-icon">
+      <img src="/static/img/icon-192.png" alt="Trovee icon" onerror="this.style.display='none';this.parentElement.innerHTML='<svg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\'><text x=\'50%\' y=\'54%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-size=\'22\' fill=\'%230A84FF\'>T</text></svg>'">
+    </div>
+    <div class="pwa-app-info">
+      <div class="pwa-app-name">Trovee</div>
+      <div class="pwa-app-dev">Trovee Inc. · Finance</div>
+      <div class="pwa-app-meta">
+        <div class="pwa-app-rating">
+          <svg viewBox="0 0 24 24" fill="#FBBC05"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          4.8
+          <span class="pwa-app-dot">·</span>
+        </div>
+        <span class="pwa-app-installs">50K+ downloads</span>
+        <span class="pwa-app-dot">·</span>
+        <span class="pwa-app-tag">PWA</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screenshots -->
+  <div class="pwa-screenshots">
+    <div class="pwa-screenshot">
+      <img src="https://images.unsplash.com/photo-1642790551116-18e150f248e3?w=200&q=70&auto=format&fit=crop" alt="Trading chart">
+    </div>
+    <div class="pwa-screenshot">
+      <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=200&q=70&auto=format&fit=crop" alt="Candlestick chart">
+    </div>
+    <div class="pwa-screenshot">
+      <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=200&q=70&auto=format&fit=crop" alt="Portfolio dashboard">
+    </div>
+    <div class="pwa-screenshot">
+      <img src="https://images.unsplash.com/photo-1607863680198-23d4b2565df0?w=200&q=70&auto=format&fit=crop" alt="Share investment">
+    </div>
+  </div>
+
+  <!-- Description -->
+  <div class="pwa-desc">
+    <p>Trade live crypto &amp; forex markets, invest in shares from Tesla, SpaceX, Microsoft &amp; more, and withdraw your earnings — all in one app. Backed by Elon Musk ventures.</p>
+  </div>
+
+  <!-- Ratings -->
+  <div class="pwa-ratings-row">
+    <div class="pwa-big-rating">
+      <div class="pwa-big-num">4.8</div>
+      <div class="pwa-stars-row">
+        <svg viewBox="0 0 24 24" fill="#FBBC05"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="#FBBC05"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="#FBBC05"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="#FBBC05"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        <svg viewBox="0 0 24 24" fill="#FBBC05"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      </div>
+    </div>
+    <div class="pwa-bar-col">
+      <div class="pwa-bar-row"><span class="pwa-bar-num">5</span><div class="pwa-bar-track"><div class="pwa-bar-fill" style="width:78%"></div></div></div>
+      <div class="pwa-bar-row"><span class="pwa-bar-num">4</span><div class="pwa-bar-track"><div class="pwa-bar-fill" style="width:14%"></div></div></div>
+      <div class="pwa-bar-row"><span class="pwa-bar-num">3</span><div class="pwa-bar-track"><div class="pwa-bar-fill" style="width:5%"></div></div></div>
+      <div class="pwa-bar-row"><span class="pwa-bar-num">2</span><div class="pwa-bar-track"><div class="pwa-bar-fill" style="width:2%"></div></div></div>
+      <div class="pwa-bar-row"><span class="pwa-bar-num">1</span><div class="pwa-bar-track"><div class="pwa-bar-fill" style="width:1%"></div></div></div>
+    </div>
+  </div>
+
+  <!-- Install button -->
+  <div class="pwa-install-area">
+    <button class="pwa-install-btn" id="pwa-install-btn" onclick="startPWAInstall()">
+      <span class="pwa-spin" id="pwa-spin"></span>
+      <span id="pwa-btn-text">Install</span>
+    </button>
+    <button class="pwa-wishlist-btn" title="Wishlist" onclick="closePWASheet()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
+  </div>
+
+  <!-- Progress bar (hidden until install starts) -->
+  <div class="pwa-progress-wrap" id="pwa-progress-wrap">
+    <div class="pwa-progress-label"><span>Downloading…</span><span id="pwa-pct">0%</span></div>
+    <div class="pwa-progress-track"><div class="pwa-progress-fill" id="pwa-progress-fill"></div></div>
+  </div>
+
+  <!-- Success state (hidden) -->
+  <div class="pwa-success-wrap" id="pwa-success-wrap">
+    <span class="pwa-success-icon">✓</span>
+    <span class="pwa-success-text"><strong>Trovee installed!</strong> Open it from your home screen.</span>
+    <button class="pwa-open-btn" onclick="closePWASheet()">Open</button>
+  </div>
+
+  <div class="pwa-footer-note">Free · No ads · Works offline</div>
+</div>
+
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -1673,6 +1977,103 @@ document.querySelectorAll('.section-title, .section-body, .section-eyebrow').for
   el.style.transition = 'opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s';
   observer.observe(el);
 });
+
+// ── PWA SHEET ──
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+
+function openPWASheet() {
+  document.getElementById('pwa-overlay').classList.add('open');
+  document.getElementById('pwa-sheet').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePWASheet() {
+  document.getElementById('pwa-overlay').classList.remove('open');
+  document.getElementById('pwa-sheet').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function startPWAInstall() {
+  const btn = document.getElementById('pwa-install-btn');
+  const spin = document.getElementById('pwa-spin');
+  const btnText = document.getElementById('pwa-btn-text');
+  const progressWrap = document.getElementById('pwa-progress-wrap');
+  const progressFill = document.getElementById('pwa-progress-fill');
+  const pct = document.getElementById('pwa-pct');
+  const successWrap = document.getElementById('pwa-success-wrap');
+
+  // If browser supports native PWA install, use it
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then((choice) => {
+      if (choice.outcome === 'accepted') {
+        runProgressAnimation(btn, spin, btnText, progressWrap, progressFill, pct, successWrap);
+      }
+      deferredInstallPrompt = null;
+    });
+    return;
+  }
+
+  // Fallback: simulate download progress then trigger SW-based install
+  runProgressAnimation(btn, spin, btnText, progressWrap, progressFill, pct, successWrap);
+}
+
+function runProgressAnimation(btn, spin, btnText, progressWrap, progressFill, pct, successWrap) {
+  btn.disabled = true;
+  spin.style.display = 'block';
+  btnText.textContent = 'Installing…';
+  progressWrap.classList.add('show');
+
+  let progress = 0;
+  const interval = setInterval(() => {
+    // Vary speed for realism
+    progress += Math.random() * 8 + 4;
+    if (progress >= 100) {
+      progress = 100;
+      clearInterval(interval);
+      progressFill.style.width = '100%';
+      pct.textContent = '100%';
+
+      setTimeout(() => {
+        progressWrap.classList.remove('show');
+        successWrap.classList.add('show');
+        btn.style.display = 'none';
+        document.querySelector('.pwa-wishlist-btn').style.display = 'none';
+
+        // On iOS / desktop without native prompt: guide user
+        if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          successWrap.querySelector('.pwa-success-text').innerHTML =
+            '<strong>Almost there!</strong> Tap <strong>Share → Add to Home Screen</strong> to finish.';
+        }
+      }, 400);
+    }
+    progressFill.style.width = progress + '%';
+    pct.textContent = Math.round(progress) + '%';
+  }, 120);
+}
+
+// Swipe down to close sheet
+(function() {
+  const sheet = document.getElementById('pwa-sheet');
+  let startY = 0, isDragging = false;
+  sheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; isDragging = true; }, { passive: true });
+  sheet.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const delta = e.touches[0].clientY - startY;
+    if (delta > 0) sheet.style.transform = `translateY(${delta}px)`;
+  }, { passive: true });
+  sheet.addEventListener('touchend', e => {
+    isDragging = false;
+    const delta = e.changedTouches[0].clientY - startY;
+    if (delta > 80) { closePWASheet(); }
+    sheet.style.transform = '';
+  });
+})();
 
 const landHamburger = document.getElementById('land-hamburger');
 const landDrawer = document.getElementById('land-drawer');
