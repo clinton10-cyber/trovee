@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trovee — Withdraw</title>
+<link rel="icon" href="/static/img/favicon.ico">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<meta name="theme-color" content="#06080D">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trovee">
+<link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/trovee.css">
+<style>
+  .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+  .method-card { padding: 13px 12px; border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: var(--surface); cursor: pointer; text-align: center; transition: all 0.15s; }
+  .method-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .method-card.selected { border-color: var(--accent); background: rgba(10, 132, 255,0.08); box-shadow: 0 0 20px rgba(10, 132, 255,0.05); }
+  .method-icon { margin-bottom: 8px; color: var(--accent); }
+  .method-name { font-size: 13px; font-weight: 600; }
+  .tabs { display: flex; gap: 4px; background: var(--ink-soft); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 20px; }
+  .tab { flex: 1; text-align: center; padding: 9px; border-radius: 6px; font-size: 13.5px; color: var(--slate-soft); cursor: pointer; transition: all 0.15s; }
+  .tab:hover { color: var(--paper); }
+  .tab.active { background: var(--surface-raised); color: var(--paper); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ─── BEAUTIFUL RECEIPT CARDS ─── */
+  .receipt-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin: 14px 0;
+    border: 1px solid var(--line);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    box-shadow: var(--glass-sheen);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .receipt-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), #4ade80, var(--accent));
+    opacity: 0.6;
+  }
+  .receipt-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 32px rgba(10, 132, 255, 0.08);
+  }
+
+  .receipt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line-weak);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .receipt-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .receipt-brand .brand-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .receipt-brand .brand-name .accent-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .receipt-brand .tx-id {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--slate-soft);
+    letter-spacing: 0.05em;
+  }
+  .receipt-status {
+    padding: 4px 16px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .receipt-status.pending { background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.2); }
+  .receipt-status.approved { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.2); }
+  .receipt-status.paid { background: rgba(96, 165, 250, 0.15); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.2); }
+  .receipt-status.rejected { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
+
+  .receipt-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 24px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 480px) {
+    .receipt-body {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+  }
+  .receipt-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .receipt-item .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--slate-soft);
+    font-weight: 600;
+  }
+  .receipt-item .value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--paper);
+    word-break: break-word;
+  }
+  .receipt-item .value.mono {
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .receipt-item .value.amount {
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), #4ade80);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .receipt-item .value.amount.negative {
+    background: linear-gradient(135deg, #f87171, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .receipt-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0 12px;
+    color: var(--slate-soft);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .receipt-divider::before,
+  .receipt-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line-weak);
+  }
+
+  .receipt-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-weak);
+    flex-wrap: wrap;
+  }
+  .receipt-actions button {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-body);
+  }
+  .receipt-actions button:active {
+    transform: scale(0.95);
+  }
+  .receipt-actions .download-png-btn {
+    background: linear-gradient(135deg, var(--accent), #0a6bff);
+    color: white;
+    box-shadow: 0 2px 12px rgba(10, 132, 255, 0.3);
+  }
+  .receipt-actions .download-png-btn:hover {
+    box-shadow: 0 4px 20px rgba(10, 132, 255, 0.4);
+    transform: translateY(-1px);
+  }
+  .receipt-actions .download-pdf-btn {
+    background: var(--surface-raised);
+    color: var(--paper);
+    border: 1px solid var(--line-strong);
+  }
+  .receipt-actions .download-pdf-btn:hover {
+    border-color: var(--accent);
+    background: rgba(10, 132, 255, 0.05);
+  }
+  .receipt-actions .copy-btn {
+    background: var(--surface-raised);
+    color: var(--paper);
+    border: 1px solid var(--line-strong);
+  }
+  .receipt-actions .copy-btn:hover {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.05);
+  }
+
+  .ledger-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line-weak);
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ledger-row:last-child {
+    border-bottom: none;
+  }
+  .ledger-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 120px;
+  }
+  .ledger-label {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .ledger-sub {
+    font-size: 11px;
+    color: var(--slate-soft);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ledger-amount {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .ledger-amount.negative { color: #f87171; }
+  .ledger-amount.positive { color: #4ade80; }
+
+  .pill {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .pill-pending { background: rgba(250, 204, 21, 0.15); color: #facc15; }
+  .pill-approved { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+  .pill-paid { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+  .pill-rejected { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+
+  .receipt-list-wrapper {
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .receipt-list-wrapper::-webkit-scrollbar {
+    width: 4px;
+  }
+  .receipt-list-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .receipt-list-wrapper::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 4px;
+  }
+
+  /* ─── RECEIPT PREVIEW FOR PNG ─── */
+  .receipt-preview {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .receipt-preview.show {
+    display: flex;
+  }
+  .receipt-preview-content {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 420px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+  .receipt-preview-content .close-preview {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background 0.2s;
+  }
+  .receipt-preview-content .close-preview:hover {
+    background: #f0f0f0;
+  }
+
+  .receipt-print-area {
+    font-family: 'Inter', sans-serif;
+    color: #0B1220;
+  }
+  .receipt-print-area .print-header {
+    text-align: center;
+    border-bottom: 2px dashed #e5e7eb;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+  }
+  .receipt-print-area .print-header h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0B1220;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+  .receipt-print-area .print-header .print-sub {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0;
+    font-weight: 500;
+  }
+  .receipt-print-area .print-header .print-tx {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+  .receipt-print-area .print-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+    margin-bottom: 16px;
+  }
+  .receipt-print-area .print-body .pl {
+    font-size: 11px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+  .receipt-print-area .print-body .pv {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0B1220;
+    word-break: break-word;
+  }
+  .receipt-print-area .print-body .pv.mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .receipt-print-area .print-body .pv.amount-large {
+    font-size: 26px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #0a6bff, #4ade80);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .receipt-print-area .print-body .pv.amount-large.negative {
+    background: linear-gradient(135deg, #f87171, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .receipt-print-area .print-status-badge {
+    display: inline-block;
+    padding: 4px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .receipt-print-area .print-status-badge.pending { background: #fef3c7; color: #92400e; }
+  .receipt-print-area .print-status-badge.approved { background: #d1fae5; color: #065f46; }
+  .receipt-print-area .print-status-badge.paid { background: #dbeafe; color: #1e40af; }
+  .receipt-print-area .print-status-badge.rejected { background: #fee2e2; color: #991b1b; }
+
+  .receipt-print-area .print-footer {
+    text-align: center;
+    border-top: 2px dashed #e5e7eb;
+    padding-top: 14px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #9ca3af;
+  }
+  .receipt-print-area .print-footer .print-thanks {
+    font-weight: 500;
+    color: #6b7280;
+  }
+  .receipt-print-area .print-footer .print-hash {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #d1d5db;
+    display: block;
+    margin-top: 4px;
+    word-break: break-all;
+  }
+
+  .preview-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .preview-actions button {
+    padding: 10px 28px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-body);
+  }
+  .preview-actions button:active {
+    transform: scale(0.95);
+  }
+  .preview-actions .download-png-action {
+    background: linear-gradient(135deg, var(--accent), #0a6bff);
+    color: white;
+    box-shadow: 0 2px 16px rgba(10, 132, 255, 0.35);
+  }
+  .preview-actions .download-png-action:hover {
+    box-shadow: 0 4px 24px rgba(10, 132, 255, 0.45);
+    transform: translateY(-2px);
+  }
+  .preview-actions .close-action {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  .preview-actions .close-action:hover {
+    background: #e5e7eb;
+  }
+
+  @media (max-width: 480px) {
+    .receipt-preview-content {
+      padding: 20px;
+      max-width: 100%;
+      border-radius: 16px;
+    }
+    .receipt-print-area .print-body {
+      grid-template-columns: 1fr;
+      gap: 4px 0;
+    }
+    .receipt-print-area .print-body .pv.amount-large {
+      font-size: 22px;
+    }
+    .preview-actions button {
+      padding: 8px 20px;
+      font-size: 13px;
+      flex: 1;
+      min-width: 120px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="top-bar">
+    <h1 class="page-title">Withdraw</h1>
+    <button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout">
+      <i class="fas fa-sign-out-alt"></i>
+    </button>
+  </div>
+
+  <div class="section" style="padding-top:0;">
+    <div class="balance-hero" style="padding:22px;">
+      <div class="balance-label">Available to withdraw</div>
+      <div class="balance-figure" id="balance-figure" style="font-size:32px;">···</div>
+      <div class="small muted mt-8" id="minimum-note">···</div>
+    </div>
+  </div>
+
+  <div class="section" style="padding-top:0;">
+    <div class="tabs">
+      <div class="tab active" data-tab="new">New withdrawal</div>
+      <div class="tab" data-tab="history">History</div>
+    </div>
+
+    <div class="tab-panel active" id="panel-new">
+      <div class="card">
+        <label style="font-size:13px; color:var(--slate-soft); margin-bottom:10px; display:block;">Choose a method</label>
+        <div class="method-grid" id="method-grid"></div>
+
+        <div class="field">
+          <label for="amount">Amount (<span id="currency-label">USD</span>)</label>
+          <input type="number" id="amount" placeholder="0.00" step="0.01" min="0">
+        </div>
+
+        <div class="field" id="destination-field">
+          <label id="destination-label">Destination details</label>
+          <input type="text" id="destination" placeholder="Account number / handle">
+        </div>
+
+        <div class="field-error" id="withdraw-error" style="display:none;"></div>
+        <button class="btn btn-primary" id="withdraw-btn">
+          <span id="withdraw-label">Request withdrawal</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-history">
+      <div class="card-flat">
+        <div class="receipt-list-wrapper" id="history-ledger">
+          <div class="empty-state small">No withdrawals yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="/dashboard" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>
+      Home
+    </a>
+    <a href="/trading" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      Trade
+    </a>
+    <a href="/shares" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+      Shares
+    </a>
+    <a href="/deposit" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Deposit
+    </a>
+    <a href="/withdraw" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/></svg>
+      Withdraw
+    </a>
+    <a href="/messages" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      Support
+    </a>
+  </nav>
+</div>
+
+<!-- Receipt Preview Modal -->
+<div class="receipt-preview" id="receipt-preview">
+  <div class="receipt-preview-content">
+    <button class="close-preview" onclick="closeReceiptPreview()">✕</button>
+    <div id="receipt-preview-body"></div>
+  </div>
+</div>
+
+<script src="/static/js/trovee.js"></script>
+<script>
+  Trovee.requireAuth();
+  let methodsData = null;
+  let userInfo = null;
+  let selectedMethod = null;
+  let allWithdrawals = [];
+
+  const METHOD_META = {
+    bank_transfer: { name: "Bank transfer", icon: bankIcon() },
+    mobile_money: { name: "Mobile money", icon: mobileIcon() },
+    paypal: { name: "PayPal", icon: paypalIcon() },
+    crypto: { name: "Crypto (USDT)", icon: cryptoIcon() },
+  };
+
+  function bankIcon() { return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l9-6 9 6"/><path d="M5 10v9h14v-9M9 19v-6m6 6v-6"/></svg>`; }
+  function mobileIcon() { return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>`; }
+  function paypalIcon() { return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h7a4 4 0 0 1 4 4c0 3-2 5-5 5H9l-1 7"/><path d="M9 13l-1 7H5"/></svg>`; }
+  function cryptoIcon() { return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h4a2 2 0 0 1 0 4H9m0-4v8m0-4h3.5m-3.5 4h4a2 2 0 0 0 0-4"/></svg>`; }
+
+  async function init() {
+    try {
+      [userInfo, methodsData] = await Promise.all([
+        Trovee.api("/api/auth/me"),
+        Trovee.api("/api/withdraw/methods"),
+      ]);
+      document.getElementById("balance-figure").textContent =
+        `${userInfo.currency_symbol}${userInfo.balance_local.toFixed(2)}`;
+      document.getElementById("currency-label").textContent = userInfo.currency_code;
+      document.getElementById("minimum-note").textContent =
+        `Minimum withdrawal: ${methodsData.currency_symbol}${methodsData.minimum_local.toFixed(2)}`;
+      renderMethods();
+      await loadHistory();
+    } catch (err) {
+      if (err.status === 401) { Trovee.logout(); return; }
+      Trovee.showToast(err.message, "error");
+    }
+  }
+
+  function renderMethods() {
+    const grid = document.getElementById("method-grid");
+    grid.innerHTML = methodsData.methods.map(m => `
+      <div class="method-card" data-method="${m}">
+        <div class="method-icon">${METHOD_META[m].icon}</div>
+        <div class="method-name">${METHOD_META[m].name}</div>
+      </div>
+    `).join("");
+    grid.querySelectorAll(".method-card").forEach(card => {
+      card.addEventListener("click", () => selectMethod(card.dataset.method));
+    });
+    if (methodsData.methods.length) selectMethod(methodsData.methods[0]);
+  }
+
+  function selectMethod(method) {
+    selectedMethod = method;
+    document.querySelectorAll(".method-card").forEach(c => c.classList.toggle("selected", c.dataset.method === method));
+    const label = document.getElementById("destination-label");
+    const input = document.getElementById("destination");
+    if (method === "mobile_money") {
+      const providers = methodsData.mobile_money_providers;
+      label.textContent = "Mobile money ID";
+      if (providers.includes("UPI")) {
+        input.placeholder = "yourname@bank (UPI ID)";
+      } else if (providers.length) {
+        input.placeholder = `${providers[0]} number, e.g. 0801234567`;
+      } else {
+        input.placeholder = "Provider and account number";
+      }
+    } else if (method === "bank_transfer") {
+      label.textContent = "Bank name and account number";
+      input.placeholder = "e.g. First Bank - 0123456789";
+    } else if (method === "paypal") {
+      label.textContent = "PayPal email";
+      input.placeholder = "you@example.com";
+    } else if (method === "crypto") {
+      label.textContent = "USDT wallet address (TRC20)";
+      input.placeholder = "T...";
+    }
+  }
+
+  document.getElementById("withdraw-btn").addEventListener("click", async () => {
+    const errorEl = document.getElementById("withdraw-error");
+    errorEl.style.display = "none";
+    const amountLocal = parseFloat(document.getElementById("amount").value);
+    const destination = document.getElementById("destination").value.trim();
+
+    if (!amountLocal || amountLocal <= 0) {
+      errorEl.textContent = "Enter a valid amount.";
+      errorEl.style.display = "block";
+      return;
+    }
+    if (!destination) {
+      errorEl.textContent = "Enter your destination details.";
+      errorEl.style.display = "block";
+      return;
+    }
+
+    const rate = methodsData.exchange_rate || 1;
+    const amountUsdCents = Math.round((amountLocal / rate) * 100);
+
+    const btn = document.getElementById("withdraw-btn");
+    const label = document.getElementById("withdraw-label");
+    btn.disabled = true;
+    label.innerHTML = '<span class="spinner"></span>';
+
+    try {
+      await Trovee.api("/api/withdraw/request", {
+        method: "POST",
+        body: { method: selectedMethod, destination_details: destination, amount_usd_cents: amountUsdCents },
+      });
+      Trovee.showToast("Withdrawal requested. It's now pending review.");
+      document.getElementById("amount").value = "";
+      document.getElementById("destination").value = "";
+      await loadHistory();
+      document.querySelector('[data-tab="history"]').click();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = "block";
+    } finally {
+      btn.disabled = false;
+      label.textContent = "Request withdrawal";
+    }
+  });
+
+  async function loadHistory() {
+    try {
+      const data = await Trovee.api("/api/withdraw/history");
+      allWithdrawals = data.withdrawals || [];
+      renderHistory(allWithdrawals);
+    } catch (err) {
+      Trovee.showToast(err.message, "error");
+    }
+  }
+
+  function renderHistory(withdrawals) {
+    const ledger = document.getElementById("history-ledger");
+    if (!withdrawals.length) {
+      ledger.innerHTML = '<div class="empty-state small">No withdrawals yet.</div>';
+      return;
+    }
+
+    ledger.innerHTML = withdrawals.map((w) => {
+      const rate = methodsData?.exchange_rate || 1;
+      const amountLocal = (w.amount_usd_cents / 100) * rate;
+      const methodName = METHOD_META[w.method]?.name || w.method;
+      const txId = `TRV-WD-${String(w.id).padStart(6, '0')}`;
+      const dateStr = new Date(w.requested_at).toLocaleString();
+      const shortDate = new Date(w.requested_at).toLocaleDateString();
+      const isNegative = true;
+
+      return `
+        <div class="receipt-card" id="receipt-${w.id}">
+          <div class="receipt-header">
+            <div class="receipt-brand">
+              <div class="brand-name">
+                <span class="accent-dot"></span>
+                Trovee
+              </div>
+              <span class="tx-id">${txId}</span>
+            </div>
+            <span class="receipt-status ${w.status}">${w.status}</span>
+          </div>
+
+          <div class="receipt-body">
+            <div class="receipt-item">
+              <span class="label">Amount</span>
+              <span class="value amount ${isNegative ? 'negative' : ''}">${isNegative ? '-' : ''}${userInfo?.currency_symbol || '$'}${amountLocal.toFixed(2)}</span>
+            </div>
+            <div class="receipt-item">
+              <span class="label">Method</span>
+              <span class="value">${methodName}</span>
+            </div>
+            <div class="receipt-item">
+              <span class="label">Destination</span>
+              <span class="value mono">${w.destination_details}</span>
+            </div>
+            <div class="receipt-item">
+              <span class="label">Date</span>
+              <span class="value">${shortDate}</span>
+            </div>
+          </div>
+
+          <div class="receipt-divider">● ● ●</div>
+
+          <div class="receipt-actions">
+            <button class="download-png-btn" onclick="previewReceipt(${w.id})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="12" cy="12" r="4"/><circle cx="18" cy="6" r="1.5" fill="currentColor"/></svg>
+              PNG Receipt
+            </button>
+            <button class="download-pdf-btn" onclick="downloadPDF(${w.id})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              PDF
+            </button>
+            <button class="copy-btn" onclick="copyReceipt(${w.id})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ─── RECEIPT PREVIEW (PNG) ──────────────────────────────
+  function previewReceipt(id) {
+    const withdrawal = allWithdrawals.find(w => w.id === id);
+    if (!withdrawal) return;
+
+    const rate = methodsData?.exchange_rate || 1;
+    const amountLocal = (withdrawal.amount_usd_cents / 100) * rate;
+    const txId = `TRV-WD-${String(id).padStart(6, '0')}`;
+    const dateStr = new Date(withdrawal.requested_at).toLocaleString();
+    const methodName = METHOD_META[withdrawal.method]?.name || withdrawal.method;
+    const symbol = userInfo?.currency_symbol || '$';
+    const isNegative = true;
+
+    const previewBody = document.getElementById('receipt-preview-body');
+    previewBody.innerHTML = `
+      <div class="receipt-print-area" id="receipt-print-${id}">
+        <div class="print-header">
+          <h2>✦ Trovee</h2>
+          <p class="print-sub">Withdrawal Receipt</p>
+          <p class="print-tx">${txId}</p>
+        </div>
+        <div class="print-body">
+          <span class="pl">Amount</span>
+          <span class="pv amount-large ${isNegative ? 'negative' : ''}">${isNegative ? '-' : ''}${symbol}${amountLocal.toFixed(2)}</span>
+          <span class="pl">Method</span>
+          <span class="pv">${methodName}</span>
+          <span class="pl">Destination</span>
+          <span class="pv mono">${withdrawal.destination_details}</span>
+          <span class="pl">Date & Time</span>
+          <span class="pv">${dateStr}</span>
+          <span class="pl">Status</span>
+          <span class="pv"><span class="print-status-badge ${withdrawal.status}">${withdrawal.status}</span></span>
+        </div>
+        <div class="print-footer">
+          <span class="print-thanks">Thank you for using Trovee</span>
+          <span class="print-hash">${txId}</span>
+        </div>
+      </div>
+      <div class="preview-actions">
+        <button class="download-png-action" onclick="downloadPNG(${id})">
+          ⬇ Download PNG
+        </button>
+        <button class="close-action" onclick="closeReceiptPreview()">Close</button>
+      </div>
+    `;
+
+    document.getElementById('receipt-preview').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeReceiptPreview() {
+    document.getElementById('receipt-preview').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  // ─── DOWNLOAD PNG ─────────────────────────────────────────
+  function downloadPNG(id) {
+    const printArea = document.getElementById(`receipt-print-${id}`);
+    if (!printArea) return;
+
+    // Load html2canvas dynamically
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.onload = function() {
+      html2canvas(printArea, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        width: printArea.scrollWidth,
+        height: printArea.scrollHeight,
+        useCORS: true,
+        logging: false,
+      }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `Trovee_Receipt_${id}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        Trovee.showToast('PNG receipt downloaded!');
+      }).catch(err => {
+        Trovee.showToast('Failed to generate PNG. Please try PDF instead.', 'error');
+        console.error(err);
+      });
+    };
+    script.onerror = function() {
+      Trovee.showToast('Failed to load image library. Please use PDF.', 'error');
+    };
+    document.head.appendChild(script);
+  }
+
+  // ─── DOWNLOAD PDF ──────────────────────────────────────────
+  async function downloadPDF(id) {
+    const token = localStorage.getItem('trovee_token');
+    try {
+      const res = await fetch(`/api/withdrawals/${id}/receipt`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) { Trovee.showToast('Receipt download failed.', 'error'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Trovee-Receipt-TRV-WD-${String(id).padStart(6, '0')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      Trovee.showToast('Receipt downloaded!');
+    } catch(e) {
+      console.error('downloadPDF', e);
+      Trovee.showToast('Receipt download failed.', 'error');
+    }
+  }
+
+  // ─── COPY RECEIPT ──────────────────────────────────────────
+  function copyReceipt(id) {
+    const withdrawal = allWithdrawals.find(w => w.id === id);
+    if (!withdrawal) return;
+    const rate = methodsData?.exchange_rate || 1;
+    const amountLocal = (withdrawal.amount_usd_cents / 100) * rate;
+    const txId = `TRV-WD-${String(id).padStart(6, '0')}`;
+    const text = `
+Trovee Withdrawal Receipt
+─────────────────────────────────
+Transaction ID:  ${txId}
+Date:            ${new Date(withdrawal.requested_at).toLocaleString()}
+Amount:          ${userInfo?.currency_symbol || '$'}${amountLocal.toFixed(2)}
+Method:          ${METHOD_META[withdrawal.method]?.name || withdrawal.method}
+Destination:     ${withdrawal.destination_details}
+Status:          ${withdrawal.status}
+─────────────────────────────────
+Thank you for using Trovee
+    `.trim();
+
+    navigator.clipboard.writeText(text).then(() => {
+      Trovee.showToast('Receipt copied to clipboard!');
+    }).catch(() => {
+      Trovee.showToast('Failed to copy.', 'error');
+    });
+  }
+
+  // ─── TAB SWITCHING ─────────────────────────────────────────
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById(`panel-${tab.dataset.tab}`).classList.add("active");
+    });
+  });
+
+  document.querySelector('[data-tab="history"]').addEventListener("click", loadHistory);
+
+  init();
+
+  function userLogout() {
+    if (!confirm("Logout?")) return;
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userId");
+    location.href = "/";
+  }
+</script>
+</body>
+</html>

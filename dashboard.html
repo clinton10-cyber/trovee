@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trovee — Dashboard</title>
+<link rel="icon" href="/static/img/favicon.ico">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<meta name="theme-color" content="#06080D">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trovee">
+<link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/trovee.css">
+  <style>
+    .quick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .quick-card {
+      background: var(--surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 16px 12px;
+      text-align: center;
+      transition: transform 0.15s, border-color 0.15s;
+      cursor: pointer;
+      box-shadow: var(--glass-sheen);
+      text-decoration: none;
+      color: var(--paper);
+    }
+    .quick-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+    .quick-card .icon {
+      font-size: 24px;
+      margin-bottom: 6px;
+      display: block;
+      color: var(--accent);
+      position: relative;
+    }
+    .quick-card .icon .unread-badge {
+      position: absolute;
+      top: -6px;
+      right: 50%;
+      transform: translateX(18px);
+      background: #f87171;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      font-family: var(--font-mono, inherit);
+    }
+    .quick-card .label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--paper);
+    }
+    .quick-card .sub {
+      font-size: 11px;
+      color: var(--slate-soft);
+      margin-top: 2px;
+    }
+    .recent-list {
+      margin-top: 12px;
+    }
+    .recent-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .recent-item:last-child {
+      border-bottom: none;
+    }
+    .recent-left .title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .recent-left .time {
+      font-size: 12px;
+      color: var(--slate-soft);
+    }
+    .recent-amount {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .recent-amount.positive {
+      color: var(--teal);
+    }
+    .recent-amount.negative {
+      color: var(--coral);
+    }
+    .balance-hero {
+      text-align: left;
+      padding: 22px 20px;
+      background: var(--surface-raised);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-card), var(--glass-sheen);
+    }
+    .balance-label {
+      font-size: 13px;
+      color: var(--slate-soft);
+      margin-bottom: 8px;
+    }
+    .balance-figure {
+      font-family: var(--font-mono);
+      font-size: 33px;
+      font-weight: 600;
+      color: var(--paper);
+      letter-spacing: -0.01em;
+    }
+    .balance-figure .cents {
+      color: var(--slate-soft);
+      font-size: 20px;
+    }
+    @media (max-width: 480px) {
+      .quick-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .balance-figure {
+        font-size: 26px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="brand-row">
+      <img src="/static/img/logo.png" alt="" class="brand-mark">
+      <span class="brand-word">Tro<span class="accent">vee</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="balance-badge" class="mono" style="font-size:13px; color:var(--accent);">$0.00</span>
+      <button onclick="userLogout()" style="background:none;border:none;color:var(--slate-soft);cursor:pointer;font-size:16px;padding:8px;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none';" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Balance Hero -->
+  <div class="section" style="padding-top:0;">
+    <div class="balance-hero">
+      <div class="balance-label">Total Balance</div>
+      <div class="balance-figure" id="balance-figure">
+        <span id="balance-symbol">$</span><span id="balance-amount">0.00</span>
+      </div>
+      <div class="small muted mt-8" id="balance-usd">0.00 USD</div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="section" style="padding-top:0;">
+    <div class="quick-grid">
+      <a href="/trading" class="quick-card">
+        <span class="icon"><i class="fas fa-chart-line"></i></span>
+        <div class="label">Trade</div>
+        <div class="sub">Buy / Sell</div>
+      </a>
+      <a href="/deposit" class="quick-card">
+        <span class="icon"><i class="fas fa-coins"></i></span>
+        <div class="label">Deposit</div>
+        <div class="sub">Add funds</div>
+      </a>
+      <a href="/withdraw" class="quick-card">
+        <span class="icon"><i class="fas fa-arrow-up"></i></span>
+        <div class="label">Withdraw</div>
+        <div class="sub">Cash out</div>
+      </a>
+      <a href="/shares" class="quick-card">
+        <span class="icon"><i class="fas fa-landmark"></i></span>
+        <div class="label">Shares</div>
+        <div class="sub">Invest</div>
+      </a>
+      <a href="/messages" class="quick-card">
+        <span class="icon"><i class="fas fa-comment-dots"></i><span class="unread-badge" id="care-unread-badge"></span></span>
+        <div class="label">Customer Care</div>
+        <div class="sub">& Support</div>
+      </a>
+      <!-- Admin link removed -->
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="section" style="padding-top:0;">
+    <div class="section-heading">
+      <h2>Recent Activity</h2>
+      <a href="/trading" class="see-all">See all</a>
+    </div>
+    <div class="card-flat" id="recent-container">
+      <div class="empty-state small">No recent activity yet.</div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/dashboard" class="nav-item active">
+      <i class="fas fa-home"></i>
+      <span>Home</span>
+    </a>
+    <a href="/trading" class="nav-item">
+      <i class="fas fa-chart-line"></i>
+      <span>Trade</span>
+    </a>
+    <a href="/shares" class="nav-item">
+      <i class="fas fa-landmark"></i>
+      <span>Shares</span>
+    </a>
+    <a href="/deposit" class="nav-item">
+      <i class="fas fa-coins"></i>
+      <span>Deposit</span>
+    </a>
+    <a href="/withdraw" class="nav-item">
+      <i class="fas fa-arrow-up"></i>
+      <span>Withdraw</span>
+    </a>
+    <a href="/messages" class="nav-item">
+      <i class="fas fa-comment-dots"></i>
+      <span>Support</span>
+    </a>
+  </nav>
+</div>
+
+<script src="/static/js/trovee.js"></script>
+<script>
+  Trovee.requireAuth();
+
+  async function loadDashboard() {
+    try {
+      const user = await Trovee.api('/api/auth/me');
+      const balance = user.balance_local || 0;
+      document.getElementById('balance-amount').textContent = balance.toFixed(2);
+      document.getElementById('balance-symbol').textContent = user.currency_symbol;
+      document.getElementById('balance-badge').textContent = `${user.currency_symbol}${balance.toFixed(2)}`;
+      document.getElementById('balance-usd').textContent = `${user.balance_usd_cents/100} USD`;
+
+      const badge = document.getElementById('care-unread-badge');
+      const unread = user.unread_message_count || 0;
+      if (unread > 0) {
+        badge.textContent = unread > 9 ? '9+' : String(unread);
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      try {
+        const trades = await Trovee.api('/api/trades/history');
+        const container = document.getElementById('recent-container');
+        if (trades.trades && trades.trades.length) {
+          const recent = trades.trades.slice(0, 5);
+          container.innerHTML = recent.map(t => {
+            const amount = t.amount_usd_cents / 100;
+            const profit = t.profit_usd_cents / 100;
+            const isWin = t.outcome === 'win';
+            return `
+              <div class="recent-item">
+                <div class="recent-left">
+                  <div class="title">${t.asset} · ${t.direction === 'up' ? '▲ Up' : '▼ Down'}</div>
+                  <div class="time">${new Date(t.closed_at || t.opened_at).toLocaleString()}</div>
+                </div>
+                <div class="recent-amount ${isWin ? 'positive' : 'negative'}">
+                  ${isWin ? '+' : '-'}$${Math.abs(isWin ? profit : amount).toFixed(2)}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          container.innerHTML = '<div class="empty-state small">No recent trades. Start trading now!</div>';
+        }
+      } catch (e) {}
+    } catch (e) {
+      if (e.status === 401) Trovee.logout();
+    }
+  }
+
+  loadDashboard();
+  setInterval(loadDashboard, 20000);
+
+  function userLogout() {
+    if (!confirm("Logout?")) return;
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userId");
+    location.href = "/";
+  }
+</script>
+</body>
+</html>

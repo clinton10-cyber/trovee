@@ -1,0 +1,95 @@
+-- Delete old wallets
+DELETE FROM wallet_configs WHERE display_name IN ('Bitcoin', 'Ethereum', 'Tron', 'USDT', 'SOL', 'BNB');
+
+-- Insert new crypto wallets with EXACT addresses from images
+INSERT OR IGNORE INTO wallet_configs (display_name, address, logo_url, sort_order, is_active) VALUES
+('Tron (TRX)', 'THDIfueyo1qDUgURk1SHBGP7ot1vdL3n0', 'https://cryptologos.cc/logos/tron-trx-logo.svg', 1, 1),
+('USDT (BSC)', '0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9', 'https://cryptologos.cc/logos/tether-usdt-logo.svg', 2, 1),
+('Solana (SOL)', 'B6U7L2orf9yfivdmNPHAPKUH4x8gedkbUUveKtXboovTI', 'https://cryptologos.cc/logos/solana-sol-logo.svg', 3, 1),
+('BNB (BSC)', '0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9', 'https://cryptologos.cc/logos/binance-coin-bnb-logo.svg', 4, 1),
+('Ethereum (ETH)', '0x8cC0E5BD37159D8D136DC95b9ddBa8fb82461aD9', 'https://cryptologos.cc/logos/ethereum-eth-logo.svg', 5, 1);
+
+-- Delete existing shares and insert new ones (25 companies)
+DELETE FROM share_purchases;
+DELETE FROM share_plans;
+DELETE FROM share_companies;
+
+INSERT INTO share_companies (name, ticker, description, logo_url, sector, is_active) VALUES
+('Apple Inc', 'AAPL', 'Technology - Smartphones, Computers', 'https://logo.clearbit.com/apple.com', 'Technology', 1),
+('Microsoft Corporation', 'MSFT', 'Technology - Software, Cloud', 'https://logo.clearbit.com/microsoft.com', 'Technology', 1),
+('Tesla Inc', 'TSLA', 'Automotive - Electric Vehicles', 'https://logo.clearbit.com/tesla.com', 'Automotive', 1),
+('Amazon.com Inc', 'AMZN', 'E-commerce - Cloud Services', 'https://logo.clearbit.com/amazon.com', 'E-commerce', 1),
+('Alphabet Inc', 'GOOGL', 'Technology - Search, Ads', 'https://logo.clearbit.com/google.com', 'Technology', 1),
+('Meta Platforms', 'META', 'Technology - Social Media', 'https://logo.clearbit.com/facebook.com', 'Technology', 1),
+('NVIDIA Corporation', 'NVDA', 'Technology - AI Chips', 'https://logo.clearbit.com/nvidia.com', 'Technology', 1),
+('Berkshire Hathaway', 'BRK', 'Finance - Investment', 'https://logo.clearbit.com/berkshirehathaway.com', 'Finance', 1),
+('JPMorgan Chase', 'JPM', 'Finance - Banking', 'https://logo.clearbit.com/jpmorganchase.com', 'Finance', 1),
+('Visa Inc', 'V', 'Finance - Payments', 'https://logo.clearbit.com/visa.com', 'Finance', 1),
+('Mastercard Inc', 'MA', 'Finance - Payments', 'https://logo.clearbit.com/mastercard.com', 'Finance', 1),
+('Netflix Inc', 'NFLX', 'Media - Streaming', 'https://logo.clearbit.com/netflix.com', 'Media', 1),
+('Disney Company', 'DIS', 'Media - Entertainment', 'https://logo.clearbit.com/disney.com', 'Media', 1),
+('Coca-Cola Company', 'KO', 'Consumer - Beverages', 'https://logo.clearbit.com/coca-cola.com', 'Consumer', 1),
+('McDonald Corporation', 'MCD', 'Consumer - Food & Beverage', 'https://logo.clearbit.com/mcdonalds.com', 'Consumer', 1),
+('Nike Inc', 'NKE', 'Consumer - Sportswear', 'https://logo.clearbit.com/nike.com', 'Consumer', 1),
+('Johnson & Johnson', 'JNJ', 'Healthcare - Pharmaceuticals', 'https://logo.clearbit.com/jnj.com', 'Healthcare', 1),
+('UnitedHealth Group', 'UNH', 'Healthcare - Insurance', 'https://logo.clearbit.com/unitedhealthgroup.com', 'Healthcare', 1),
+('Pfizer Inc', 'PFE', 'Healthcare - Pharmaceuticals', 'https://logo.clearbit.com/pfizer.com', 'Healthcare', 1),
+('AbbVie Inc', 'ABBV', 'Healthcare - Pharmaceuticals', 'https://logo.clearbit.com/abbvie.com', 'Healthcare', 1),
+('Intel Corporation', 'INTC', 'Technology - Semiconductors', 'https://logo.clearbit.com/intel.com', 'Technology', 1),
+('Qualcomm Inc', 'QCOM', 'Technology - Semiconductors', 'https://logo.clearbit.com/qualcomm.com', 'Technology', 1),
+('Advanced Micro Devices', 'AMD', 'Technology - Semiconductors', 'https://logo.clearbit.com/amd.com', 'Technology', 1),
+('Broadcom Inc', 'AVGO', 'Technology - Semiconductors', 'https://logo.clearbit.com/broadcom.com', 'Technology', 1),
+('Taiwan Semiconductor', 'TSM', 'Technology - Semiconductors', 'https://logo.clearbit.com/tsmc.com', 'Technology', 1);
+
+-- Insert share plans for each company
+INSERT INTO share_plans (company_id, plan_name, shares_count, price_usd_cents, return_rate_pct, duration_months, is_active) VALUES
+(1, 'Basic', 10, 15000, 12.0, 12, 1),
+(1, 'Premium', 50, 75000, 15.0, 24, 1),
+(2, 'Basic', 10, 32000, 12.0, 12, 1),
+(2, 'Premium', 50, 160000, 15.0, 24, 1),
+(3, 'Basic', 10, 24000, 14.0, 12, 1),
+(3, 'Premium', 50, 120000, 17.0, 24, 1),
+(4, 'Basic', 10, 16000, 11.0, 12, 1),
+(4, 'Premium', 50, 80000, 13.0, 24, 1),
+(5, 'Basic', 10, 14500, 12.0, 12, 1),
+(5, 'Premium', 50, 72500, 15.0, 24, 1),
+(6, 'Basic', 10, 32000, 13.0, 12, 1),
+(6, 'Premium', 50, 160000, 16.0, 24, 1),
+(7, 'Basic', 10, 87000, 16.0, 12, 1),
+(7, 'Premium', 50, 435000, 19.0, 24, 1),
+(8, 'Basic', 10, 42500, 10.0, 12, 1),
+(8, 'Premium', 50, 212500, 12.0, 24, 1),
+(9, 'Basic', 10, 18000, 11.0, 12, 1),
+(9, 'Premium', 50, 90000, 13.0, 24, 1),
+(10, 'Basic', 10, 25000, 12.0, 12, 1),
+(10, 'Premium', 50, 125000, 14.0, 24, 1),
+(11, 'Basic', 10, 18000, 11.0, 12, 1),
+(11, 'Premium', 50, 90000, 13.0, 24, 1),
+(12, 'Basic', 10, 35000, 13.0, 12, 1),
+(12, 'Premium', 50, 175000, 15.0, 24, 1),
+(13, 'Basic', 10, 26000, 12.0, 12, 1),
+(13, 'Premium', 50, 130000, 14.0, 24, 1),
+(14, 'Basic', 10, 6500, 9.0, 12, 1),
+(14, 'Premium', 50, 32500, 11.0, 24, 1),
+(15, 'Basic', 10, 8500, 10.0, 12, 1),
+(15, 'Premium', 50, 42500, 12.0, 24, 1),
+(16, 'Basic', 10, 12000, 11.0, 12, 1),
+(16, 'Premium', 50, 60000, 13.0, 24, 1),
+(17, 'Basic', 10, 17000, 11.0, 12, 1),
+(17, 'Premium', 50, 85000, 13.0, 24, 1),
+(18, 'Basic', 10, 16000, 11.0, 12, 1),
+(18, 'Premium', 50, 80000, 13.0, 24, 1),
+(19, 'Basic', 10, 5500, 9.0, 12, 1),
+(19, 'Premium', 50, 27500, 11.0, 24, 1),
+(20, 'Basic', 10, 6500, 10.0, 12, 1),
+(20, 'Premium', 50, 32500, 12.0, 24, 1),
+(21, 'Basic', 10, 34000, 13.0, 12, 1),
+(21, 'Premium', 50, 170000, 15.0, 24, 1),
+(22, 'Basic', 10, 16000, 12.0, 12, 1),
+(22, 'Premium', 50, 80000, 14.0, 24, 1),
+(23, 'Basic', 10, 14000, 12.0, 12, 1),
+(23, 'Premium', 50, 70000, 14.0, 24, 1),
+(24, 'Basic', 10, 56000, 14.0, 12, 1),
+(24, 'Premium', 50, 280000, 16.0, 24, 1),
+(25, 'Basic', 10, 95000, 15.0, 12, 1),
+(25, 'Premium', 50, 475000, 17.0, 24, 1);
